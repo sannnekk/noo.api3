@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Support.DTO;
@@ -68,13 +69,15 @@ public class SupportService : ISupportService
         return _categoryRepository.GetCategoryTreeAsync(false);
     }
 
-    public Task<SupportArticleModel> UpdateArticleAsync(Ulid articleId, JsonPatchDocument<UpdateSupportArticleDTO> dto)
+    public async Task UpdateArticleAsync(Ulid articleId, JsonPatchDocument<UpdateSupportArticleDTO> dto, ModelStateDictionary modelState)
     {
-        throw new NotImplementedException();
+        await _articleRepository.UpdateWithJsonPatchAsync(articleId, dto, _mapper, modelState);
+        await _unitOfWork.CommitAsync();
     }
 
-    public Task<SupportCategoryModel> UpdateCategoryAsync(Ulid categoryId, JsonPatchDocument<UpdateSupportCategoryDTO> dto)
+    public async Task UpdateCategoryAsync(Ulid categoryId, JsonPatchDocument<UpdateSupportCategoryDTO> dto, ModelStateDictionary modelState)
     {
-        throw new NotImplementedException();
+        await _categoryRepository.UpdateWithJsonPatchAsync(categoryId, dto, _mapper, modelState);
+        await _unitOfWork.CommitAsync();
     }
 }

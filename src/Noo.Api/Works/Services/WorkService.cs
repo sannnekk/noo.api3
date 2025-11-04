@@ -6,6 +6,7 @@ using Noo.Api.Core.Utils.DI;
 using Noo.Api.Works.DTO;
 using Noo.Api.Works.Models;
 using Noo.Api.Works.Filters;
+using Microsoft.EntityFrameworkCore;
 
 namespace Noo.Api.Works.Services;
 
@@ -54,7 +55,14 @@ public class WorkService : IWorkService
 
     public async Task DeleteWorkAsync(Ulid id)
     {
-        _unitOfWork.WorkRepository().DeleteById(id);
-        await _unitOfWork.CommitAsync();
+        try
+        {
+            _unitOfWork.WorkRepository().DeleteById(id);
+            await _unitOfWork.CommitAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Ignore if the entity was already deleted
+        }
     }
 }

@@ -29,13 +29,13 @@ public class CourseAccessRequirementHandler : AuthorizationHandler<CourseAccessR
         var userRole = context.User.GetRole();
         var userId = context.User.GetId();
 
-        if (!Ulid.TryParse(courseIdValue, out var courseId))
+        if (!Ulid.TryParse(courseIdValue, out var courseId) || userRole == null)
         {
             context.Fail();
             return;
         }
 
-        if (requirement.AlwaysAllowedRoles.Contains(userRole))
+        if (requirement.AlwaysAllowedRoles.ToList().Contains(userRole.Value))
         {
             context.Succeed(requirement);
             return;

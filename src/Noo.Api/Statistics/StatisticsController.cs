@@ -6,6 +6,7 @@ using Noo.Api.Core.Response;
 using Noo.Api.Core.Utils.Versioning;
 using Noo.Api.Statistics.DTO;
 using Noo.Api.Statistics.Services;
+using Noo.Api.Works.Types;
 using ProducesAttribute = Noo.Api.Core.Documentation.ProducesAttribute;
 
 namespace Noo.Api.Statistics;
@@ -36,11 +37,12 @@ public class StatisticsController : ApiController
         StatusCodes.Status403Forbidden
     )]
     public async Task<IActionResult> GetPlatformStatisticsAsync(
+        [FromQuery] WorkType? workType = null,
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null
     )
     {
-        var statistics = await _statisticsService.GetPlatformStatisticsAsync(from, to);
+        var statistics = await _statisticsService.GetPlatformStatisticsAsync(workType, from, to);
 
         return SendResponse(statistics);
     }
@@ -52,47 +54,22 @@ public class StatisticsController : ApiController
     /// It returns 404 only if the student does not exist or is not a student.
     /// </remarks>
     [MapToApiVersion(NooApiVersions.Current)]
-    [HttpGet("student/{studentId}")]
-    [Authorize(Policy = StatisticsPolicies.CanGetStudentStatistics)]
+    [HttpGet("user/{userId}")]
+    [Authorize(Policy = StatisticsPolicies.CanGetUserStatistics)]
     [Produces(
         typeof(ApiResponseDTO<StatisticsDTO>), StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> GetStudentStatisticsAsync(
-        [FromRoute] Ulid studentId,
+    public async Task<IActionResult> GetUserStatisticsAsync(
+        [FromRoute] Ulid userId,
+        [FromRoute] WorkType? workType = null,
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null
     )
     {
-        var statistics = await _statisticsService.GetStudentStatisticsAsync(studentId, from, to);
-
-        return SendResponse(statistics);
-    }
-
-    /// <summary>
-    /// Retrieves the statistics of a specific mentor.
-    /// </summary>
-    /// <remarks>
-    /// It returns 404 only if the mentor does not exist or is not a mentor.
-    /// </remarks>
-    [MapToApiVersion(NooApiVersions.Current)]
-    [HttpGet("mentor/{mentorId}")]
-    [Authorize(Policy = StatisticsPolicies.CanGetMentorStatistics)]
-    [Produces(
-        typeof(ApiResponseDTO<StatisticsDTO>), StatusCodes.Status200OK,
-        StatusCodes.Status400BadRequest,
-        StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden
-    )]
-    public async Task<IActionResult> GetMentorStatisticsAsync(
-        [FromRoute] Ulid mentorId,
-        [FromQuery] DateTime? from = null,
-        [FromQuery] DateTime? to = null
-    )
-    {
-        var statistics = await _statisticsService.GetMentorStatisticsAsync(mentorId, from, to);
+        var statistics = await _statisticsService.GetUserStatisticsAsync(userId, workType, from, to);
 
         return SendResponse(statistics);
     }

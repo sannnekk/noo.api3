@@ -87,7 +87,7 @@ public class UserSettingsServiceTests
         Assert.Equal(before, after.Id);
         Assert.Equal(createdAt, after.CreatedAt);
         Assert.Equal("Dark", after.Theme);
-        // Current mapper overwrites unspecified fields with null
-        Assert.Null(after.FontSize);
+        // Mapper preserves unspecified fields due to conditional mapping
+        Assert.Equal("Small", after.FontSize);
     }
 }

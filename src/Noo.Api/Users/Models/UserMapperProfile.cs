@@ -34,6 +34,8 @@ public class UserMapperProfile : Profile
             .ForMember(dest => dest.NooTubeVideoComments, opt => opt.Ignore())
             .ForMember(dest => dest.NooTubeVideoReactions, opt => opt.Ignore())
             .ForMember(dest => dest.AssignedWorkHistoryChanges, opt => opt.Ignore())
+            .ForMember(dest => dest.MentorAssignmentsAsMentor, opt => opt.Ignore())
+            .ForMember(dest => dest.MentorAssignmentsAsStudent, opt => opt.Ignore())
             .ForMember(dest => dest.IsBlocked, opt => opt.MapFrom(_ => false))
             .ForMember(dest => dest.IsVerified, opt => opt.MapFrom(_ => false));
 

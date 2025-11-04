@@ -9,7 +9,8 @@ public class GoogleSheetsIntegrationMapperProfile : Profile
 {
     public GoogleSheetsIntegrationMapperProfile()
     {
-        CreateMap<GoogleSheetsIntegrationModel, GoogleSheetsIntegrationDTO>();
+        CreateMap<GoogleSheetsIntegrationModel, GoogleSheetsIntegrationDTO>()
+            .ForMember(dest => dest.GoogleAccount, opt => opt.MapFrom(src => src.GoogleAuthData.ClientEmail));
 
         CreateMap<CreateGoogleSheetsIntegrationDTO, GoogleSheetsIntegrationModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -17,6 +18,7 @@ public class GoogleSheetsIntegrationMapperProfile : Profile
             .ForMember(dest => dest.LastRunAt, opt => opt.Ignore())
             .ForMember(dest => dest.Status, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
-            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.GoogleAuthData, opt => opt.Ignore()); // built manually in service
     }
 }

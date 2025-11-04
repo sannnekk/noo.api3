@@ -18,6 +18,9 @@ public record CreatePollDTO
     [Required]
     public bool? IsActive { get; init; }
 
+    [JsonPropertyName("expiresAt")]
+    public DateTime? ExpiresAt { get; init; }
+
     [JsonPropertyName("isAuthRequired")]
     [Required]
     public bool? IsAuthRequired { get; init; }

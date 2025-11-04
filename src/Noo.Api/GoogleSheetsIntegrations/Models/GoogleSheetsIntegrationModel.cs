@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Noo.Api.Core.DataAbstraction;
 using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
+using Noo.Api.Core.ThirdPartyServices.Google;
 using Noo.Api.Core.Utils.Json;
 using Noo.Api.GoogleSheetsIntegrations.Types;
 
@@ -16,9 +17,12 @@ public class GoogleSheetsIntegrationModel : BaseModel
     [MaxLength(255)]
     public string Name { get; set; } = string.Empty;
 
-    [Column("entity", TypeName = DbDataTypes.Varchar255)]
+    [Column("type", TypeName = GoogleSheetsIntegrationEnumDataDbTypes.GoogleIntegrationTypes)]
     [Required]
-    public string Entity { get; set; } = string.Empty;
+    public GoogleSheetsIntegrationType Type { get; set; } = default!;
+
+    [Column("selector_value", TypeName = DbDataTypes.Varchar63)]
+    public string? SelectorValue { get; set; }
 
     [Column("last_run_at", TypeName = DbDataTypes.DateTimeWithoutTZ)]
     public DateTime? LastRunAt { get; set; }
@@ -35,7 +39,10 @@ public class GoogleSheetsIntegrationModel : BaseModel
     [MaxLength(63)]
     public string CronPattern { get; set; } = string.Empty;
 
-    [JsonColumn("google_auth_data", Converter = typeof(GoogleSheetsAuthDataConverter))]
+    [JsonColumn("google_auth_data", Converter = typeof(GoogleAuthDataConverter))]
     [Required]
-    public GoogleSheetsAuthData GoogleAuthData { get; set; } = default!;
+    public GoogleAuthData GoogleAuthData { get; set; } = default!;
+
+    [Column("spreadsheet_id", TypeName = DbDataTypes.Varchar127)]
+    public string? SpreadsheetId { get; set; }
 }

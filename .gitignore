@@ -4,4 +4,5 @@ obj
 bin
 Debug
 appsettings.json
+appsettings.testing.json
 plantuml

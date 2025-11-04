@@ -78,4 +78,59 @@ public class WorkServiceTests
         var afterDelete = await verifyService.GetWorkAsync(id);
         Assert.Null(afterDelete);
     }
+
+    [Fact(DisplayName = "WorkService: Update non-existent work throws NotFound")]
+    public async Task UpdateWork_NotFound_Throws()
+    {
+        using var context = TestHelpers.CreateInMemoryDb();
+        var uow = TestHelpers.CreateUowMock(context).Object;
+        var mapper = CreateMapper();
+        var service = new WorkService(uow, mapper);
+
+        var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateWorkDTO>();
+        patch.Replace(x => x.Title, "Doesn't matter");
+
+        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(
+            () => service.UpdateWorkAsync(Ulid.NewUlid(), patch, new ModelStateDictionary()));
+    }
+
+    [Fact(DisplayName = "WorkService: Invalid patch produces BadRequest")]
+    public async Task UpdateWork_InvalidPatch_BadRequest()
+    {
+        using var context = TestHelpers.CreateInMemoryDb();
+        var uow = TestHelpers.CreateUowMock(context).Object;
+        var mapper = CreateMapper();
+        var service = new WorkService(uow, mapper);
+
+        // Seed a work
+        var id = await service.CreateWorkAsync(new CreateWorkDTO
+        {
+            Title = "Work",
+            Type = WorkType.Test,
+            SubjectId = Ulid.NewUlid(),
+            Tasks =
+            [
+                new CreateWorkTaskDTO { Type = WorkTaskType.Word, Order = 0, MaxScore = 1, Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText("{}") }
+            ]
+        });
+
+        // Invalid because title length 0 (MinLength(1))
+        var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateWorkDTO>();
+        patch.Replace(x => x.Title, "");
+
+        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.BadRequestException>(
+            () => service.UpdateWorkAsync(id, patch, new ModelStateDictionary()));
+    }
+
+    [Fact(DisplayName = "WorkService: Delete non-existent succeeds silently")]
+    public async Task DeleteWork_NonExistent_NoThrow()
+    {
+        using var context = TestHelpers.CreateInMemoryDb();
+        var uow = TestHelpers.CreateUowMock(context).Object;
+        var mapper = CreateMapper();
+        var service = new WorkService(uow, mapper);
+
+        // Should not throw
+        await service.DeleteWorkAsync(Ulid.NewUlid());
+    }
 }

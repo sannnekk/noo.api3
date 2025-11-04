@@ -6,6 +6,16 @@ namespace Noo.Api.Polls.Services;
 
 public class PollParticipationRepository : Repository<PollParticipationModel>, IPollParticipationRepository
 {
+    public Task<List<PollParticipationModel>> GetByPollIdAsync(Ulid pollId)
+    {
+        return Context.Set<PollParticipationModel>()
+            .AsNoTracking()
+            .Where(p => p.PollId == pollId)
+            .Include(p => p.User)
+            .Include(p => p.Answers)
+            .ToListAsync();
+    }
+
     public Task<bool> ParticipationExistsAsync(Ulid pollId, Ulid? userId, string? userExternalIdentifier)
     {
         var query = Context.Set<PollParticipationModel>()

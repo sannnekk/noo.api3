@@ -25,5 +25,8 @@ public class AppConfig : IConfig
     [Required]
     public required int UserActiveThresholdDays { get; set; } = 14;
 
+    [Required]
+    public required string HashSecret { get; set; }
+
     public required string[] AllowedOrigins { get; set; } = [];
 }

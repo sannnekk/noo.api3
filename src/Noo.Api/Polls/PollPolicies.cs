@@ -62,16 +62,20 @@ public class PollPolicies : IPolicyRegistrar
             ).RequireNotBlocked();
         });
 
-        // TODO: Only teachers and admins can get poll results of any user, other roles can only get their own results
         options.AddPolicy(CanGetPollResult, policy =>
         {
-            policy.RequireAuthenticatedUser().RequireNotBlocked();
+            policy
+                .RequireAuthenticatedUser()
+                .RequireNotBlocked()
+                .AddRequirements(new AuthorizationRequirements.PollParticipationAccessRequirement());
         });
 
-        // TODO: Add logic to check if the user can participate in the poll
         options.AddPolicy(CanParticipateInPoll, policy =>
         {
-            policy.RequireAuthenticatedUser().RequireNotBlocked();
+            policy
+                .RequireAuthenticatedUser()
+                .RequireNotBlocked()
+                .AddRequirements(new AuthorizationRequirements.PollParticipationCreationRequirement());
         });
 
         options.AddPolicy(CanUpdateAnswer, policy =>

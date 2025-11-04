@@ -74,6 +74,36 @@ public class UserRepository : Repository<UserModel>, IUserRepository
             .Where(x => x.Id == mentorId && x.Role == UserRoles.Mentor)
             .AnyAsync();
     }
+
+    public Task<Dictionary<UserRoles, int>> GetTotalUsersByRolesAsync(DateTime fromDate, DateTime toDate)
+    {
+        var repository = Context.GetDbSet<UserModel>();
+
+        return repository
+            .Where(x => x.CreatedAt >= fromDate && x.CreatedAt <= toDate)
+            .GroupBy(x => x.Role)
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+    }
+
+    public Task<Dictionary<DateTime, int>> GetRegistrationsByDateRangeAsync(DateTime fromDate, DateTime toDate)
+    {
+        var repository = Context.GetDbSet<UserModel>();
+
+        return repository
+            .Where(x => x.CreatedAt >= fromDate && x.CreatedAt <= toDate)
+            .GroupBy(x => x.CreatedAt.Date)
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+    }
+
+    public Task<List<UserModel>> GetUsersByRoleAsync(UserRoles role)
+    {
+        var repository = Context.GetDbSet<UserModel>();
+
+        return repository
+            .Where(x => x.Role == role)
+            .AsNoTracking()
+            .ToListAsync();
+    }
 }
 
 public static class IUnitOfWorkUserRepositoryExtensions

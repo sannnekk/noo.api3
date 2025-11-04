@@ -16,6 +16,9 @@ public record UpdatePollDTO
     [JsonPropertyName("isActive")]
     public bool? IsActive { get; init; }
 
+    [JsonPropertyName("expiresAt")]
+    public DateTime? ExpiresAt { get; init; }
+
     [JsonPropertyName("isAuthRequired")]
     public bool? IsAuthRequired { get; init; }
 }

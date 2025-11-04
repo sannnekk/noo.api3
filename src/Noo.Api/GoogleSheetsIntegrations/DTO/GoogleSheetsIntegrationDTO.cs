@@ -11,8 +11,11 @@ public record GoogleSheetsIntegrationDTO
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
 
-    [JsonPropertyName("entity")]
-    public string Entity { get; set; } = string.Empty;
+    [JsonPropertyName("type")]
+    public GoogleSheetsIntegrationType Type { get; set; } = default!;
+
+    [JsonPropertyName("selectorValue")]
+    public string SelectorValue { get; set; } = string.Empty;
 
     [JsonPropertyName("lastRunAt")]
     public DateTime? LastRunAt { get; set; }
@@ -26,8 +29,8 @@ public record GoogleSheetsIntegrationDTO
     [JsonPropertyName("cronPattern")]
     public string CronPattern { get; set; } = string.Empty;
 
-    [JsonPropertyName("googleAuthData")]
-    public GoogleSheetsAuthData GoogleAuthData { get; set; } = default!;
+    [JsonPropertyName("googleAccount")]
+    public string GoogleAccount { get; set; } = string.Empty;
 
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }

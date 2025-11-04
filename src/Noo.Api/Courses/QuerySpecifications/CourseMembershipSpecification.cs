@@ -25,8 +25,9 @@ public class CourseMembershipSpecification : Specification<CourseMembershipModel
                 break;
 
             case UserRoles.Mentor:
-                // Mentors can see their own memberships
-                // TODO: Let mentor see only memberships of the students they mentor
+                // Mentors can only see memberships of students they mentor
+                Query.Include(m => m.Student)
+                    .Where(m => m.Student.MentorAssignmentsAsStudent.Any(a => a.MentorId == userId));
                 break;
 
             case UserRoles.Student:

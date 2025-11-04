@@ -106,5 +106,12 @@ public class UserModel : BaseModel
 
     public ICollection<AssignedWorkStatusHistoryModel> AssignedWorkHistoryChanges { get; set; } = [];
 
+    // Mentor / Student assignments
+    [InverseProperty(nameof(MentorAssignmentModel.Student))]
+    public ICollection<MentorAssignmentModel> MentorAssignmentsAsStudent { get; set; } = [];
+
+    [InverseProperty(nameof(MentorAssignmentModel.Mentor))]
+    public ICollection<MentorAssignmentModel> MentorAssignmentsAsMentor { get; set; } = [];
+
     #endregion
 }

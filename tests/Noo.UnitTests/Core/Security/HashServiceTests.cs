@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.Security;
 
 namespace Noo.UnitTests.Core.Security;
@@ -5,16 +7,23 @@ namespace Noo.UnitTests.Core.Security;
 public class HashServiceTests
 {
     [Fact]
-    public void Hash_IsDeterministicAndVerifiable()
+    public void Hash_Verify_Works_ForCorrectAndIncorrectInputs()
     {
-        var svc = new HashService();
-        var hash1 = svc.Hash("abc");
-        var hash2 = svc.Hash("abc");
-        var hash3 = svc.Hash("abcd");
+        var svc = new HashService(Options.Create(new AppConfig
+        {
+            Location = "test",
+            BaseUrl = "http://localhost",
+            UserOnlineThresholdMinutes = 15,
+            UserActiveThresholdDays = 14,
+            HashSecret = "secret",
+            AllowedOrigins = new[] { "*" }
+        }));
+        var hash = svc.Hash("abc");
 
-        Assert.Equal(hash1, hash2);
-        Assert.NotEqual(hash1, hash3);
-        Assert.True(svc.Verify("abc", hash1));
-        Assert.False(svc.Verify("abc", hash3));
+        // Should verify for correct input
+        Assert.True(svc.Verify("abc", hash));
+
+        // Should fail for incorrect input
+        Assert.False(svc.Verify("abcd", hash));
     }
 }

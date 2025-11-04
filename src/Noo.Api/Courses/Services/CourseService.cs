@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
@@ -84,13 +85,15 @@ public class CourseService : ICourseService
         await _unitOfWork.CommitAsync();
     }
 
-    public Task UpdateAsync(Ulid courseId, JsonPatchDocument<UpdateCourseDTO> courseUpdateDto)
+    public async Task UpdateAsync(Ulid courseId, JsonPatchDocument<UpdateCourseDTO> courseUpdateDto, ModelStateDictionary modelState)
     {
-        throw new NotImplementedException();
+        await _courseRepository.UpdateWithJsonPatchAsync(courseId, courseUpdateDto, _mapper, modelState);
+        await _unitOfWork.CommitAsync();
     }
 
-    public Task UpdateContentAsync(Ulid contentId, JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto)
+    public async Task UpdateContentAsync(Ulid contentId, JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto, ModelStateDictionary modelState)
     {
-        throw new NotImplementedException();
+        await _courseContentRepository.UpdateWithJsonPatchAsync(contentId, contentUpdateDto, _mapper, modelState);
+        await _unitOfWork.CommitAsync();
     }
 }

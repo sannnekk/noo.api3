@@ -3,7 +3,6 @@ using Moq;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Filters;
-using Noo.Api.Courses.Models;
 using Noo.Api.Courses.Services;
 using Noo.UnitTests.Common;
 
@@ -11,12 +10,7 @@ namespace Noo.UnitTests.Courses.Services;
 
 public class CourseMembershipServiceTests
 {
-    private static IMapper CreateMapper()
-    {
-        var cfg = new MapperConfiguration(c => c.AddProfile(new CourseMapperProfile()));
-        cfg.AssertConfigurationIsValid();
-        return cfg.CreateMapper();
-    }
+    private static IMapper CreateMapper() => MapperTestUtils.CreateAppMapper();
 
     private static ICurrentUser MakeUser(UserRoles role)
     {
@@ -42,7 +36,7 @@ public class CourseMembershipServiceTests
         var id = await service.CreateMembershipAsync(new CreateCourseMembershipDTO
         {
             CourseId = courseId,
-            UserId = studentId
+            StudentId = studentId
         });
         Assert.NotEqual(default, id);
 

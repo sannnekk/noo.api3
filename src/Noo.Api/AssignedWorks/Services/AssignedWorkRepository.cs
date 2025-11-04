@@ -1,8 +1,11 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Noo.Api.AssignedWorks.DTO;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Users.Models;
+using Noo.Api.Works.Types;
 
 namespace Noo.Api.AssignedWorks.Services;
 
@@ -63,29 +66,19 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
             .FirstOrDefaultAsync();
     }
 
-    public async Task<AssignedWorkModel?> GetWithTasksAndAnswersAsync(Ulid assignedWorkId)
+    public Task<AssignedWorkModel?> GetWholeAsync(Ulid assignedWorkId)
     {
-        var assignedWork = await Context.Set<AssignedWorkModel>()
+        return Context.Set<AssignedWorkModel>()
             .Where(aw => aw.Id == assignedWorkId)
             .Include(aw => aw.Answers)
+            .Include(aw => aw.Student)
+            .Include(aw => aw.MainMentor)
+            .Include(aw => aw.HelperMentor)
             .Include(aw => aw.Work)
             .ThenInclude(w => w!.Tasks)
             .AsSplitQuery() //! To avoid Cartesian product issues, DO NOT REMOVE
             .AsNoTracking()
             .FirstOrDefaultAsync();
-
-        if (assignedWork?.Answers != null)
-        {
-            foreach (var answer in assignedWork.Answers.Where(a => a.Status == AssignedWorkAnswerStatus.NotSubmitted))
-            {
-                // Hide mentor-only fields for not submitted answers
-                answer.MentorComment = null;
-                answer.Score = null;
-                answer.DetailedScore = null;
-            }
-        }
-
-        return assignedWork;
     }
 
     public async Task<bool> IsMentorOwnWorkAsync(Ulid assignedWorkId, Ulid userId)
@@ -130,6 +123,40 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
             .Where(aw => aw.Id == assignedWorkId)
             .Include(aw => aw.Student)
             .FirstOrDefaultAsync();
+    }
+
+    public Task<int> GetCountAsync(Expression<Func<AssignedWorkModel, bool>> predicate, DateTime from, DateTime to)
+    {
+        return Context.Set<AssignedWorkModel>()
+            .Where(predicate)
+            .Where(aw => aw.CreatedAt >= from && aw.CreatedAt <= to)
+            .CountAsync();
+    }
+
+    public Task<List<UserModel>> GetUsersByWorkIdAsync(Ulid workId)
+    {
+        return Context.Set<AssignedWorkModel>()
+            .Where(aw => aw.WorkId == workId)
+            .Select(aw => aw.Student)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    public Task<Dictionary<DateTime, int>> GetByDateRangeAsync(Expression<Func<AssignedWorkModel, bool>> predicate, DateTime from, DateTime to)
+    {
+        return Context.Set<AssignedWorkModel>()
+            .Where(predicate)
+            .Where(aw => aw.CheckDeadlineAt >= aw.CheckedAt && aw.CreatedAt >= from && aw.CreatedAt <= to)
+            .GroupBy(aw => aw.CreatedAt.Date)
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+    }
+
+    public Task<Dictionary<DateTime, double?>> GetMonthAverageScoresAsync(Ulid studentId, WorkType? workType)
+    {
+        return Context.Set<AssignedWorkModel>()
+            .Where(aw => aw.StudentId == studentId && (workType == null || aw.Type == workType))
+            .GroupBy(aw => new { aw.CreatedAt.Year, aw.CreatedAt.Month })
+            .ToDictionaryAsync(g => new DateTime(g.Key.Year, g.Key.Month, 1), g => g.Average(aw => aw.Score));
     }
 }
 

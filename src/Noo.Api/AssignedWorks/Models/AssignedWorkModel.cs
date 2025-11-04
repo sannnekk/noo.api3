@@ -39,6 +39,9 @@ public class AssignedWorkModel : BaseModel
     [Column("solve_deadline_at", TypeName = DbDataTypes.DateTimeWithoutTZ)]
     public DateTime? SolveDeadlineAt { get; set; }
 
+    [Column("is_solve_deadline_shifted", TypeName = DbDataTypes.Boolean)]
+    public bool IsSolveDeadlineShifted { get; set; }
+
     [Column("solved_at", TypeName = DbDataTypes.DateTimeWithoutTZ)]
     public DateTime? SolvedAt { get; set; }
 
@@ -51,6 +54,9 @@ public class AssignedWorkModel : BaseModel
 
     [Column("checked_at", TypeName = DbDataTypes.DateTimeWithoutTZ)]
     public DateTime? CheckedAt { get; set; }
+
+    [Column("is_check_deadline_shifted", TypeName = DbDataTypes.Boolean)]
+    public bool IsCheckDeadlineShifted { get; set; }
 
     [Column("score", TypeName = DbDataTypes.SmallIntUnsigned)]
     [Range(0, 5000)]
@@ -71,7 +77,7 @@ public class AssignedWorkModel : BaseModel
     [Column("is_archived_by_assistants", TypeName = DbDataTypes.Boolean)]
     public bool IsArchivedByAssistants { get; set; }
 
-    [UlidArrayColumnAttribute("excluded_task_ids")]
+    [UlidArrayColumn("excluded_task_ids")]
     public Ulid[]? ExcludedTaskIds { get; set; }
 
     [Column("student_comment_id", TypeName = DbDataTypes.Ulid)]

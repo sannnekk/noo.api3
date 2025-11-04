@@ -1,4 +1,12 @@
+using System.Text.Json.Serialization;
+
 namespace Noo.Api.Statistics.DTO;
 
-// TODO: implement
-public record StatisticsGraphDTO;
+public record StatisticsGraphDTO
+{
+    [JsonPropertyName("label")]
+    public string Label { get; init; } = string.Empty;
+
+    [JsonPropertyName("lines")]
+    public IReadOnlyList<StatisticsGraphLineDTO> Lines { get; init; } = [];
+}

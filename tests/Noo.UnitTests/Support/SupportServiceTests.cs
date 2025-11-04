@@ -163,16 +163,53 @@ public class SupportServiceTests
     }
 
     [Fact]
-    public async Task UpdateArticleAsync_IsNotImplemented_Yet()
+    public async Task UpdateArticleAsync_UpdatesSuccessfully()
     {
-        var (svc, _) = CreateService();
-        await Assert.ThrowsAsync<NotImplementedException>(async () => await svc.UpdateArticleAsync(Ulid.NewUlid(), new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportArticleDTO>()));
+        var (svc, ctx) = CreateService();
+        var cat = new SupportCategoryModel { Name = "Cat", Order = 1, IsActive = true };
+        var art = new SupportArticleModel { Title = "Old title", Order = 1, Category = cat, CategoryId = cat.Id };
+        ctx.AddRange(cat, art);
+        await ctx.SaveChangesAsync();
+
+        var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportArticleDTO>()
+            .Replace(a => a.Title, "New title")
+            .Replace(a => a.IsActive, false);
+        await svc.UpdateArticleAsync(art.Id, patch, new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary());
+
+        var updated = await ctx.GetDbSet<SupportArticleModel>().FindAsync(art.Id);
+        Assert.Equal("New title", updated!.Title);
+        Assert.False(updated.IsActive);
     }
 
     [Fact]
-    public async Task UpdateCategoryAsync_IsNotImplemented_Yet()
+    public async Task UpdateCategoryAsync_UpdatesSuccessfully()
+    {
+        var (svc, ctx) = CreateService();
+        var root = new SupportCategoryModel { Name = "Root", Order = 1, IsActive = true, IsPinned = false };
+        ctx.Add(root);
+        await ctx.SaveChangesAsync();
+
+        var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportCategoryDTO>()
+            .Replace(c => c.Name, "Root Updated")
+            .Replace(c => c.IsPinned, true);
+        await svc.UpdateCategoryAsync(root.Id, patch, new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary());
+
+        var updated = await ctx.GetDbSet<SupportCategoryModel>().FindAsync(root.Id);
+        Assert.Equal("Root Updated", updated!.Name);
+        Assert.True(updated.IsPinned);
+    }
+
+    [Fact]
+    public async Task UpdateArticleAsync_NotFound_Throws()
     {
         var (svc, _) = CreateService();
-        await Assert.ThrowsAsync<NotImplementedException>(async () => await svc.UpdateCategoryAsync(Ulid.NewUlid(), new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportCategoryDTO>()));
+        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(() => svc.UpdateArticleAsync(Ulid.NewUlid(), new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportArticleDTO>(), new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary()));
+    }
+
+    [Fact]
+    public async Task UpdateCategoryAsync_NotFound_Throws()
+    {
+        var (svc, _) = CreateService();
+        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(() => svc.UpdateCategoryAsync(Ulid.NewUlid(), new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportCategoryDTO>(), new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary()));
     }
 }

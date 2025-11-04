@@ -12,6 +12,8 @@ using Microsoft.Extensions.Configuration;
 using StackExchange.Redis;
 using Noo.Api.Core.DataAbstraction.Cache;
 using Microsoft.Extensions.Options;
+using Noo.Api.Core.Config.Env;
+using Noo.Api.Core.System.Email;
 
 namespace Noo.IntegrationTests;
 
@@ -27,9 +29,39 @@ public class ApiFactory : WebApplicationFactory<Program>
             // Keep existing sources and append test settings last to override
             config.AddJsonFile("appsettings.testing.json", optional: true, reloadOnChange: true);
             config.AddEnvironmentVariables();
+            // Force sane JWT defaults for tests regardless of machine env
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Secret"] = "1rzc9zrjU6BtzJwY1fofO08R7JhhdRk3lv0fSEStBkIQbFgi79k4j3/LjhG7BsEiUNkOBENRobH8jRKiGo7tFw==",
+                ["Jwt:Issuer"] = "https://localhost:5001",
+                ["Jwt:Audience"] = "https://localhost:5001",
+                ["Jwt:ExpireDays"] = "60",
+            });
         })
             .ConfigureServices(services =>
         {
+            // Ensure Email options are valid and decouple SMTP for tests
+            services.PostConfigure<EmailConfig>(cfg =>
+            {
+                // Provide safe defaults if missing/placeholder values are used
+                cfg.FromEmail = string.IsNullOrWhiteSpace(cfg.FromEmail) || cfg.FromEmail.Contains("...")
+                    ? "no-reply@example.com"
+                    : cfg.FromEmail;
+                cfg.FromName = string.IsNullOrWhiteSpace(cfg.FromName) || cfg.FromName.Contains("...")
+                    ? "Noo.Api Tests"
+                    : cfg.FromName;
+                cfg.SmtpHost = string.IsNullOrWhiteSpace(cfg.SmtpHost) ? "localhost" : cfg.SmtpHost;
+                cfg.SmtpPort = cfg.SmtpPort <= 0 ? 1025 : cfg.SmtpPort;
+                cfg.SmtpTimeout = cfg.SmtpTimeout <= 0 ? 10000 : cfg.SmtpTimeout;
+                cfg.SmtpUsername = string.IsNullOrWhiteSpace(cfg.SmtpUsername) || cfg.SmtpUsername.Contains("...") ? "test" : cfg.SmtpUsername;
+                cfg.SmtpPassword = string.IsNullOrWhiteSpace(cfg.SmtpPassword) || cfg.SmtpPassword.Contains("...") ? "test" : cfg.SmtpPassword;
+            });
+
+            // JwtConfig is bound directly from configuration; we set it above via in-memory override
+
+            // Replace real email client with a no-op fake to avoid external SMTP dependency
+            services.RemoveAll<IEmailClient>();
+            services.AddSingleton<IEmailClient, FakeEmailClient>();
             // 0) Remove any mysql registrations
             services.RemoveAll<NooDbContext>();
             services.RemoveAll<DbContextOptions<NooDbContext>>();
@@ -90,70 +122,6 @@ public class ApiFactory : WebApplicationFactory<Program>
                 db.SaveChanges();
             }
         });
-
-
-
-        // 0) Remove any mysql registrations
-
-
-
-
-
-
-        // 1) Add InMemory provider (single DB name per factory to share across requests within a test)
-        // IMPORTANT: Do NOT call Guid.NewGuid() inside the options lambda; that would create a new
-        // in-memory store for every DbContext instance, making data from one request invisible to the next.
-
-
-
-
-
-
-        // Register in-memory DbContextOptions and NooDbContext explicitly (avoid AddDbContext to prevent hidden factories)
-
-
-
-
-
-
-
-
-
-
-
-        // 2) Replace Redis with in-memory caching
-        // Remove IDistributedCache (Redis), IConnectionMultiplexer and any existing ICacheRepository
-
-
-
-
-        // Register distributed in-memory cache and a lightweight test ICacheRepository
-
-        // TODO: add inmemory cache
-        //services.AddScoped<ICacheRepository, TestMemoryCacheRepository>();
-
-        // 3) Seed data for tests
-
-
-
-
-        // Seed users for all roles
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     }
 
     private static UserModel NewUser(string name, string username, string email, UserRoles role)
@@ -168,4 +136,14 @@ public class ApiFactory : WebApplicationFactory<Program>
             IsBlocked = false,
             IsVerified = true
         };
+}
+
+internal sealed class FakeEmailClient : IEmailClient
+{
+    public Task SendHtmlEmailAsync(string? fromEmail, string? fromName, string toEmail, string toName, string subject, string htmlBody)
+        => Task.CompletedTask;
+
+    public void Dispose()
+    {
+    }
 }

@@ -29,7 +29,8 @@ public class PlatformServiceTests
         Assert.NotEmpty(first.Changes);
         foreach (var change in first.Changes)
         {
-            Assert.InRange((int)change.Type, (int)ChangeType.Feature, (int)ChangeType.Refactor);
+            // Ensure the enum value is defined instead of relying on numeric range ordering
+            Assert.True(Enum.IsDefined(typeof(ChangeType), change.Type));
             Assert.False(string.IsNullOrWhiteSpace(change.Author));
             Assert.False(string.IsNullOrWhiteSpace(change.Description));
         }

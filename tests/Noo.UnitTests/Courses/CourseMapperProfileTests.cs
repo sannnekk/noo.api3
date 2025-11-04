@@ -36,10 +36,10 @@ public class CourseMapperProfileTests
         var dto = new CreateCourseMembershipDTO
         {
             CourseId = Ulid.NewUlid(),
-            UserId = Ulid.NewUlid()
+            StudentId = Ulid.NewUlid()
         };
         var model = mapper.Map<CourseMembershipModel>(dto);
         Assert.Equal(dto.CourseId, model.CourseId);
-        Assert.Equal(dto.UserId, model.StudentId);
+        Assert.Equal(dto.StudentId, model.StudentId);
     }
 }

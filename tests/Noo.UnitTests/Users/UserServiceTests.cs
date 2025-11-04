@@ -231,4 +231,30 @@ public class UserServiceTests
         var none = await service.GetUserByUsernameOrEmailAsync("missing");
         Assert.Null(none);
     }
+
+    [Fact]
+    public async Task VerifyUser_Sets_IsVerified_When_Not_Blocked()
+    {
+        using var context = TestHelpers.CreateInMemoryDb();
+        var uow = TestHelpers.CreateUowMock(context).Object;
+        var mapper = CreateMapper();
+        var service = new UserService(uow, mapper);
+
+        var id = await service.CreateUserAsync(MakePayload("verify", "verify@example.com"));
+        await service.VerifyUserAsync(id);
+        var user = await service.GetUserByIdAsync(id);
+        Assert.True(user!.IsVerified);
+    }
+
+    [Fact]
+    public async Task UpdateUser_NotFound_Throws()
+    {
+        using var context = TestHelpers.CreateInMemoryDb();
+        var uow = TestHelpers.CreateUowMock(context).Object;
+        var mapper = CreateMapper();
+        var service = new UserService(uow, mapper);
+
+        var patch = new JsonPatchDocument<UpdateUserDTO>().Replace(x => x.Name, "N");
+        await Assert.ThrowsAsync<NotFoundException>(() => service.UpdateUserAsync(Ulid.NewUlid(), patch));
+    }
 }

@@ -1,5 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Noo.Api.Core.DataAbstraction.Db.ValueComparers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Noo.Api.Core.DataAbstraction.Model;
@@ -128,6 +130,12 @@ public static class DbContextExtensions
         }
     }
 
+    /// <summary>
+    /// Configures JSON dictionary columns in the database.
+    /// </summary>
+    /// <param name="modelBuilder"></param>
+    /// <exception cref="InvalidOperationException"></exception>
+    /// <exception cref="InvalidCastException"></exception>
     public static void UseJsonDictionaryColumns(this ModelBuilder modelBuilder)
     {
         var jsonProperties = Assembly.GetExecutingAssembly().GetTypes()
@@ -178,7 +186,7 @@ public static class DbContextExtensions
             }
 
             var valueType = typeArgs[1];
-            if (!IsPrimitiveType(valueType) && !IsNullablePrimitiveType(valueType))
+            if (!_IsPrimitiveType(valueType) && !_IsNullablePrimitiveType(valueType))
             {
                 throw new InvalidOperationException(
                     $"JsonDictionaryColumnAttribute on {property.DeclaringType!.Name}.{property.Name} must have a primitive value type."
@@ -188,14 +196,25 @@ public static class DbContextExtensions
             var converterType = typeof(JsonDictionaryConverter<>).MakeGenericType(valueType);
             var converter = (ValueConverter?)Activator.CreateInstance(converterType) ?? throw new InvalidCastException($"Failed creating ValueConverter for {property.DeclaringType!.Name}.{property.Name}");
 
-            modelBuilder.Entity(property.DeclaringType!)
+            var propBuilder = modelBuilder.Entity(property.DeclaringType!)
                 .Property(property.Name)
                 .HasColumnName(jsonAttribute.Name)
                 .HasConversion(converter)
                 .HasColumnType("json");
+
+            // Attach a ValueComparer so EF Core can perform structural equality on the dictionary
+            var valueComparer = _CreateDictionaryValueComparer(valueType);
+            if (valueComparer != null)
+            {
+                propBuilder.Metadata.SetValueComparer(valueComparer);
+            }
         }
     }
 
+    /// <summary>
+    /// Configures ULID array columns in the database.
+    /// </summary>
+    /// <param name="modelBuilder"></param>
     public static void UseUlidArrayColumns(this ModelBuilder modelBuilder)
     {
         var ulidArrayProperties = Assembly.GetExecutingAssembly().GetTypes()
@@ -207,24 +226,61 @@ public static class DbContextExtensions
         {
             var ulidArrayAttribute = property.GetCustomAttribute<UlidArrayColumnAttribute>()!;
 
-            modelBuilder.Entity(property.DeclaringType!)
+            var propBuilder = modelBuilder.Entity(property.DeclaringType!)
                 .Property(property.Name)
                 .HasConversion(new UlidArrayToJsonConverter())
                 .HasColumnType("json");
+
+            // Provide structural comparer for Ulid[] so EF change tracker works correctly
+            propBuilder.Metadata.SetValueComparer(CollectionValueComparers.UlidArray);
         }
     }
 
-    private static bool IsPrimitiveType(Type type)
+    /// <summary>
+    /// Applies all IOnModelCreationExtension implementations found in the assembly to the model builder.
+    /// </summary>
+    /// <param name="modelBuilder"></param>
+    /// <exception cref="InvalidOperationException"></exception>
+    public static void UseOnModelCreatingExtensions(this ModelBuilder modelBuilder)
+    {
+        var extensions = Assembly.GetExecutingAssembly().GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && t.GetCustomAttribute<OnModelCreationExtensionAttribute>() != null);
+
+        foreach (var extension in extensions)
+        {
+            var instance = Activator.CreateInstance(extension);
+
+            if (instance is IOnModelCreationExtension onModelCreationExtension)
+            {
+                onModelCreationExtension.OnModelCreating(modelBuilder);
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    $"Type {extension.Name} does not implement IOnModelCreationExtension."
+                );
+            }
+        }
+    }
+
+    private static bool _IsPrimitiveType(Type type)
     {
         return type.IsPrimitive || type == typeof(decimal) || type == typeof(string) || type == typeof(DateTime);
     }
 
-    private static bool IsNullablePrimitiveType(Type type)
+    private static bool _IsNullablePrimitiveType(Type type)
     {
         if (!type.IsGenericType || type.GetGenericTypeDefinition() != typeof(Nullable<>))
             return false;
 
         var underlyingType = Nullable.GetUnderlyingType(type)!;
-        return IsPrimitiveType(underlyingType);
+        return _IsPrimitiveType(underlyingType);
+    }
+
+    private static ValueComparer? _CreateDictionaryValueComparer(Type valueType)
+    {
+        var method = typeof(CollectionValueComparers).GetMethod(nameof(CollectionValueComparers.Dictionary))!;
+        var generic = method.MakeGenericMethod(valueType);
+        return (ValueComparer?)generic.Invoke(null, null);
     }
 }

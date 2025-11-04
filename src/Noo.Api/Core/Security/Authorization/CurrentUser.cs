@@ -18,6 +18,6 @@ public class CurrentUser : ICurrentUser
 
     public bool IsInRole(params UserRoles[] roles)
     {
-        return roles.Any(role => UserRole.HasValue && UserRole.Value == role);
+        return roles.Any(role => UserRole == role);
     }
 }

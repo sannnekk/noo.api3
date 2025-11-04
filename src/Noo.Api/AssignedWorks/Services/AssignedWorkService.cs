@@ -10,6 +10,7 @@ using Noo.Api.Core.Utils.DI;
 using Noo.Api.Users.Services;
 using MediatR;
 using Noo.Api.AssignedWorks.Events;
+using AutoMapper;
 
 namespace Noo.Api.AssignedWorks.Services;
 
@@ -22,20 +23,26 @@ public class AssignedWorkService : IAssignedWorkService
 
     private readonly IAssignedWorkAnswerRepository _assignedWorkAnswerRepository;
 
+    private readonly IAssignedWorkCommentRepository _assignedWorkCommentRepository;
+
     private readonly IUserRepository _userRepository;
 
     private readonly ICurrentUser _currentUser;
 
     private readonly IMediator _mediator;
 
-    public AssignedWorkService(IUnitOfWork unitOfWork, ICurrentUser currentUser, IMediator mediator)
+    private readonly IMapper _mapper;
+
+    public AssignedWorkService(IUnitOfWork unitOfWork, ICurrentUser currentUser, IMediator mediator, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _assignedWorkRepository = _unitOfWork.AssignedWorkRepository();
         _assignedWorkAnswerRepository = _unitOfWork.AssignedWorkAnswerRepository();
+        _assignedWorkCommentRepository = _unitOfWork.AssignedWorkCommentRepository();
         _userRepository = _unitOfWork.UserRepository();
         _currentUser = currentUser;
         _mediator = mediator;
+        _mapper = mapper;
     }
 
     public async Task AddHelperMentorAsync(Ulid assignedWorkId, AddHelperMentorOptionsDTO options)
@@ -81,16 +88,21 @@ public class AssignedWorkService : IAssignedWorkService
 
     public async Task<AssignedWorkModel?> GetAsync(Ulid assignedWorkId)
     {
-        var assignedWork = await _assignedWorkRepository.GetWithTasksAndAnswersAsync(assignedWorkId);
+        var assignedWork = await _assignedWorkRepository.GetWholeAsync(assignedWorkId);
 
         if (assignedWork == null)
         {
             return null;
         }
 
-        if (!assignedWork.IsChecked())
+        foreach (var answer in assignedWork.Answers)
         {
-            // TODO: load comments for submitted tasks
+            if (answer.Status == AssignedWorkAnswerStatus.Checked)
+            {
+                answer.MentorComment = null;
+                answer.Score = null;
+                answer.DetailedScore = null;
+            }
         }
 
         return assignedWork;
@@ -266,14 +278,20 @@ public class AssignedWorkService : IAssignedWorkService
         await _unitOfWork.CommitAsync();
     }
 
-    public Task<Ulid> SaveAnswerAsync(Ulid assignedWorkId, UpsertAssignedWorkAnswerDTO answer)
+    public async Task<Ulid> SaveAnswerAsync(Ulid assignedWorkId, UpsertAssignedWorkAnswerDTO dto)
     {
-        throw new NotImplementedException();
+        var answer = _mapper.Map<AssignedWorkAnswerModel>(dto);
+        _assignedWorkAnswerRepository.Add(answer);
+        await _unitOfWork.CommitAsync();
+        return answer.Id;
     }
 
-    public Task<Ulid> SaveCommentAsync(Ulid assignedWorkId, UpsertAssignedWorkCommentDTO comment)
+    public async Task<Ulid> SaveCommentAsync(Ulid assignedWorkId, UpsertAssignedWorkCommentDTO comment)
     {
-        throw new NotImplementedException();
+        var commentEntity = _mapper.Map<AssignedWorkCommentModel>(comment);
+        _assignedWorkCommentRepository.Add(commentEntity);
+        await _unitOfWork.CommitAsync();
+        return commentEntity.Id;
     }
 
     public async Task ShiftDeadlineAsync(Ulid assignedWorkId, ShiftAssignedWorkDeadlineOptionsDTO options)

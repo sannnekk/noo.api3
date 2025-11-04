@@ -1,5 +1,6 @@
 using Noo.Api.Core.Config;
 using Noo.Api.Core.Config.Env;
+using Noo.Api.Core.Config.Http;
 
 namespace Noo.Api.Core.Initialization.ServiceCollection;
 
@@ -18,6 +19,7 @@ public static class LoadEnvConfigsExtension
         AddConfig<TelegramConfig>(services, configuration, TelegramConfig.SectionName);
         AddConfig<EventsConfig>(services, configuration, EventsConfig.SectionName);
         AddConfig<S3Config>(services, configuration, S3Config.SectionName);
+        AddConfig<HttpClientResilienceConfig>(services, configuration, HttpClientResilienceConfig.SectionName);
     }
 
     private static void AddConfig<TConfig>(IServiceCollection services, IConfiguration config, string sectionName) where TConfig : class, IConfig

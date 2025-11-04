@@ -22,6 +22,7 @@ builder.Services.AddLogger(builder.Configuration);
 builder.Services.RegisterDependencies();
 builder.Services.AddNooControllersAndConfigureJson();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClientFactory();
 builder.Services.AddCorsPolicy(builder.Configuration);
 builder.Services.AddNooResponseCompression();
 builder.Services.AddHealthcheckServices();

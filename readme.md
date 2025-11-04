@@ -47,80 +47,86 @@ The configuration is done in the `appsettings.json` file. An example (all possib
 
 ```json
 {
-	"App": {
-		"Mode": "Development",
-		"Location": "https://localhost:5001",
-		"AppVersion": "1.0.0",
-		"AuthenticationType": "Bearer",
-		"BaseUrl": "https://noo-school.ru",
-		"AllowedOrigins": [
-			"https://localhost:5001",
-			"http://localhost:5000"
-		]
-	},
-	"Http": {
-		"Port": 5001,
-		"MaximumRequestSize": 10485760,
-		"CacheSizeLimit": 104857600,
-		"MaximumCacheBodySize": 1048576,
-		"MinRequestBodyDataRate": 100,
-		"MinRequestBodyDataRateGracePeriod": 10,
-		"MinResponseDataRate": 100,
-		"MinResponseDataRateGracePeriod": 10
-	},
-	"Logs": {
-		"Mode": "Console", // Console, Telegram
-		"LogLevel": "Information",
-		"TelegramLogToken": "...",
-		"TelegramLogChatIds": [
-			"1234567890",
-			"1234567810",
-			...
-		]
-	},
-	"Db": {
-		"User": "...",
-		"Password": "...",
-		"Host": "localhost",
-		"Port": "3306",
-		"Database": "...",
-		"CommandTimeout": 60,
-		"DefaultCharset": "utf8mb4",
-		"DefaultCollation": "utf8mb4_general_ci"
-	},
-	"Cache": {
-		"ConnectionString": "localhost:6379",
-		"DefaultCacheTime": 60
-	},
-	"Jwt": {
-		"Secret": "...",
-		"Issuer": "https://localhost:5001",
-		"Audience": "https://localhost:5001",
-		"ExpireDays": 60
-	},
-	"Telegram": {
-		"Token": "...",
-		"WaitAfterBatch": 100,
-		"WaitForBatch": 1000
-	},
-	"Swagger": {
-		"Title": "API v1",
-		"Description": "Noo.Api module",
-		"Endpoint": "/swagger/v1/swagger.json",
-		"RoutePrefix": "api-docs",
-		"EnableUI": true,
-		"Version": "v1"
-	},
-	"Email": {
-		"SmtpHost": "localhost",
-		"SmtpPort": 1025,
-		"SmtpUsername": "...",
-		"SmtpPassword": "...",
-		"SmtpTimeout": 15000,
-		"FromEmail": "...",
-		"FromName": "..."
-	},
-	"AllowedHosts": "*"
+  "App": {
+    "Location": "https://localhost:5001",
+    "AppVersion": "1.0.0",
+    "AuthenticationType": "Bearer",
+    "BaseUrl": "https://noo-school.ru",
+    "AllowedOrigins": ["http://localhost:5189"],
+    "UserOnlineThresholdMinutes": 15,
+    "UserActiveThresholdDays": 14,
+    "HashSecret": "s3cr3tH4shK3y!"
+  },
+  "Http": {
+    "Port": 5001,
+    "MaximumRequestSize": 10485760,
+    "CacheSizeLimit": 104857600,
+    "MaximumCacheBodySize": 1048576,
+    "MinRequestBodyDataRate": 100,
+    "MinRequestBodyDataRateGracePeriod": 10,
+    "MinResponseDataRate": 100,
+    "MinResponseDataRateGracePeriod": 10
+  },
+  "HttpClient": {
+    "TimeoutSeconds": 30,
+    "RetryCount": 3,
+    "RetryBaseDelayMilliseconds": 200,
+    "CircuitBreakerFailures": 5,
+    "CircuitBreakerDurationSeconds": 30
+  },
+  "Logs": {
+    "Mode": "Console", // Console, Telegram
+    "LogLevel": "Information",
+    "TelegramLogToken": "...",
+    "TelegramLogChatIds": ["...", "..."]
+  },
+  "Db": {
+    "User": "...",
+    "Password": "...",
+    "Host": "localhost",
+    "Port": "3316",
+    "Database": "noo_next",
+    "CommandTimeout": 60,
+    "DefaultCharset": "utf8mb4",
+    "DefaultCollation": "utf8mb4_general_ci"
+  },
+  "Cache": {
+    "ConnectionString": "localhost:6379",
+    "DefaultCacheTime": 60,
+    "Prefix": "noo:"
+  },
+  "Jwt": {
+    "Secret": "...",
+    "Issuer": "https://localhost:5001",
+    "Audience": "https://localhost:5001",
+    "ExpireDays": 60
+  },
+  "Telegram": {
+    "Token": "...",
+    "WaitAfterBatch": 100,
+    "WaitForBatch": 1000
+  },
+  "Swagger": {
+    "Title": "API v1",
+    "Description": "Noo.Api module",
+    "Endpoint": "/swagger/v1/swagger.json",
+    "RoutePrefix": "api-docs",
+    "EnableUI": true,
+    "Version": "v1"
+  },
+  "Email": {
+    "SmtpHost": "localhost",
+    "SmtpPort": 1025,
+    "SmtpUsername": "...",
+    "SmtpPassword": "...",
+    "SmtpTimeout": 15000,
+    "FromEmail": "...",
+    "FromName": "..."
+  },
+  "AllowedHosts": "*",
+  "Events": {
+    "QueueCapacity": 2048
+  }
 }
 ```
 
@@ -199,65 +205,14 @@ It is used to log the errors. If a controller action throws an exception, it wil
 
 Always use wrappers for all the third-party libraries, such as EF Core, Redis, RabbitMQ, etc. This will help to decouple the code from the third-party libraries and make it more testable. It will also help to avoid issues with the third-party libraries, such as breaking changes or bugs. The wrappers should be implemented in the Core module and used in other modules.
 
-## Modules
-
-Rewrite of the modules is in progress.
-
-**Basic functionality ready:**
-
-- [x] Works
-- [x] Auth (test email templates)
-- [x] Users (missing avatar)
-- [x] Subjects
-- [x] Snippets
-- [x] Support
-- [x] Platform (metadata, version, etc.)
-- [x] UserSettings
-- [x] Polls
-- [x] Calendar
-
-**In progress:**
-
-- [ ] AssignedWorks
-- [ ] Courses
-- [ ] Sessions
-- [ ] Media
-- [ ] Nootube
-- [ ] GoogleSheets
-- [ ] Statistics
-- [ ] Notifications (with all the buses)
-
-**Planned in the future:**
-
-- [ ] Payments
-
-## To test in `Core`
-
-- [ ] Criteria with filters
-- [ ] Health checks
-- [ ] Caching
-- [ ] Unit of work
-- [ ] Repository
-- [ ] Configs
-- [ ] Authorization and authentication
-- [ ] Emails
-- [ ] Thirdparty services (Telegram, GoogleSheets etc.)
-- [ ] Utils
-- [ ] Validation
-- [ ] Versioning (in headers)
-
 ## To refactor
 
-- [ ] Do not return dtos from services, return models instead. Create a separate layer for mapping from models to dtos and vice versa.
-- [ ] Inject repositories directly and not use them via unit of work or as extension bullshit
-- [ ] Add an alias for `AddFilter` in criteria to use linq expressions
 - [ ] Move `Core` to a separate project
-
-## Important to implement
-
-- [ ] Filters in criteria
+- [ ] Remove existence checks on delete
 
 ## Ideas
 
 - [ ] Use ETags for caching and concurrency control
 - [ ] Use feature flags
+- [x] Implement rate limiting
+- [ ] Add open telemetry

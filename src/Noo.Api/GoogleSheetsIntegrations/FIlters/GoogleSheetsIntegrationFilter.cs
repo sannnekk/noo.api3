@@ -6,7 +6,6 @@ namespace Noo.Api.GoogleSheetsIntegrations.Filters;
 
 [PossibleSortings(
     nameof(GoogleSheetsIntegrationModel.Name),
-    nameof(GoogleSheetsIntegrationModel.Entity),
     nameof(GoogleSheetsIntegrationModel.CreatedAt),
     nameof(GoogleSheetsIntegrationModel.LastRunAt)
 )]

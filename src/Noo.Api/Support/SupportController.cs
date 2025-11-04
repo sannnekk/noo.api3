@@ -90,7 +90,7 @@ public class SupportController : ApiController
     )]
     public async Task<IActionResult> UpdateArticleAsync([FromRoute] Ulid articleId, [FromBody] JsonPatchDocument<UpdateSupportArticleDTO> request)
     {
-        await _supportService.UpdateArticleAsync(articleId, request);
+        await _supportService.UpdateArticleAsync(articleId, request, ModelState);
 
         return SendResponse();
     }
@@ -147,7 +147,7 @@ public class SupportController : ApiController
     )]
     public async Task<IActionResult> UpdateCategoryAsync([FromRoute] Ulid categoryId, [FromBody] JsonPatchDocument<UpdateSupportCategoryDTO> request)
     {
-        await _supportService.UpdateCategoryAsync(categoryId, request);
+        await _supportService.UpdateCategoryAsync(categoryId, request, ModelState);
 
         return SendResponse();
     }

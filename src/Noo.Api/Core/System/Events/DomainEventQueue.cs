@@ -22,7 +22,8 @@ public class DomainEventQueue
             {
                 SingleReader = true,
                 SingleWriter = false,
-                FullMode = BoundedChannelFullMode.DropWrite,
+                // Drop oldest to ensure TryWrite(true) implies an item remains queued
+                FullMode = BoundedChannelFullMode.DropOldest,
                 AllowSynchronousContinuations = false
             }
         );

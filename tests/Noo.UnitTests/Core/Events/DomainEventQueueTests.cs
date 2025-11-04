@@ -17,14 +17,13 @@ public class DomainEventQueueTests
         // Fill to capacity
         var ok1 = queue.TryEnqueue(new DummyEvent());
         var ok2 = queue.TryEnqueue(new DummyEvent());
-        // With DropWrite, TryEnqueue returns true but the item is dropped when full
+        // With DropOldest, TryEnqueue returns true and queue retains latest items
         var ok3 = queue.TryEnqueue(new DummyEvent());
 
         Assert.True(ok1);
         Assert.True(ok2);
         Assert.True(ok3);
-
-        // Only two items should be readable
+        // Only two items should be readable due to capacity
         var read = 0;
         while (queue.Reader.TryRead(out _)) read++;
         Assert.Equal(2, read);

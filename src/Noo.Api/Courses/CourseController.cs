@@ -126,7 +126,7 @@ public class CourseController : ApiController
     public async Task<IActionResult> UpdateCourseAsync([FromRoute] Ulid courseId,
         [FromBody] JsonPatchDocument<UpdateCourseDTO> courseUpdateDto)
     {
-        await _courseService.UpdateAsync(courseId, courseUpdateDto);
+        await _courseService.UpdateAsync(courseId, courseUpdateDto, ModelState);
 
         return SendResponse();
     }
@@ -183,7 +183,7 @@ public class CourseController : ApiController
     )]
     public async Task<IActionResult> UpdateCourseMaterialContentAsync([FromRoute] Ulid contentId, [FromBody] JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto)
     {
-        await _courseService.UpdateContentAsync(contentId, contentUpdateDto);
+        await _courseService.UpdateContentAsync(contentId, contentUpdateDto, ModelState);
 
         return SendResponse();
     }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Users.AuthorizationRequirements;
 
 namespace Noo.Api.Users;
 
@@ -16,21 +17,20 @@ public class UserPolicies : IPolicyRegistrar
 
     public void RegisterPolicies(AuthorizationOptions options)
     {
-        // TODO: Change so that every user can get their own data
+        // Every user can get their own data, mentors can get data of their students, privileged roles can get data of anybody
         options.AddPolicy(CanGetUser, policy =>
         {
-            policy.RequireRole(
-                nameof(UserRoles.Admin),
-                nameof(UserRoles.Teacher),
-                nameof(UserRoles.Mentor),
-                nameof(UserRoles.Assistant)
-            ).RequireNotBlocked();
+            policy.RequireAuthenticatedUser()
+                .AddRequirements(new UserAccessRequirement())
+                .RequireNotBlocked();
         });
 
-        // TODO: Change so that every user can patch only own data
+        // Every user can patch only own data
         options.AddPolicy(CanPatchUser, policy =>
         {
-            policy.RequireAuthenticatedUser().RequireNotBlocked();
+            policy.RequireAuthenticatedUser()
+                .AddRequirements(new UserPatchRequirement())
+                .RequireNotBlocked();
         });
 
         options.AddPolicy(CanSearchUsers, policy =>
@@ -67,21 +67,20 @@ public class UserPolicies : IPolicyRegistrar
             ).RequireNotBlocked();
         });
 
-        // TODO: Change so that mentors can assign too but only to themselves
+        // Teachers/Admin can assign any mentor. Mentors can assign only themselves.
         options.AddPolicy(CanAssignMentor, policy =>
         {
-            policy.RequireRole(
-                nameof(UserRoles.Teacher),
-                nameof(UserRoles.Admin)
-            ).RequireNotBlocked();
+            policy.RequireAuthenticatedUser()
+                .AddRequirements(new MentorAssignRequirement())
+                .RequireNotBlocked();
         });
 
-        // TODO: Add also an options for a user to delete their own account
+        // Every user can delete their own account, admin can delete anyone
         options.AddPolicy(CanDeleteUser, policy =>
         {
-            policy.RequireRole(
-                nameof(UserRoles.Admin)
-            ).RequireNotBlocked();
+            policy.RequireAuthenticatedUser()
+                .AddRequirements(new UserDeleteRequirement())
+                .RequireNotBlocked();
         });
     }
 }

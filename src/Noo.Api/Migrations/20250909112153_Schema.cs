@@ -40,7 +40,9 @@ namespace Noo.Api.Migrations
                     id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
                     name = table.Column<string>(type: "VARCHAR(255)", maxLength: 255, nullable: false, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    entity = table.Column<string>(type: "VARCHAR(255)", nullable: false, collation: "utf8mb4_general_ci")
+                    type = table.Column<string>(type: "ENUM('UserCourse', 'UserWork', 'UserRole', 'PollResults')", nullable: false, collation: "utf8mb4_general_ci")
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    selector_value = table.Column<string>(type: "VARCHAR(63)", nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     last_run_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
                     status = table.Column<string>(type: "ENUM('Active', 'Inactive', 'Error')", nullable: false, collation: "utf8mb4_general_ci")
@@ -50,6 +52,8 @@ namespace Noo.Api.Migrations
                     cron_pattern = table.Column<string>(type: "VARCHAR(63)", maxLength: 63, nullable: false, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     google_auth_data = table.Column<string>(type: "json", nullable: false, collation: "utf8mb4_general_ci")
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    spreadsheet_id = table.Column<string>(type: "VARCHAR(127)", nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
@@ -78,6 +82,10 @@ namespace Noo.Api.Migrations
                     extension = table.Column<string>(type: "VARCHAR(15)", maxLength: 15, nullable: false, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     size = table.Column<int>(type: "INT(11)", nullable: false),
+                    reason = table.Column<string>(type: "varchar(63)", nullable: false, collation: "utf8mb4_general_ci")
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    entity_id = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
+                    owner_id = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
                     created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     updated_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: true),
@@ -100,6 +108,7 @@ namespace Noo.Api.Migrations
                     description = table.Column<string>(type: "VARCHAR(512)", maxLength: 512, nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     is_active = table.Column<bool>(type: "TINYINT(1)", nullable: false),
+                    expires_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: false),
                     is_auth_required = table.Column<bool>(type: "TINYINT(1)", nullable: false),
                     created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
@@ -173,7 +182,7 @@ namespace Noo.Api.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     telegram_id = table.Column<string>(type: "VARCHAR(63)", maxLength: 63, nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    telegram_username = table.Column<string>(type: "VARCHAR(255)", nullable: true, collation: "utf8mb4_general_ci")
+                    telegram_username = table.Column<string>(type: "VARCHAR(255)", maxLength: 255, nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     password_hash = table.Column<string>(type: "VARCHAR(255)", maxLength: 255, nullable: false, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -238,6 +247,7 @@ namespace Noo.Api.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     thumbnail_id = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
                     subject_id = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
+                    is_deleted = table.Column<bool>(type: "TINYINT(1)", nullable: false),
                     created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     updated_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: true)
@@ -480,6 +490,8 @@ namespace Noo.Api.Migrations
                     id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
                     ip_address = table.Column<string>(type: "VARCHAR(63)", maxLength: 63, nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
+                    device_id = table.Column<string>(type: "VARCHAR(255)", maxLength: 255, nullable: true, collation: "utf8mb4_general_ci")
+                        .Annotation("MySql:CharSet", "utf8mb4"),
                     user_agent = table.Column<string>(type: "VARCHAR(255)", maxLength: 255, nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     device = table.Column<string>(type: "VARCHAR(255)", maxLength: 255, nullable: true, collation: "utf8mb4_general_ci")
@@ -490,6 +502,7 @@ namespace Noo.Api.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     browser = table.Column<string>(type: "VARCHAR(255)", maxLength: 255, nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
+                    last_request_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: true),
                     user_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
                     created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
@@ -642,6 +655,8 @@ namespace Noo.Api.Migrations
                     course_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
                     student_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
                     assigner_id = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
+                    type = table.Column<string>(type: "ENUM('ManualAssigned', 'ExternalAssigned', 'Subscription')", nullable: false, collation: "utf8mb4_general_ci")
+                        .Annotation("MySql:CharSet", "utf8mb4"),
                     created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     updated_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: true)
@@ -736,17 +751,19 @@ namespace Noo.Api.Migrations
                     solve_status = table.Column<string>(type: "ENUM('NotSolved', 'InProgress', 'Solved')", nullable: false, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     solve_deadline_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
+                    is_solve_deadline_shifted = table.Column<bool>(type: "TINYINT(1)", nullable: false),
                     solved_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
                     check_status = table.Column<string>(type: "ENUM('NotChecked', 'InProgress', 'Checked')", nullable: false, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     check_deadline_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
                     checked_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
+                    is_check_deadline_shifted = table.Column<bool>(type: "TINYINT(1)", nullable: false),
                     score = table.Column<ushort>(type: "SMALLINT UNSIGNED", nullable: true),
                     max_score = table.Column<ushort>(type: "SMALLINT UNSIGNED", nullable: false),
                     is_archived_by_student = table.Column<bool>(type: "TINYINT(1)", nullable: false),
                     is_archived_by_mentors = table.Column<bool>(type: "TINYINT(1)", nullable: false),
                     is_archived_by_assistants = table.Column<bool>(type: "TINYINT(1)", nullable: false),
-                    excluded_task_ids = table.Column<string>(type: "VARCHAR(2048)", nullable: true, collation: "utf8mb4_general_ci")
+                    ExcludedTaskIds = table.Column<string>(type: "json", nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     student_comment_id = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
                     main_mentor_comment_id = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
@@ -1015,7 +1032,8 @@ namespace Noo.Api.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     description = table.Column<string>(type: "VARCHAR(512)", maxLength: 512, nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    datetime = table.Column<DateTime>(type: "DATETIME(0)", nullable: false),
+                    start_datetime = table.Column<DateTime>(type: "DATETIME(0)", nullable: false),
+                    end_datetime = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
                     created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     updated_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: true)
@@ -1094,6 +1112,7 @@ namespace Noo.Api.Migrations
                     detailed_score = table.Column<string>(type: "json", nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     task_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
+                    assigned_work_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
                     AssignedWorkModelId = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
                     created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
@@ -1228,9 +1247,9 @@ namespace Noo.Api.Migrations
                 column: "assigned_work_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_calendar_event_datetime",
+                name: "IX_calendar_event_start_datetime",
                 table: "calendar_event",
-                column: "datetime");
+                column: "start_datetime");
 
             migrationBuilder.CreateIndex(
                 name: "IX_calendar_event_user_id",

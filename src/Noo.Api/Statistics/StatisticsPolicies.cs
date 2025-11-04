@@ -6,8 +6,7 @@ namespace Noo.Api.Statistics;
 public class StatisticsPolicies : IPolicyRegistrar
 {
     public const string CanGetPlatformStatistics = nameof(CanGetPlatformStatistics);
-    public const string CanGetStudentStatistics = nameof(CanGetStudentStatistics);
-    public const string CanGetMentorStatistics = nameof(CanGetMentorStatistics);
+    public const string CanGetUserStatistics = nameof(CanGetUserStatistics);
 
     public void RegisterPolicies(AuthorizationOptions options)
     {
@@ -19,22 +18,12 @@ public class StatisticsPolicies : IPolicyRegistrar
             ).RequireNotBlocked();
         });
 
-        options.AddPolicy(CanGetStudentStatistics, policy =>
+        options.AddPolicy(CanGetUserStatistics, policy =>
         {
-            // TODO: Change so that
-            // - a student can access only his/her own statistics
-            // - a mentor can access statistics of students he/she is mentoring
-            // - an assistant, a teacher or an admin can access statistics of any student
-            policy.RequireAuthenticatedUser().RequireNotBlocked();
-        });
-
-        options.AddPolicy(CanGetMentorStatistics, policy =>
-        {
-            // TODO: Change so that
-            // - a mentor can access only his/her own statistics
-            // - an assistant, a teacher or an admin can access statistics of any mentor
-            // - a student can't access statistics of a mentor
-            policy.RequireAuthenticatedUser().RequireNotBlocked();
+            policy
+                .RequireAuthenticatedUser()
+                .RequireNotBlocked()
+                .AddRequirements(new AuthorizationRequirements.UserStatisticsAccessRequirement());
         });
     }
 }

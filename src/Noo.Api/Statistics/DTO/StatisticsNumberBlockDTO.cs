@@ -11,11 +11,11 @@ public record StatisticsNumberBlockDTO
     public string? Description { get; init; }
 
     [JsonPropertyName("value")]
-    public string Value { get; init; } = string.Empty;
+    public double? Value { get; init; }
 
     [JsonPropertyName("units")]
     public string? Units { get; init; }
 
     [JsonPropertyName("subValues")]
-    public Dictionary<string, double> SubValues { get; init; } = [];
+    public Dictionary<string, double?> SubValues { get; init; } = [];
 }

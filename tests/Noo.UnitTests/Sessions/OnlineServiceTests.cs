@@ -1,62 +1,133 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Noo.Api.Core.Config.Env;
+using Moq;
 using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Sessions;
 using Noo.Api.Sessions.Services;
+using Noo.UnitTests.Common;
 
 namespace Noo.UnitTests.Sessions;
 
 public class OnlineServiceTests
 {
-    private static NooDbContext CreateDb()
+    private static (OnlineService svc, Mock<ICacheRepository> cache, NooDbContext db) Create()
     {
-        var options = new DbContextOptionsBuilder<NooDbContext>()
-            .UseInMemoryDatabase($"db-{Guid.NewGuid()}")
-            .Options;
-
-        var services = new ServiceCollection();
-        services.AddOptions<DbConfig>();
-
-        var sp = services.BuildServiceProvider();
-        var cfg = sp.GetRequiredService<IOptions<DbConfig>>();
-        return new NooDbContext(cfg, options);
+        var cache = new Mock<ICacheRepository>(MockBehavior.Strict);
+        var db = TestHelpers.CreateInMemoryDb();
+        var svc = new OnlineService(cache.Object, db);
+        return (svc, cache, db);
     }
 
-    private static ICacheRepository CreateCache() => new MemoryCacheRepository();
-
-    [Fact(DisplayName = "OnlineService: setting user online updates last-seen and counts")]
-    public async Task SetUserOnline_and_GetLastOnline_works()
+    [Fact]
+    public async Task SetSessionOnline_SetsKey()
     {
-        var db = CreateDb();
-        var cache = CreateCache();
-        var service = new OnlineService(cache, db);
-        var userId = Ulid.NewUlid();
-
-        await service.SetUserOnlineAsync(userId);
-        var last = await service.GetLastOnlineByUserAsync(userId);
-
-        Assert.True(last.HasValue);
-        Assert.True(DateTime.UtcNow - last.Value < TimeSpan.FromMinutes(1));
-        Assert.True(await service.IsUserOnlineAsync(userId));
-        var count = await service.GetOnlineCountAsync();
-        Assert.True(count >= 1);
-    }
-
-    [Fact(DisplayName = "OnlineService: setting session online updates last-seen by session")]
-    public async Task SetSessionOnline_and_fetch_by_session_works()
-    {
-        var db = CreateDb();
-        var cache = CreateCache();
-        var service = new OnlineService(cache, db);
+        var (svc, cache, _) = Create();
         var sessionId = Ulid.NewUlid();
+        cache.Setup(c => c.SetAsync<DateTime>($"online:session:{sessionId}", It.IsAny<DateTime>(), SessionConfig.OnlineTtl))
+            .Returns(Task.CompletedTask);
 
-        await service.SetSessionOnlineAsync(sessionId);
-        var last = await service.GetLastOnlineBySessionAsync(sessionId);
+        await svc.SetSessionOnlineAsync(sessionId);
+        cache.VerifyAll();
+    }
 
-        Assert.True(last.HasValue);
-        Assert.True(DateTime.UtcNow - last.Value < TimeSpan.FromMinutes(1));
+    [Fact]
+    public async Task SetUserOnline_SetsUserAndRole_WhenRoleDefined()
+    {
+        var (svc, cache, _) = Create();
+        var userId = Ulid.NewUlid();
+        const UserRoles role = UserRoles.Teacher;
+
+        cache.Setup(c => c.SetAsync<DateTime>($"online:user:{userId}", It.IsAny<DateTime>(), SessionConfig.OnlineTtl))
+            .Returns(Task.CompletedTask);
+        cache.Setup(c => c.SetAsync<DateTime>(It.Is<string>(k => k == $"online:role:{role}:{userId}"), It.IsAny<DateTime>(), SessionConfig.OnlineTtl))
+            .Returns(Task.CompletedTask);
+
+        await svc.SetUserOnlineAsync(userId, role);
+        cache.VerifyAll();
+    }
+
+    [Fact]
+    public async Task SetUserOnline_OnlyUser_WhenRoleInvalid()
+    {
+        var (svc, cache, _) = Create();
+        var userId = Ulid.NewUlid();
+        const UserRoles invalidRole = (UserRoles)9999;
+
+        cache.Setup(c => c.SetAsync<DateTime>($"online:user:{userId}", It.IsAny<DateTime>(), SessionConfig.OnlineTtl))
+            .Returns(Task.CompletedTask);
+        await svc.SetUserOnlineAsync(userId, invalidRole);
+        cache.Verify(c => c.SetAsync<DateTime>(It.Is<string>(k => k.StartsWith("online:role:")), It.IsAny<DateTime>(), SessionConfig.OnlineTtl), Times.Never);
+    }
+
+    [Fact]
+    public async Task SetUserOnline_WithoutRole_OnlySetsUserKey()
+    {
+        var (svc, cache, _) = Create();
+        var userId = Ulid.NewUlid();
+        cache.Setup(c => c.SetAsync<DateTime>($"online:user:{userId}", It.IsAny<DateTime>(), SessionConfig.OnlineTtl))
+            .Returns(Task.CompletedTask);
+
+        await svc.SetUserOnlineAsync(userId);
+
+        cache.Verify(c => c.SetAsync<DateTime>(It.Is<string>(k => k.StartsWith("online:role:")), It.IsAny<DateTime>(), SessionConfig.OnlineTtl), Times.Never);
+    }
+
+    [Fact]
+    public async Task IsUserOnline_ReturnsTrue_WhenWithinTtl()
+    {
+        var (svc, cache, _) = Create();
+        var userId = Ulid.NewUlid();
+        var now = DateTime.UtcNow;
+        cache.Setup(c => c.GetAsync<DateTime?>(It.Is<string>(k => k == $"online:user:{userId}")))
+            .ReturnsAsync(now);
+
+        var result = await svc.IsUserOnlineAsync(userId);
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task IsUserOnline_ReturnsFalse_WhenExpired()
+    {
+        var (svc, cache, _) = Create();
+        var userId = Ulid.NewUlid();
+        var past = DateTime.UtcNow - SessionConfig.OnlineTtl - TimeSpan.FromMinutes(1);
+        cache.Setup(c => c.GetAsync<DateTime?>(It.Is<string>(k => k == $"online:user:{userId}")))
+            .ReturnsAsync(past);
+
+        var result = await svc.IsUserOnlineAsync(userId);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task GetOnlineCount_AllUsersPattern()
+    {
+        var (svc, cache, _) = Create();
+        cache.Setup(c => c.CountAsync("online:user:*")).ReturnsAsync(10);
+        var count = await svc.GetOnlineCountAsync();
+        Assert.Equal(10, count);
+    }
+
+    [Fact]
+    public async Task GetOnlineCount_ByRolePattern()
+    {
+        var (svc, cache, _) = Create();
+        cache.Setup(c => c.CountAsync("online:role:Student:*")).ReturnsAsync(7);
+        var count = await svc.GetOnlineCountAsync(UserRoles.Student);
+        Assert.Equal(7, count);
+    }
+
+    [Fact]
+    public async Task GetOnlineCountByRoles_ReturnsDictionary()
+    {
+        var (svc, cache, _) = Create();
+        foreach (var role in Enum.GetValues<UserRoles>())
+        {
+            cache.Setup(c => c.CountAsync($"online:role:{role}:*")).ReturnsAsync((int)role + 2);
+        }
+        var dict = await svc.GetOnlineCountByRolesAsync();
+        foreach (var role in Enum.GetValues<UserRoles>())
+        {
+            Assert.Equal((int)role + 2, dict[role]);
+        }
     }
 }
-

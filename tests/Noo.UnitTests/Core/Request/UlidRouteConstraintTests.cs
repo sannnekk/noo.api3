@@ -14,7 +14,7 @@ public class UlidRouteConstraintTests
     public void Match_ValidatesUlid(object? input, bool expected)
     {
         var constraint = new UlidRouteConstraint();
-        var values = new RouteValueDictionary { ["id"] = input! };
+        var values = new RouteValueDictionary { ["id"] = input };
         var matched = constraint.Match(null, null, "id", values, RouteDirection.IncomingRequest);
         Assert.Equal(expected, matched);
     }

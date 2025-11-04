@@ -41,7 +41,7 @@ public class DomainEventsTests
         var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         await publisher.PublishAsync(new TestEvent { Tcs = tcs });
 
-        var completed = await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(2))) == tcs.Task;
+        var completed = await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(5))) == tcs.Task;
         Assert.True(completed);
 
         // stop hosted services

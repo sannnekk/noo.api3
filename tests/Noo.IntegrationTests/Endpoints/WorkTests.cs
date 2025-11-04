@@ -93,6 +93,14 @@ public class WorkTests : IClassFixture<ApiFactory>
         resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
+    [Fact(DisplayName = "GET /work without auth returns 401 Unauthorized")]
+    public async Task Search_Works_WithoutAuth_Unauthorized()
+    {
+        using var client = _factory.CreateClient();
+        var resp = await client.GetAsync("/work");
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     [Fact(DisplayName = "POST /work as teacher returns 201 Created then GET by id returns 200 OK")]
     public async Task Create_Work_AsTeacher_ReturnsCreated_Then_GetById_Ok()
     {
@@ -110,6 +118,31 @@ public class WorkTests : IClassFixture<ApiFactory>
         doc.RootElement.GetProperty("data").GetProperty("tasks").EnumerateArray().Should().NotBeEmpty();
     }
 
+    [Fact(DisplayName = "GET /work/{id} without auth returns 401 Unauthorized")]
+    public async Task Get_Work_ById_WithoutAuth_Unauthorized()
+    {
+        // Use separate authenticated clients for setup to avoid leaking auth headers
+        using var adminClient = _factory.CreateClient().AsAdmin();
+        var subjectId = await CreateSubjectAsync(adminClient);
+        using var teacherClient = _factory.CreateClient().AsTeacher();
+        var workId = await CreateWorkAsync(teacherClient, subjectId);
+
+        // Anonymous client for assertion
+        using var anonClient = _factory.CreateClient();
+        var resp = await anonClient.GetAsync($"/work/{workId}");
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact(DisplayName = "GET /work/{id} as student returns 403 Forbidden")]
+    public async Task Get_Work_ById_AsStudent_Forbidden()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+        var workId = await CreateWorkAsync(client, subjectId);
+        var resp = await client.AsStudent().GetAsync($"/work/{workId}");
+        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     [Fact(DisplayName = "POST /work as student returns 403 Forbidden")]
     public async Task Create_Work_AsStudent_Forbidden()
     {
@@ -118,6 +151,19 @@ public class WorkTests : IClassFixture<ApiFactory>
         var payload = BuildValidCreateWorkPayload(subjectId);
         var resp = await client.AsStudent().PostAsJsonAsync("/work", payload, JsonOptions);
         resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact(DisplayName = "POST /work without auth returns 401 Unauthorized")]
+    public async Task Create_Work_WithoutAuth_Unauthorized()
+    {
+        // Setup with authenticated admin client
+        using var adminClient = _factory.CreateClient().AsAdmin();
+        var subjectId = await CreateSubjectAsync(adminClient);
+        var payload = BuildValidCreateWorkPayload(subjectId);
+        // Anonymous client for assertion
+        using var anonClient = _factory.CreateClient();
+        var resp = await anonClient.PostAsJsonAsync("/work", payload, JsonOptions);
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact(DisplayName = "POST /work with invalid payload returns 400 Bad Request")]
@@ -176,6 +222,17 @@ public class WorkTests : IClassFixture<ApiFactory>
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    [Fact(DisplayName = "PATCH /work as student returns 403 Forbidden")]
+    public async Task Patch_Work_AsStudent_Forbidden()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+        var workId = await CreateWorkAsync(client, subjectId);
+        const string patchJson = "[ { \"op\": \"replace\", \"path\": \"/title\", \"value\": \"X\" } ]";
+        var resp = await client.AsStudent().PatchAsync($"/work/{workId}", new StringContent(patchJson, Encoding.UTF8, "application/json-patch+json"));
+        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     [Fact(DisplayName = "PATCH /work/{id} non-existing returns 404 Not Found")]
     public async Task Patch_Work_NotFound()
     {
@@ -183,6 +240,15 @@ public class WorkTests : IClassFixture<ApiFactory>
         const string patchJson = "[ { \"op\": \"replace\", \"path\": \"/title\", \"value\": \"T\" } ]";
         var resp = await client.AsTeacher().PatchAsync($"/work/{Ulid.NewUlid()}", new StringContent(patchJson, Encoding.UTF8, "application/json-patch+json"));
         resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact(DisplayName = "PATCH /work without auth returns 401 Unauthorized")]
+    public async Task Patch_Work_WithoutAuth_Unauthorized()
+    {
+        using var client = _factory.CreateClient();
+        const string patchJson = "[ { \"op\": \"replace\", \"path\": \"/title\", \"value\": \"T\" } ]";
+        var resp = await client.PatchAsync($"/work/{Ulid.NewUlid()}", new StringContent(patchJson, Encoding.UTF8, "application/json-patch+json"));
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact(DisplayName = "DELETE /work returns 204 No Content then GET returns 404 Not Found")]
@@ -205,6 +271,14 @@ public class WorkTests : IClassFixture<ApiFactory>
         using var client = _factory.CreateClient();
         var delResp = await client.AsStudent().DeleteAsync($"/work/{Ulid.NewUlid()}");
         delResp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact(DisplayName = "DELETE /work without auth returns 401 Unauthorized")]
+    public async Task Delete_Work_WithoutAuth_Unauthorized()
+    {
+        using var client = _factory.CreateClient();
+        var delResp = await client.DeleteAsync($"/work/{Ulid.NewUlid()}");
+        delResp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact(DisplayName = "GET /work filtered by type returns expected results")]

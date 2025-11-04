@@ -24,30 +24,52 @@ public class RedisCacheRepository : ICacheRepository
 
     public async Task<int> CountAsync(string pattern = "*")
     {
-        // Initialize total key count
-        var totalCount = 0;
-        // Get all endpoints in the Redis configuration
-        var endpoints = _connectionMultiplexer.GetEndPoints();
+        if (string.IsNullOrWhiteSpace(pattern)) pattern = "*";
 
-        foreach (var endpoint in endpoints)
+        // Collect all primary (non-replica) servers (cluster or sentinel aware)
+        var servers = _connectionMultiplexer
+            .GetEndPoints()
+            .Select(ep => _connectionMultiplexer.GetServer(ep))
+            .Where(s => !s.IsReplica)
+            .ToArray();
+
+        // Fast path: count all keys -> use DBSIZE per primary (O(1) each)
+        if (pattern == "*")
         {
-            // Get server instance for each endpoint
-            var server = _connectionMultiplexer.GetServer(endpoint);
-
-            // Skip replica servers to avoid double-counting
-            if (server.IsReplica) continue;
-
-            // Iterate through keys matching pattern using SCAN (non-blocking)
-            await foreach (var _ in server.KeysAsync(
-                database: _database.Database,
-                pattern: pattern,
-                pageSize: 1000)) // Efficient batch size
+            long total = 0;
+            foreach (var s in servers)
             {
-                totalCount++;
+                // DatabaseSize is synchronous but very fast (reads an internal counter)
+                total += s.DatabaseSize(_database.Database);
             }
-            // TODO: implement a non-blocking key count
+            // Guard against overflow into int (extremely unlikely in practice for Redis usage here)
+            if (total > int.MaxValue) return int.MaxValue;
+            return (int)total;
         }
 
+        // For pattern counts Redis has no native constant-time operation. We SCAN in parallel
+        // across primaries. KeysAsync uses SCAN under the hood (non-blocking, incremental).
+        // We aggregate counts per server to minimize contention.
+        var totalCount = 0;
+        var tasks = new List<Task>(servers.Length);
+
+        foreach (var server in servers)
+        {
+            tasks.Add(Task.Run(async () =>
+            {
+                var local = 0;
+                await foreach (var _ in server.KeysAsync(
+                    database: _database.Database,
+                    pattern: pattern,
+                    pageSize: 5000)) // larger page size reduces round-trips
+                {
+                    local++;
+                }
+                Interlocked.Add(ref totalCount, local);
+            }));
+        }
+
+        await Task.WhenAll(tasks);
         return totalCount;
     }
 

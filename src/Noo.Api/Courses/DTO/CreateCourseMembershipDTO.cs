@@ -5,7 +5,7 @@ namespace Noo.Api.Courses.DTO;
 public record CreateCourseMembershipDTO
 {
     [Required]
-    public Ulid UserId { get; init; }
+    public Ulid StudentId { get; init; }
 
     [Required]
     public Ulid CourseId { get; init; }

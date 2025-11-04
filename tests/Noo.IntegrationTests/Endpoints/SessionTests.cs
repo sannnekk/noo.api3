@@ -28,10 +28,12 @@ public class SessionTests : IClassFixture<ApiFactory>
         payload!.Data.Should().NotBeNull();
     }
 
-    [Fact(DisplayName = "GET /session without auth -> 401", Skip = "Authorization pipeline throws UnauthorizedException before returning 401; behavior under review.")]
+    [Fact(DisplayName = "GET /session without auth returns 401 Unauthorized")]
     public async Task Get_Sessions_WithoutAuth_Returns401()
     {
-        await Task.CompletedTask;
+        using var client = _factory.CreateClient(); // no auth header
+        var resp = await client.GetAsync("/session");
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact(DisplayName = "DELETE /session deletes current session (204)")]

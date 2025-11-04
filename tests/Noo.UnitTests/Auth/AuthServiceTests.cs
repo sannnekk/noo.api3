@@ -23,7 +23,15 @@ public class AuthServiceTests
         public Mock<IAuthEmailService> Email { get; } = new();
         public Mock<IAuthUrlGenerator> Url { get; } = new();
         public Mock<IUserService> Users { get; } = new();
-        public IHashService Hash { get; } = new HashService();
+        public IHashService Hash { get; } = new HashService(Options.Create(new AppConfig
+        {
+            Location = "test",
+            BaseUrl = "http://localhost",
+            UserOnlineThresholdMinutes = 15,
+            UserActiveThresholdDays = 14,
+            HashSecret = "secret",
+            AllowedOrigins = new[] { "*" }
+        }));
         public Mock<ISessionService> Sessions { get; } = new();
         public IHttpContextAccessor Ctx { get; } = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
         public IOptions<JwtConfig> Jwt { get; } = Options.Create(new JwtConfig
@@ -41,7 +49,15 @@ public class AuthServiceTests
     public async Task Login_HappyPath_ReturnsToken_AndUserInfo()
     {
         const string pwd = "pwd";
-        var hash = new HashService().Hash(pwd);
+        var hash = new HashService(Options.Create(new AppConfig
+        {
+            Location = "test",
+            BaseUrl = "http://localhost",
+            UserOnlineThresholdMinutes = 15,
+            UserActiveThresholdDays = 14,
+            HashSecret = "secret",
+            AllowedOrigins = new[] { "*" }
+        })).Hash(pwd);
         var user = new UserModel
         {
             Id = Ulid.NewUlid(),
@@ -71,6 +87,9 @@ public class AuthServiceTests
         Assert.Equal(user.Username, resp.UserInfo.Username);
         Assert.Equal(user.Email, resp.UserInfo.Email);
         Assert.Equal(user.Name, resp.UserInfo.Name);
+
+        // Ensure session creation was attempted for the user
+        h.Sessions.Verify(s => s.CreateSessionIfNotExistsAsync(It.IsAny<HttpContext>(), user.Id), Times.Once);
     }
 
     [Fact]
@@ -82,7 +101,15 @@ public class AuthServiceTests
             Username = "john",
             Email = "john@example.com",
             Name = "John",
-            PasswordHash = new HashService().Hash("pwd"),
+            PasswordHash = new HashService(Options.Create(new AppConfig
+            {
+                Location = "test",
+                BaseUrl = "http://localhost",
+                UserOnlineThresholdMinutes = 15,
+                UserActiveThresholdDays = 14,
+                HashSecret = "secret",
+                AllowedOrigins = new[] { "*" }
+            })).Hash("pwd"),
             Role = UserRoles.Student,
             IsVerified = true,
             IsBlocked = false
@@ -102,7 +129,15 @@ public class AuthServiceTests
     [Fact]
     public async Task Login_Fails_When_NotVerified()
     {
-        var pwd = new HashService().Hash("pwd");
+        var pwd = new HashService(Options.Create(new AppConfig
+        {
+            Location = "test",
+            BaseUrl = "http://localhost",
+            UserOnlineThresholdMinutes = 15,
+            UserActiveThresholdDays = 14,
+            HashSecret = "secret",
+            AllowedOrigins = new[] { "*" }
+        })).Hash("pwd");
         var user = new UserModel
         {
             Id = Ulid.NewUlid(),
@@ -129,7 +164,15 @@ public class AuthServiceTests
     [Fact]
     public async Task Login_Fails_When_Blocked()
     {
-        var pwd = new HashService().Hash("pwd");
+        var pwd = new HashService(Options.Create(new AppConfig
+        {
+            Location = "test",
+            BaseUrl = "http://localhost",
+            UserOnlineThresholdMinutes = 15,
+            UserActiveThresholdDays = 14,
+            HashSecret = "secret",
+            AllowedOrigins = new[] { "*" }
+        })).Hash("pwd");
         var user = new UserModel
         {
             Id = Ulid.NewUlid(),
@@ -180,7 +223,15 @@ public class AuthServiceTests
     [Fact]
     public async Task RequestPasswordReset_Sends_Email()
     {
-        var pwd = new HashService().Hash("pwd");
+        var pwd = new HashService(Options.Create(new AppConfig
+        {
+            Location = "test",
+            BaseUrl = "http://localhost",
+            UserOnlineThresholdMinutes = 15,
+            UserActiveThresholdDays = 14,
+            HashSecret = "secret",
+            AllowedOrigins = new[] { "*" }
+        })).Hash("pwd");
         var user = new UserModel
         {
             Id = Ulid.NewUlid(),
@@ -208,7 +259,15 @@ public class AuthServiceTests
     [Fact]
     public async Task ConfirmPasswordReset_ChangesPassword_And_DeletesSessions()
     {
-        var pwd = new HashService().Hash("pwd");
+        var pwd = new HashService(Options.Create(new AppConfig
+        {
+            Location = "test",
+            BaseUrl = "http://localhost",
+            UserOnlineThresholdMinutes = 15,
+            UserActiveThresholdDays = 14,
+            HashSecret = "secret",
+            AllowedOrigins = new[] { "*" }
+        })).Hash("pwd");
         var user = new UserModel
         {
             Id = Ulid.NewUlid(),
@@ -236,7 +295,15 @@ public class AuthServiceTests
     [Fact]
     public async Task RequestEmailChange_Sends_Email()
     {
-        var pwd = new HashService().Hash("pwd");
+        var pwd = new HashService(Options.Create(new AppConfig
+        {
+            Location = "test",
+            BaseUrl = "http://localhost",
+            UserOnlineThresholdMinutes = 15,
+            UserActiveThresholdDays = 14,
+            HashSecret = "secret",
+            AllowedOrigins = new[] { "*" }
+        })).Hash("pwd");
         var user = new UserModel
         {
             Id = Ulid.NewUlid(),
@@ -265,7 +332,15 @@ public class AuthServiceTests
     [Fact]
     public async Task ConfirmEmailChange_Updates_Email()
     {
-        var pwd = new HashService().Hash("pwd");
+        var pwd = new HashService(Options.Create(new AppConfig
+        {
+            Location = "test",
+            BaseUrl = "http://localhost",
+            UserOnlineThresholdMinutes = 15,
+            UserActiveThresholdDays = 14,
+            HashSecret = "secret",
+            AllowedOrigins = new[] { "*" }
+        })).Hash("pwd");
         var user = new UserModel
         {
             Id = Ulid.NewUlid(),

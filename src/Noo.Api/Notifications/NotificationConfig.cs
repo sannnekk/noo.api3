@@ -6,5 +6,5 @@ public static class NotificationConfig
 
     public static TimeSpan KeepReadTime { get; } = TimeSpan.FromDays(5);
 
-    public static string CheckForDeletionCronPattern { get; } = ""; // TODO: add pattern
+    public static string CheckForDeletionCronPattern { get; } = "0 3 * * *"; // at 3 am every day
 }

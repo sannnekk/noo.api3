@@ -6,6 +6,7 @@ using Noo.Api.Core.Utils.DI;
 using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Filters;
 using Noo.Api.Courses.Models;
+using Noo.Api.Courses.QuerySpecifications;
 
 namespace Noo.Api.Courses.Services;
 
@@ -56,7 +57,9 @@ public class CourseMembershipService : ICourseMembershipService
 
     public Task<SearchResult<CourseMembershipModel>> GetMembershipsAsync(CourseMembershipFilter filter)
     {
-        return _courseMembershipRepository.SearchAsync(filter);
+        return _courseMembershipRepository.SearchAsync(filter, [
+            new CourseMembershipSpecification(_currentUser.UserRole, _currentUser.UserId)
+        ]);
     }
 
     public async Task<bool> HasAccessAsync(Ulid courseId, Ulid userId)

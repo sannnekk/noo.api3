@@ -18,7 +18,7 @@ namespace Noo.Api.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .UseCollation("utf8mb4_general_ci")
-                .HasAnnotation("ProductVersion", "9.0.3")
+                .HasAnnotation("ProductVersion", "9.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.HasCharSet(modelBuilder, "utf8mb4");
@@ -63,6 +63,11 @@ namespace Noo.Api.Migrations
                     b.Property<byte[]>("Id")
                         .HasColumnType("BINARY(16)")
                         .HasColumnName("id");
+
+                    b.Property<byte[]>("AssignedWorkId")
+                        .IsRequired()
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("assigned_work_id");
 
                     b.Property<byte[]>("AssignedWorkModelId")
                         .HasColumnType("BINARY(16)");
@@ -188,9 +193,8 @@ namespace Noo.Api.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
 
-                    b.PrimitiveCollection<string>("ExcludedTaskIds")
-                        .HasColumnType("VARCHAR(2048)")
-                        .HasColumnName("excluded_task_ids");
+                    b.Property<string>("ExcludedTaskIds")
+                        .HasColumnType("json");
 
                     b.Property<byte[]>("HelperMentorCommentId")
                         .HasColumnType("BINARY(16)")
@@ -211,6 +215,14 @@ namespace Noo.Api.Migrations
                     b.Property<bool>("IsArchivedByStudent")
                         .HasColumnType("TINYINT(1)")
                         .HasColumnName("is_archived_by_student");
+
+                    b.Property<bool>("IsCheckDeadlineShifted")
+                        .HasColumnType("TINYINT(1)")
+                        .HasColumnName("is_check_deadline_shifted");
+
+                    b.Property<bool>("IsSolveDeadlineShifted")
+                        .HasColumnType("TINYINT(1)")
+                        .HasColumnName("is_solve_deadline_shifted");
 
                     b.Property<byte[]>("MainMentorCommentId")
                         .HasColumnType("BINARY(16)")
@@ -324,7 +336,7 @@ namespace Noo.Api.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
 
-                    b.Property<string>("Status")
+                    b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("ENUM('StartedSolving', 'SolveDeadlineShifted', 'Solved', 'StartedChecking', 'CheckDeadlineShifted', 'Checked', 'SentOnRecheck', 'SentOnResolve')")
                         .HasColumnName("type");
@@ -364,14 +376,18 @@ namespace Noo.Api.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
 
-                    b.Property<DateTime>("DateTime")
-                        .HasColumnType("DATETIME(0)")
-                        .HasColumnName("datetime");
-
                     b.Property<string>("Description")
                         .HasMaxLength(512)
                         .HasColumnType("VARCHAR(512)")
                         .HasColumnName("description");
+
+                    b.Property<DateTime?>("EndDateTime")
+                        .HasColumnType("DATETIME(0)")
+                        .HasColumnName("end_datetime");
+
+                    b.Property<DateTime>("StartDateTime")
+                        .HasColumnType("DATETIME(0)")
+                        .HasColumnName("start_datetime");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -398,7 +414,7 @@ namespace Noo.Api.Migrations
 
                     b.HasIndex("AssignedWorkId");
 
-                    b.HasIndex("DateTime");
+                    b.HasIndex("StartDateTime");
 
                     b.HasIndex("UserId");
 
@@ -647,6 +663,11 @@ namespace Noo.Api.Migrations
                         .HasColumnType("BINARY(16)")
                         .HasColumnName("student_id");
 
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("ENUM('ManualAssigned', 'ExternalAssigned', 'Subscription')")
+                        .HasColumnName("type");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .ValueGeneratedOnUpdate()
                         .HasColumnType("TIMESTAMP(6)")
@@ -685,6 +706,10 @@ namespace Noo.Api.Migrations
                         .HasColumnType("DATETIME(0)")
                         .HasColumnName("end_date");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("TINYINT(1)")
+                        .HasColumnName("is_deleted");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -719,7 +744,7 @@ namespace Noo.Api.Migrations
                     b.ToTable("course");
                 });
 
-            modelBuilder.Entity("Noo.Api.GoogleSheetsIntegrations.Models.GoogleSheetsInegrationModel", b =>
+            modelBuilder.Entity("Noo.Api.GoogleSheetsIntegrations.Models.GoogleSheetsIntegrationModel", b =>
                 {
                     b.Property<byte[]>("Id")
                         .HasColumnType("BINARY(16)")
@@ -737,11 +762,6 @@ namespace Noo.Api.Migrations
                         .HasMaxLength(63)
                         .HasColumnType("VARCHAR(63)")
                         .HasColumnName("cron_pattern");
-
-                    b.Property<string>("Entity")
-                        .IsRequired()
-                        .HasColumnType("VARCHAR(255)")
-                        .HasColumnName("entity");
 
                     b.Property<string>("GoogleAuthData")
                         .IsRequired()
@@ -762,10 +782,23 @@ namespace Noo.Api.Migrations
                         .HasColumnType("VARCHAR(255)")
                         .HasColumnName("name");
 
+                    b.Property<string>("SelectorValue")
+                        .HasColumnType("VARCHAR(63)")
+                        .HasColumnName("selector_value");
+
+                    b.Property<string>("SpreadsheetId")
+                        .HasColumnType("VARCHAR(127)")
+                        .HasColumnName("spreadsheet_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("ENUM('Active', 'Inactive', 'Error')")
                         .HasColumnName("status");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("ENUM('UserCourse', 'UserWork', 'UserRole', 'PollResults')")
+                        .HasColumnName("type");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .ValueGeneratedOnUpdate()
@@ -796,6 +829,10 @@ namespace Noo.Api.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
 
+                    b.Property<byte[]>("EntityId")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("entity_id");
+
                     b.Property<string>("Extension")
                         .IsRequired()
                         .HasMaxLength(15)
@@ -818,11 +855,20 @@ namespace Noo.Api.Migrations
                         .HasColumnType("INT")
                         .HasColumnName("order");
 
+                    b.Property<byte[]>("OwnerId")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("owner_id");
+
                     b.Property<string>("Path")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("VARCHAR(255)")
                         .HasColumnName("path");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("varchar(63)")
+                        .HasColumnName("reason");
 
                     b.Property<int>("Size")
                         .HasColumnType("INT(11)")
@@ -1130,6 +1176,10 @@ namespace Noo.Api.Migrations
                         .HasColumnType("VARCHAR(512)")
                         .HasColumnName("description");
 
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("DATETIME(0)")
+                        .HasColumnName("expires_at");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("TINYINT(1)")
                         .HasColumnName("is_active");
@@ -1285,6 +1335,11 @@ namespace Noo.Api.Migrations
                         .HasColumnType("VARCHAR(255)")
                         .HasColumnName("device");
 
+                    b.Property<string>("DeviceId")
+                        .HasMaxLength(255)
+                        .HasColumnType("VARCHAR(255)")
+                        .HasColumnName("device_id");
+
                     b.Property<string>("DeviceType")
                         .IsRequired()
                         .HasColumnType("ENUM('desktop', 'mobile', 'tablet', 'unknown')")
@@ -1294,6 +1349,10 @@ namespace Noo.Api.Migrations
                         .HasMaxLength(63)
                         .HasColumnType("VARCHAR(63)")
                         .HasColumnName("ip_address");
+
+                    b.Property<DateTime?>("LastRequestAt")
+                        .HasColumnType("TIMESTAMP(6)")
+                        .HasColumnName("last_request_at");
 
                     b.Property<string>("Os")
                         .HasMaxLength(255)
@@ -1680,6 +1739,7 @@ namespace Noo.Api.Migrations
                         .HasColumnName("telegram_id");
 
                     b.Property<string>("TelegramUsername")
+                        .HasMaxLength(255)
                         .HasColumnType("VARCHAR(255)")
                         .HasColumnName("telegram_username");
 
@@ -2254,13 +2314,13 @@ namespace Noo.Api.Migrations
             modelBuilder.Entity("Noo.Api.Users.Models.MentorAssignmentModel", b =>
                 {
                     b.HasOne("Noo.Api.Users.Models.UserModel", "Mentor")
-                        .WithMany()
+                        .WithMany("MentorAssignmentsAsMentor")
                         .HasForeignKey("MentorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Noo.Api.Users.Models.UserModel", "Student")
-                        .WithMany()
+                        .WithMany("MentorAssignmentsAsStudent")
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2421,6 +2481,10 @@ namespace Noo.Api.Migrations
                     b.Navigation("CoursesAsAssigner");
 
                     b.Navigation("CoursesAsMember");
+
+                    b.Navigation("MentorAssignmentsAsMentor");
+
+                    b.Navigation("MentorAssignmentsAsStudent");
 
                     b.Navigation("NooTubeVideoComments");
 

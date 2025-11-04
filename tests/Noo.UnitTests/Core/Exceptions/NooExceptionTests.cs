@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Noo.Api.Core.Exceptions;
 
 namespace Noo.UnitTests.Core.Exceptions;
@@ -15,16 +16,11 @@ public class NooExceptionTests
             Payload = new { a = 1 }
         };
 
-        var obj = ex.Serialize();
-        var id = obj.GetType().GetProperty("id")!.GetValue(obj);
-        var statusCode = obj.GetType().GetProperty("statusCode")!.GetValue(obj);
-        var message = obj.GetType().GetProperty("message")!.GetValue(obj);
-        var payload = obj.GetType().GetProperty("payload")!.GetValue(obj);
-
-        Assert.Equal("CUSTOM", id);
-        Assert.Equal((int)HttpStatusCode.BadRequest, statusCode);
-        Assert.Equal("Boom", message);
-        Assert.NotNull(payload);
+        var json = JsonSerializer.Serialize(ex.Serialize());
+        Assert.Contains("\"id\":\"CUSTOM\"", json);
+        Assert.Contains("\"statusCode\":400", json);
+        Assert.Contains("\"message\":\"Boom\"", json);
+        Assert.Contains("\"payload\":{\"a\":1}", json);
     }
 
     [Fact]
