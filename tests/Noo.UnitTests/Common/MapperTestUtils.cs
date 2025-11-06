@@ -1,3 +1,4 @@
+using System.Reflection;
 using AutoMapper;
 using Noo.Api.Core.Utils.AutoMapper;
 
@@ -8,7 +9,7 @@ public static class MapperTestUtils
     public static IMapper CreateAppMapper()
     {
         var profiles = AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(a => a.GetTypes())
+            .SelectMany(a => SafeGetTypes(a))
             .Where(t => t.IsClass && !t.IsAbstract && t.GetCustomAttributes(typeof(AutoMapperProfileAttribute), false).Length != 0)
             .ToList();
 
@@ -22,5 +23,21 @@ public static class MapperTestUtils
 
         config.AssertConfigurationIsValid();
         return config.CreateMapper();
+    }
+
+    private static IEnumerable<Type> SafeGetTypes(Assembly assembly)
+    {
+        try
+        {
+            return assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            return ex.Types.Where(t => t != null)!;
+        }
+        catch
+        {
+            return Array.Empty<Type>();
+        }
     }
 }
