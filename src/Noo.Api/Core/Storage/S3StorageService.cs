@@ -1,7 +1,7 @@
 using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Options;
-using Noo.Api.Core.Config;
+using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.Utils.DI;
 
 namespace Noo.Api.Core.Storage;

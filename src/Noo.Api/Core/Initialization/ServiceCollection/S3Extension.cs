@@ -2,7 +2,7 @@ using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using Microsoft.Extensions.Options;
-using Noo.Api.Core.Config;
+using Noo.Api.Core.Config.Env;
 
 namespace Noo.Api.Core.Initialization.ServiceCollection;
 

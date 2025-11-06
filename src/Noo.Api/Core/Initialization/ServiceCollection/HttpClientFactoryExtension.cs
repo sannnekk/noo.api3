@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
 using Polly;
 using Polly.Extensions.Http;
-using Noo.Api.Core.Config.Http;
+using Noo.Api.Core.Config.Env;
 using System.Net;
 
 namespace Noo.Api.Core.Initialization.ServiceCollection;

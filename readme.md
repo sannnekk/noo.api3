@@ -49,8 +49,6 @@ The configuration is done in the `appsettings.json` file. An example (all possib
 {
   "App": {
     "Location": "https://localhost:5001",
-    "AppVersion": "1.0.0",
-    "AuthenticationType": "Bearer",
     "BaseUrl": "https://noo-school.ru",
     "AllowedOrigins": ["http://localhost:5189"],
     "UserOnlineThresholdMinutes": 15,
@@ -70,15 +68,15 @@ The configuration is done in the `appsettings.json` file. An example (all possib
   "HttpClient": {
     "TimeoutSeconds": 30,
     "RetryCount": 3,
-    "RetryBaseDelayMilliseconds": 200,
+    "RetryBaseDelayMs": 200,
     "CircuitBreakerFailures": 5,
     "CircuitBreakerDurationSeconds": 30
   },
   "Logs": {
-    "Mode": "Console", // Console, Telegram
-    "LogLevel": "Information",
+    "Mode": "Console",
+    "MinLevel": "Information",
     "TelegramLogToken": "...",
-    "TelegramLogChatIds": ["...", "..."]
+    "TelegramChatIds": ["...", "..."]
   },
   "Db": {
     "User": "...",
@@ -106,6 +104,12 @@ The configuration is done in the `appsettings.json` file. An example (all possib
     "WaitAfterBatch": 100,
     "WaitForBatch": 1000
   },
+  "S3": {
+    "BucketName": "...",
+    "Region": "...",
+    "AccessKey": "...",
+    "SecretKey": "..."
+  },
   "Swagger": {
     "Title": "API v1",
     "Description": "Noo.Api module",
@@ -129,6 +133,8 @@ The configuration is done in the `appsettings.json` file. An example (all possib
   }
 }
 ```
+
+`Logs.Mode` accepts `Console` or `Telegram`, and `Logs.MinLevel` uses the standard `Microsoft.Extensions.Logging.LogLevel` names.
 
 ## Optional
 

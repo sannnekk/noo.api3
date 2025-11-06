@@ -1,4 +1,4 @@
-namespace Noo.Api.Core.Config;
+namespace Noo.Api.Core.Config.Env;
 
 public class S3Config : IConfig
 {

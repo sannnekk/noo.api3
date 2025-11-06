@@ -1,7 +1,11 @@
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.Initialization.Configuration;
-using StackExchange.Redis;
 
 namespace Noo.Api.Core.Initialization.ServiceCollection;
 
@@ -10,29 +14,43 @@ public static class CacheProviderExtension
     public static void AddCacheProvider(this IServiceCollection services, IConfiguration configuration)
     {
         var cacheConfig = configuration.GetSection(CacheConfig.SectionName).GetOrThrow<CacheConfig>();
+        var useMemoryOnly = string.Equals(cacheConfig.Provider, "Memory", StringComparison.OrdinalIgnoreCase);
 
-        var useMemory = string.Equals(cacheConfig.Provider, "Memory", StringComparison.OrdinalIgnoreCase);
+        services.TryAddSingleton<IRedisConnectionFactory, RedisConnectionFactory>();
+        services.TryAddSingleton<IRedisConnectionProvider, RedisConnectionProvider>();
+        services.TryAddSingleton<MemoryCacheRepository>();
 
-        if (!useMemory)
+        services.AddSingleton<IDistributedCache>(sp =>
         {
-            // Redis distributed cache and connection multiplexer
-            services.AddStackExchangeRedisCache(options =>
+            var redisProvider = sp.GetRequiredService<IRedisConnectionProvider>();
+            if (!useMemoryOnly && redisProvider.TryGetConnection(out var connection))
             {
-                options.Configuration = cacheConfig.ConnectionString;
-                options.InstanceName = cacheConfig.Prefix;
-            });
+                var redisOptions = Options.Create(new RedisCacheOptions
+                {
+                    InstanceName = cacheConfig.Prefix,
+                    ConnectionMultiplexerFactory = () => Task.FromResult(connection)
+                });
 
-            services.AddSingleton<IConnectionMultiplexer>(_ =>
-                ConnectionMultiplexer.Connect(cacheConfig.ConnectionString)
-            );
+                return ActivatorUtilities.CreateInstance<RedisCache>(sp, redisOptions);
+            }
 
-            services.AddScoped<ICacheRepository, RedisCacheRepository>();
-        }
-        else
+            return new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+        });
+
+        if (useMemoryOnly)
         {
-            // In-memory fallback for tests/dev
             services.AddDistributedMemoryCache();
-            services.AddSingleton<ICacheRepository, MemoryCacheRepository>();
         }
+
+        services.AddSingleton<ICacheRepository>(sp =>
+        {
+            var redisProvider = sp.GetRequiredService<IRedisConnectionProvider>();
+            if (!useMemoryOnly && redisProvider.TryGetConnection(out var connection))
+            {
+                return ActivatorUtilities.CreateInstance<RedisCacheRepository>(sp, connection);
+            }
+
+            return sp.GetRequiredService<MemoryCacheRepository>();
+        });
     }
 }

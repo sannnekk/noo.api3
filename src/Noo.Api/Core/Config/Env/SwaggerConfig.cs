@@ -2,7 +2,7 @@ namespace Noo.Api.Core.Config.Env;
 
 public class SwaggerConfig : IConfig
 {
-    public static string SectionName => "SWAGGER";
+    public static string SectionName => "Swagger";
 
     public string Title { get; init; } = "Noo API";
 

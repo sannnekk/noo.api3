@@ -1,6 +1,5 @@
 using Noo.Api.Core.Config;
 using Noo.Api.Core.Config.Env;
-using Noo.Api.Core.Config.Http;
 
 namespace Noo.Api.Core.Initialization.ServiceCollection;
 

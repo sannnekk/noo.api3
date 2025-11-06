@@ -1,4 +1,4 @@
-namespace Noo.Api.Core.Config.Http;
+namespace Noo.Api.Core.Config.Env;
 
 public class HttpClientResilienceConfig : IConfig
 {
