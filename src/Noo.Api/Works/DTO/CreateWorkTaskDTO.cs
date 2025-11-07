@@ -39,12 +39,11 @@ public record CreateWorkTaskDTO
     public IRichTextType? Explanation { get; set; }
 
     [JsonPropertyName("checkStrategy")]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     public WorkTaskCheckStrategy CheckStrategy { get; set; } = WorkTaskCheckStrategy.Manual;
 
     [JsonPropertyName("showAnswerBeforeCheck")]
-    public bool ShowAnswerBeforeCheck { get; set; } = false;
+    public bool ShowAnswerBeforeCheck { get; set; }
 
     [JsonPropertyName("checkOneByOne")]
-    public bool CheckOneByOne { get; set; } = false;
+    public bool CheckOneByOne { get; set; }
 }

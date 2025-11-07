@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Noo.Api.Subjects.DTO;
+using Noo.Api.Works.Types;
 
 namespace Noo.Api.Works.DTO;
 
@@ -12,7 +13,7 @@ public record WorkDTO
     public string Title { get; init; } = string.Empty;
 
     [JsonPropertyName("type")]
-    public string Type { get; init; } = string.Empty;
+    public WorkType Type { get; init; }
 
     [JsonPropertyName("description")]
     public string? Description { get; init; }

@@ -294,7 +294,7 @@ public class WorkTests : IClassFixture<ApiFactory>
         var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
         var items = doc.RootElement.GetProperty("data").EnumerateArray().ToList();
         items.Should().NotBeEmpty();
-        items.Should().OnlyContain(e => e.GetProperty("type").GetString() == nameof(WorkType.Test));
+        items.Should().OnlyContain(e => e.GetProperty("type").GetString() == nameof(WorkType.Test).ToLower());
     }
 }
 

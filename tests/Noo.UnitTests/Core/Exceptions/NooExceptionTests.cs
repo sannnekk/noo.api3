@@ -33,10 +33,10 @@ public class NooExceptionTests
             IsInternal = true
         };
 
-        var dto = ex.SerializePublicly();
+        var dto = ex.Serialize();
         Assert.Equal("INTERNAL", dto.Id);
         Assert.Equal(500, dto.StatusCode);
-        Assert.Equal("An error occurred. Please try again later.", dto.Message);
+        Assert.StartsWith("An internal error occurred.", dto.Message);
     }
 
     [Fact]

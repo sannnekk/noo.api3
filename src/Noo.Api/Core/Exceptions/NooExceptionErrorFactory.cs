@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Noo.Api.Core.Exceptions.Http;
@@ -12,34 +13,60 @@ public class NooExceptionErrorFactory : IClientErrorFactory
     public IActionResult GetClientError(ActionContext actionContext, IClientErrorActionResult clientError)
     {
         var statusCode = clientError.StatusCode ?? StatusCodes.Status400BadRequest;
-        var errorResponse = clientError.GetType() == typeof(NooException)
-            ? new ErrorApiResponseDTO(((NooException)clientError).SerializePublicly())
-            : new ErrorApiResponseDTO(GetError(clientError, statusCode).SerializePublicly());
+        var error = ResolveException(clientError, statusCode);
+        var errorResponse = new ErrorApiResponseDTO(error.Serialize());
 
         return new ObjectResult(errorResponse)
         {
-            StatusCode = statusCode
+            StatusCode = (int)error.StatusCode
         };
     }
 
-    private static NooException GetError(IClientErrorActionResult clientError, int statusCode)
+    private static NooException ResolveException(IClientErrorActionResult clientError, int statusCode)
     {
-        switch (statusCode)
+        if (clientError is ObjectResult { Value: NooException embedded })
         {
-            case StatusCodes.Status400BadRequest:
-                return new BadRequestException();
-            case StatusCodes.Status401Unauthorized:
-                return new UnauthorizedException();
-            case StatusCodes.Status403Forbidden:
-                return new ForbiddenException();
-            case StatusCodes.Status404NotFound:
-                return new NotFoundException();
-            case StatusCodes.Status409Conflict:
-                return new AlreadyExistsException();
-            case StatusCodes.Status415UnsupportedMediaType:
-                return new UnsupportedMediaTypeException();
-            default:
-                throw new Exception($"Unhandled client error: {clientError.GetType().Name}");
+            return embedded;
         }
+
+        var error = statusCode switch
+        {
+            StatusCodes.Status400BadRequest => new BadRequestException(),
+            StatusCodes.Status401Unauthorized => new UnauthorizedException(),
+            StatusCodes.Status403Forbidden => new ForbiddenException(),
+            StatusCodes.Status404NotFound => new NotFoundException(),
+            StatusCodes.Status409Conflict => new AlreadyExistsException(),
+            StatusCodes.Status415UnsupportedMediaType => new UnsupportedMediaTypeException(),
+            _ => CreateGenericClientError(clientError, statusCode)
+        };
+
+        if (clientError is ObjectResult { Value: ProblemDetails details })
+        {
+            if (details.Extensions.Count > 0)
+            {
+                error.Payload = details.Extensions;
+            }
+        }
+
+        return error;
+    }
+
+    private static NooException CreateGenericClientError(IClientErrorActionResult clientError, int statusCode)
+    {
+        var hasHttpStatus = Enum.IsDefined(typeof(HttpStatusCode), statusCode);
+        var httpStatusCode = hasHttpStatus
+            ? (HttpStatusCode)statusCode
+            : HttpStatusCode.BadRequest;
+
+        var message = clientError switch
+        {
+            ObjectResult { Value: ProblemDetails details } => details.Detail ?? details.Title,
+            _ => null
+        } ?? "The request could not be processed.";
+
+        return new NooException(httpStatusCode, message)
+        {
+            Id = $"HTTP_{statusCode}"
+        };
     }
 }

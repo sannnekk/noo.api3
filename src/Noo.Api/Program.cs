@@ -41,6 +41,7 @@ builder.WebHost.AddWebServerConfiguration(builder.Configuration);
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+app.UseExceptionHandling();
 app.UseRouting();
 app.UseRateLimiter();
 app.UseNooSwagger(app.Configuration);
@@ -52,7 +53,6 @@ app.UseAuthorization();
 app.UseSessionActivity();
 app.MapControllers();
 app.MapHealthAllChecks();
-app.UseExceptionHandling();
 
 // Ensure database is created when running tests
 if (app.Environment.IsEnvironment("Testing"))

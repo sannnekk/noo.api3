@@ -1,14 +1,10 @@
-using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
-using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Response;
 using Noo.Api.Core.Utils.DI;
 
 namespace Noo.Api.Core.Exceptions;
 
 [RegisterScoped]
-public class PipelineExceptionHandler
+public class PipelineExceptionHandler : IMiddleware
 {
     private readonly ILogger<PipelineExceptionHandler> _logger;
 
@@ -17,58 +13,48 @@ public class PipelineExceptionHandler
         _logger = logger;
     }
 
-    public async Task HandleExceptionAsync(HttpContext context, Exception? exception = null)
+    public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+    {
+        try
+        {
+            await next(context);
+        }
+        catch (Exception exception)
+        {
+            if (!await TryHandleExceptionAsync(context, exception))
+            {
+                throw;
+            }
+        }
+    }
+
+    internal async Task<bool> TryHandleExceptionAsync(HttpContext context, Exception exception)
     {
         if (context.Response.HasStarted)
         {
-            return;
+            _logger.LogWarning(exception, "Cannot handle exception because the response has already started.");
+            return false;
         }
 
-        if (exception == null)
-        {
-            exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
-
-            if (exception == null)
-            {
-                return;
-            }
-        }
-
-        var error = exception switch
-        {
-            NooException nooException => nooException,
-            _ => NooException.FromUnhandled(exception)
-        };
+        var error = exception is NooException known
+            ? known
+            : NooException.FromUnhandled(exception);
 
         if (error.IsInternal)
         {
             _logger.LogError(exception, "Unhandled exception occurred. LogId: {LogId}", error.LogId);
         }
+        else if (!ReferenceEquals(error, exception))
+        {
+            _logger.LogError(exception, "Unhandled exception converted to NooException. LogId: {LogId}", error.LogId);
+        }
 
-        var response = new ErrorApiResponseDTO(error.SerializePublicly());
-
+        context.Response.Clear();
         context.Response.StatusCode = (int)error.StatusCode;
+        context.Response.ContentType = "application/json";
+
+        var response = new ErrorApiResponseDTO(error.Serialize());
         await context.Response.WriteAsJsonAsync(response);
-    }
-
-    public async Task HandleExceptionAsync(ExceptionContext context)
-    {
-        await HandleExceptionAsync(context.HttpContext, context.Exception);
-        context.ExceptionHandled = true;
-    }
-
-    internal IActionResult HandleBadRequestException(ActionContext context)
-    {
-        var errors = context.ModelState
-            .Where(e => e.Value?.Errors.Count > 0)
-            .ToDictionary(
-                kvp => kvp.Key,
-                kvp => kvp.Value!.Errors.Select(e => e.Exception?.Message ?? e.ErrorMessage).ToArray()
-            );
-
-        var error = new BadRequestException() { Payload = errors };
-        var response = new ErrorApiResponseDTO(error.SerializePublicly());
-
-        return new BadRequestObjectResult(response);
+        return true;
     }
 }

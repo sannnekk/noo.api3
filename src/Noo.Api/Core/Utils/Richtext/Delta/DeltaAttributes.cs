@@ -24,7 +24,6 @@ public class DeltaAttributes
 
     [JsonPropertyName("script")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     public DeltaScriptAttribute? Script { get; set; }
 
     [JsonPropertyName("link")]
@@ -38,12 +37,10 @@ public class DeltaAttributes
     public int? Header { get; set; }
 
     [JsonPropertyName("list")]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DeltaListAttribute? List { get; set; }
 
     [JsonPropertyName("align")]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DeltaAlignAttribute? Align { get; set; }
 

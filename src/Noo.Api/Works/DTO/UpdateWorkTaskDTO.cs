@@ -38,7 +38,6 @@ public record UpdateWorkTaskDTO
     public IRichTextType? Explanation { get; set; }
 
     [JsonPropertyName("checkStrategy")]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     public WorkTaskCheckStrategy? CheckStrategy { get; set; }
 
     [JsonPropertyName("showAnswerBeforeCheck")]
