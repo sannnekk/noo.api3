@@ -6,8 +6,17 @@ namespace Noo.Api.Works.DTO;
 
 public record WorkDTO
 {
+    [JsonPropertyName("_entityName")]
+    public string EntityName => "Work";
+
     [JsonPropertyName("id")]
     public Ulid Id { get; init; }
+
+    [JsonPropertyName("createdAt")]
+    public DateTime CreatedAt { get; init; }
+
+    [JsonPropertyName("updatedAt")]
+    public DateTime? UpdatedAt { get; init; }
 
     [JsonPropertyName("title")]
     public string Title { get; init; } = string.Empty;

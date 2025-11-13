@@ -7,6 +7,8 @@ using Noo.Api.Works.DTO;
 using Noo.Api.Works.Models;
 using Noo.Api.Works.Filters;
 using Microsoft.EntityFrameworkCore;
+using Noo.Api.Core.Exceptions.Http;
+using Noo.Api.Core.Utils.Json;
 
 namespace Noo.Api.Works.Services;
 
@@ -48,8 +50,23 @@ public class WorkService : IWorkService
 
     public async Task UpdateWorkAsync(Ulid id, JsonPatchDocument<UpdateWorkDTO> updateWorkDto, ModelStateDictionary? modelState = null)
     {
+        modelState ??= new ModelStateDictionary();
 
-        await _workRepository.UpdateWithJsonPatchAsync(id, updateWorkDto, _mapper, modelState);
+        var workModel = await _workRepository.GetWithTasksAsync(id);
+        if (workModel == null)
+        {
+            throw new NotFoundException();
+        }
+
+        var workDto = _mapper.Map<UpdateWorkDTO>(workModel);
+        updateWorkDto.ApplyToAndValidate(workDto, modelState);
+
+        if (!modelState.IsValid)
+        {
+            throw new BadRequestException("Invalid model state");
+        }
+
+        _mapper.Map(workDto, workModel);
         await _unitOfWork.CommitAsync();
     }
 

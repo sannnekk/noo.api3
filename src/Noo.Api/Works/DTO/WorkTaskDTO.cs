@@ -7,9 +7,18 @@ namespace Noo.Api.Works.DTO;
 
 public record WorkTaskDTO
 {
+    [JsonPropertyName("_entityName")]
+    public string EntityName => "WorkTask";
+
     [JsonPropertyName("id")]
     [JsonConverter(typeof(UlidJsonConverter))]
     public Ulid? Id { get; init; }
+
+    [JsonPropertyName("createdAt")]
+    public DateTime CreatedAt { get; init; }
+
+    [JsonPropertyName("updatedAt")]
+    public DateTime? UpdatedAt { get; init; }
 
     [JsonPropertyName("type")]
     public WorkTaskType Type { get; set; }

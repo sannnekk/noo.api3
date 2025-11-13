@@ -4,6 +4,9 @@ namespace Noo.Api.Subjects.DTO;
 
 public record SubjectDTO
 {
+    [JsonPropertyName("_entityName")]
+    public string EntityName => "Subject";
+
     [JsonPropertyName("id")]
     public Ulid Id { get; set; }
 

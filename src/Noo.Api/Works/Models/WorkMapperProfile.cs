@@ -29,7 +29,11 @@ public class WorkMapperProfile : Profile
             .ForMember(dest => dest.Work, opt => opt.Ignore());
 
         // work
-        CreateMap<WorkModel, UpdateWorkDTO>();
+        CreateMap<WorkModel, UpdateWorkDTO>()
+            .ForMember(dest => dest.Tasks, opt => opt.MapFrom((src, _, _, context) =>
+                src.Tasks?.ToDictionary(
+                    task => task.Id.ToString(),
+                    task => context.Mapper.Map<UpdateWorkTaskDTO>(task))));
 
         CreateMap<WorkModel, WorkDTO>();
 
@@ -38,7 +42,8 @@ public class WorkMapperProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Subject, opt => opt.Ignore())
-            .ForMember(dest => dest.CourseMaterialContents, opt => opt.Ignore());
+            .ForMember(dest => dest.CourseMaterialContents, opt => opt.Ignore())
+            .ForMember(dest => dest.Tasks, opt => opt.MapFrom(src => src.Tasks != null ? src.Tasks.Values : null));
 
         CreateMap<CreateWorkDTO, WorkModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())

@@ -1,5 +1,6 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Works.DTO;
 using Noo.Api.Works.Filters;
 using Noo.Api.Works.Models;
@@ -41,7 +42,7 @@ public class WorkServiceTests
             SubjectId = Ulid.NewUlid(),
             Tasks =
             [
-                new CreateWorkTaskDTO { Type = WorkTaskType.Word, Order = 0, MaxScore = 1, Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText("{}") }
+                new CreateWorkTaskDTO { Type = WorkTaskType.Word, Order = 0, MaxScore = 1, Content = DeltaRichText.FromString("abc") }
             ]
         };
 
@@ -110,7 +111,7 @@ public class WorkServiceTests
             SubjectId = Ulid.NewUlid(),
             Tasks =
             [
-                new CreateWorkTaskDTO { Type = WorkTaskType.Word, Order = 0, MaxScore = 1, Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText("{}") }
+                new CreateWorkTaskDTO { Type = WorkTaskType.Word, Order = 0, MaxScore = 1, Content = DeltaRichText.FromString("abc") }
             ]
         });
 

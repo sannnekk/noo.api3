@@ -11,7 +11,8 @@ public class WorkRepository : Repository<WorkModel>, IWorkRepository
         var repository = Context.GetDbSet<WorkModel>();
 
         return repository
-            .Include(x => x.Tasks)
+            .Include(x => x.Tasks!
+                .OrderBy(task => task.Order))
             .FirstOrDefaultAsync(x => x.Id == id);
     }
 }

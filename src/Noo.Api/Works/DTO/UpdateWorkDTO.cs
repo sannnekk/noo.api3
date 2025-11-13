@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Options;
 using Noo.Api.Works.Types;
 
 namespace Noo.Api.Works.DTO;
@@ -27,8 +26,8 @@ public record UpdateWorkDTO
     public Ulid? SubjectId { get; set; }
 
     [Required]
-    [MaxLength(300)]
-    [ValidateEnumeratedItems]
+    //[MaxLength(300)]
+    //[ValidateEnumeratedItems]
     [JsonPropertyName("tasks")]
-    public ICollection<UpdateWorkTaskDTO>? Tasks { get; set; }
+    public IDictionary<string, UpdateWorkTaskDTO>? Tasks { get; set; }
 }

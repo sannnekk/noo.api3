@@ -5,5 +5,6 @@ public enum WorkTaskType
     Word,
     Text,
     Essay,
-    FinalEssay
+    FinalEssay,
+    Dictation
 }

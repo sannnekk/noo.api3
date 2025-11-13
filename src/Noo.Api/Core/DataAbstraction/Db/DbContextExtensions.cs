@@ -9,7 +9,6 @@ using Noo.Api.Core.DataAbstraction.Model.Attributes;
 using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.Json;
 using Noo.Api.Core.Utils.Richtext;
-using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Core.Utils.Ulid;
 
 namespace Noo.Api.Core.DataAbstraction.Db;
@@ -116,9 +115,9 @@ public static class DbContextExtensions
         {
             var richTextAttribute = property.GetCustomAttribute<RichTextColumnAttribute>()!;
 
-            var converter = new ValueConverter<IRichTextType, string?>(
-                v => v.ToString(),
-                v => new DeltaRichText(v)
+            var converter = new ValueConverter<IRichTextType?, string?>(
+                v => RichTextJsonSerializer.Serialize(v),
+                v => RichTextJsonSerializer.Deserialize(v)
             );
 
             modelBuilder.Entity(property.DeclaringType!)

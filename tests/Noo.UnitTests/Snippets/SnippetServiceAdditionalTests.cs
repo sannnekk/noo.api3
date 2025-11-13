@@ -33,7 +33,7 @@ public class SnippetServiceAdditionalTests
             await service.CreateSnippetAsync(userId, new CreateSnippetDTO
             {
                 Name = $"S{i}",
-                Content = new DeltaRichText("{}")
+                Content = DeltaRichText.FromString("abc")
             });
         }
 
@@ -75,7 +75,7 @@ public class SnippetServiceAdditionalTests
         var mapper = CreateMapper();
         var service = new SnippetService(uow, mapper);
         var userId = Ulid.NewUlid();
-        await service.CreateSnippetAsync(userId, new CreateSnippetDTO { Name = "Initial", Content = new DeltaRichText("{}") });
+        await service.CreateSnippetAsync(userId, new CreateSnippetDTO { Name = "Initial", Content = DeltaRichText.FromString("abc") });
         var list = await service.GetSnippetsAsync(userId);
         var snippet = list.Items.First();
 
@@ -99,7 +99,7 @@ public class SnippetServiceAdditionalTests
         var mapper = CreateMapper();
         var service = new SnippetService(uow, mapper);
         var userId = Ulid.NewUlid();
-        await service.CreateSnippetAsync(userId, new CreateSnippetDTO { Name = "Initial", Content = new DeltaRichText("{}") });
+        await service.CreateSnippetAsync(userId, new CreateSnippetDTO { Name = "Initial", Content = DeltaRichText.FromString("abc") });
         var list = await service.GetSnippetsAsync(userId);
         var snippet = list.Items.First();
 

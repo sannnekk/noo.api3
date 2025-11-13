@@ -33,7 +33,7 @@ public class SnippetServiceTests
         var create = new CreateSnippetDTO
         {
             Name = "My first snippet",
-            Content = new DeltaRichText("{}")
+            Content = DeltaRichText.FromString("abc")
         };
         await service.CreateSnippetAsync(userId, create);
 
@@ -83,7 +83,7 @@ public class SnippetServiceTests
         await service.CreateSnippetAsync(ownerId, new CreateSnippetDTO
         {
             Name = "Owner's snippet",
-            Content = new DeltaRichText("{}")
+            Content = DeltaRichText.FromString("abc")
         });
 
         var list = await service.GetSnippetsAsync(ownerId);
@@ -108,7 +108,7 @@ public class SnippetServiceTests
         await service.CreateSnippetAsync(userId, new CreateSnippetDTO
         {
             Name = "Valid name",
-            Content = new DeltaRichText("{}")
+            Content = DeltaRichText.FromString("abc")
         });
 
         var list = await service.GetSnippetsAsync(userId);
@@ -138,7 +138,7 @@ public class SnippetServiceTests
         await service.CreateSnippetAsync(ownerId, new CreateSnippetDTO
         {
             Name = "To delete",
-            Content = new DeltaRichText("{}")
+            Content = DeltaRichText.FromString("abc")
         });
 
         var list = await service.GetSnippetsAsync(ownerId);
@@ -158,8 +158,8 @@ public class SnippetServiceTests
         var userA = Ulid.NewUlid();
         var userB = Ulid.NewUlid();
 
-        await service.CreateSnippetAsync(userA, new CreateSnippetDTO { Name = "A1", Content = new DeltaRichText("{}") });
-        await service.CreateSnippetAsync(userB, new CreateSnippetDTO { Name = "B1", Content = new DeltaRichText("{}") });
+        await service.CreateSnippetAsync(userA, new CreateSnippetDTO { Name = "A1", Content = DeltaRichText.FromString("abc") });
+        await service.CreateSnippetAsync(userB, new CreateSnippetDTO { Name = "B1", Content = DeltaRichText.FromString("abc") });
 
         var listA = await service.GetSnippetsAsync(userA);
         var listB = await service.GetSnippetsAsync(userB);

@@ -3,6 +3,7 @@ using Noo.Api.Works.DTO;
 using Noo.Api.Works.Models;
 using Noo.Api.Works.Types;
 using Noo.Api.Subjects.Models;
+using Noo.Api.Core.Utils.Richtext.Delta;
 
 namespace Noo.UnitTests.Works;
 
@@ -32,7 +33,7 @@ public class WorkMapperProfileTests
             SubjectId = Ulid.NewUlid(),
             Tasks =
             [
-                new CreateWorkTaskDTO { Type = WorkTaskType.Text, Order = 1, MaxScore = 5, Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText("{}") }
+                new CreateWorkTaskDTO { Type = WorkTaskType.Text, Order = 1, MaxScore = 5, Content = DeltaRichText.FromString("abc") }
             ]
         };
 
