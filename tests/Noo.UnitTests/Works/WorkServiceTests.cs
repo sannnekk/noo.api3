@@ -1,5 +1,5 @@
 using AutoMapper;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Works.DTO;
 using Noo.Api.Works.Filters;
@@ -31,7 +31,9 @@ public class WorkServiceTests
         using var context = TestHelpers.CreateInMemoryDb(dbName);
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new WorkService(uow, mapper);
+        var patchUpdater = new JsonPatchUpdateService(mapper);
+        var repository = new WorkRepository(context);
+        var service = new WorkService(uow, repository, mapper, patchUpdater);
 
         // Create
         var create = new CreateWorkDTO
@@ -63,7 +65,7 @@ public class WorkServiceTests
         // Update (patch title)
         var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateWorkDTO>();
         patch.Replace(x => x.Title, "Updated Title");
-        await service.UpdateWorkAsync(id, patch, new ModelStateDictionary());
+        await service.UpdateWorkAsync(id, patch);
 
         var updated = await service.GetWorkAsync(id);
         Assert.Equal("Updated Title", updated!.Title);
@@ -71,11 +73,13 @@ public class WorkServiceTests
         // Delete in a fresh context to avoid tracking conflict
         using var deleteContext = TestHelpers.CreateInMemoryDb(dbName);
         var deleteUow = TestHelpers.CreateUowMock(deleteContext).Object;
-        var deleteService = new WorkService(deleteUow, mapper);
+        var deleteRepository = new WorkRepository(deleteContext);
+        var deleteService = new WorkService(deleteUow, deleteRepository, mapper, patchUpdater);
         await deleteService.DeleteWorkAsync(id);
         using var verifyContext = TestHelpers.CreateInMemoryDb(dbName);
         var verifyUow = TestHelpers.CreateUowMock(verifyContext).Object;
-        var verifyService = new WorkService(verifyUow, mapper);
+        var verifyRepository = new WorkRepository(verifyContext);
+        var verifyService = new WorkService(verifyUow, verifyRepository, mapper, patchUpdater);
         var afterDelete = await verifyService.GetWorkAsync(id);
         Assert.Null(afterDelete);
     }
@@ -86,13 +90,14 @@ public class WorkServiceTests
         using var context = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new WorkService(uow, mapper);
+        var repository = new WorkRepository(context);
+        var service = new WorkService(uow, repository, mapper, new JsonPatchUpdateService(mapper));
 
         var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateWorkDTO>();
         patch.Replace(x => x.Title, "Doesn't matter");
 
         await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(
-            () => service.UpdateWorkAsync(Ulid.NewUlid(), patch, new ModelStateDictionary()));
+            () => service.UpdateWorkAsync(Ulid.NewUlid(), patch));
     }
 
     [Fact(DisplayName = "WorkService: Invalid patch produces BadRequest")]
@@ -101,7 +106,9 @@ public class WorkServiceTests
         using var context = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new WorkService(uow, mapper);
+        var patchService = new JsonPatchUpdateService(mapper);
+        var repository = new WorkRepository(context);
+        var service = new WorkService(uow, repository, mapper, patchService);
 
         // Seed a work
         var id = await service.CreateWorkAsync(new CreateWorkDTO
@@ -120,7 +127,7 @@ public class WorkServiceTests
         patch.Replace(x => x.Title, "");
 
         await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.BadRequestException>(
-            () => service.UpdateWorkAsync(id, patch, new ModelStateDictionary()));
+            () => service.UpdateWorkAsync(id, patch));
     }
 
     [Fact(DisplayName = "WorkService: Delete non-existent succeeds silently")]
@@ -129,7 +136,8 @@ public class WorkServiceTests
         using var context = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new WorkService(uow, mapper);
+        var repository = new WorkRepository(context);
+        var service = new WorkService(uow, repository, mapper, new JsonPatchUpdateService(mapper));
 
         // Should not throw
         await service.DeleteWorkAsync(Ulid.NewUlid());

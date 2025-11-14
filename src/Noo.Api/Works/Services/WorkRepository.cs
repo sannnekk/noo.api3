@@ -1,11 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.Works.Models;
 
 namespace Noo.Api.Works.Services;
 
+[RegisterScoped(typeof(IWorkRepository))]
 public class WorkRepository : Repository<WorkModel>, IWorkRepository
 {
+    public WorkRepository(NooDbContext context) : base(context)
+    {
+    }
+
     public Task<WorkModel?> GetWithTasksAsync(Ulid id)
     {
         var repository = Context.GetDbSet<WorkModel>();
@@ -14,16 +20,5 @@ public class WorkRepository : Repository<WorkModel>, IWorkRepository
             .Include(x => x.Tasks!
                 .OrderBy(task => task.Order))
             .FirstOrDefaultAsync(x => x.Id == id);
-    }
-}
-
-public static class UnitIOfWorkWorkRepositoryExtensions
-{
-    public static IWorkRepository WorkRepository(this IUnitOfWork unitOfWork)
-    {
-        return new WorkRepository()
-        {
-            Context = unitOfWork.Context
-        };
     }
 }

@@ -98,7 +98,7 @@ public class WorkController : ApiController
     )]
     public async Task<IActionResult> UpdateWorkAsync([FromRoute] Ulid id, [FromBody] JsonPatchDocument<UpdateWorkDTO> work)
     {
-        await _workService.UpdateWorkAsync(id, work, ModelState);
+        await _workService.UpdateWorkAsync(id, work);
 
         return SendResponse();
     }

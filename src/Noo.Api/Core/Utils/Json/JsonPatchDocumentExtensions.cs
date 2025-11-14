@@ -27,12 +27,12 @@ public static class JsonPatchDocumentExtensions
         {
             foreach (var result in validationResults)
             {
-                var memberNames = result.MemberNames?.Any() == true ? result.MemberNames : new[] { string.Empty };
-                foreach (var member in memberNames)
+                foreach (var member in result.MemberNames?.Any() == true ? result.MemberNames : [string.Empty])
                 {
                     modelState.AddModelError(member, result.ErrorMessage ?? "Validation error");
                 }
             }
+
             // Add a generic error to guarantee IsValid == false in all cases
             modelState.AddModelError(string.Empty, "Validation failed");
         }

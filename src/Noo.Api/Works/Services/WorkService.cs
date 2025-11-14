@@ -1,14 +1,13 @@
 using AutoMapper;
 using SystemTextJsonPatch;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Works.DTO;
 using Noo.Api.Works.Models;
 using Noo.Api.Works.Filters;
 using Microsoft.EntityFrameworkCore;
-using Noo.Api.Core.Exceptions.Http;
-using Noo.Api.Core.Utils.Json;
+using Noo.Api.Core.Request.Patching;
+using Noo.Api.Core.Exceptions;
 
 namespace Noo.Api.Works.Services;
 
@@ -21,18 +20,21 @@ public class WorkService : IWorkService
 
     private readonly IMapper _mapper;
 
-    public WorkService(IUnitOfWork unitOfWork, IMapper mapper)
+    private readonly IJsonPatchUpdateService _patchUpdateService;
+
+    public WorkService(IUnitOfWork unitOfWork, IWorkRepository workRepository, IMapper mapper, IJsonPatchUpdateService patchUpdateService)
     {
         _unitOfWork = unitOfWork;
-        _workRepository = unitOfWork.WorkRepository();
+        _workRepository = workRepository;
         _mapper = mapper;
+        _patchUpdateService = patchUpdateService;
     }
 
     public async Task<Ulid> CreateWorkAsync(CreateWorkDTO work)
     {
         var model = _mapper.Map<WorkModel>(work);
 
-        _unitOfWork.WorkRepository().Add(model);
+        _workRepository.Add(model);
         await _unitOfWork.CommitAsync();
 
         return model.Id;
@@ -40,33 +42,21 @@ public class WorkService : IWorkService
 
     public Task<WorkModel?> GetWorkAsync(Ulid id)
     {
-        return _unitOfWork.WorkRepository().GetWithTasksAsync(id);
+        return _workRepository.GetWithTasksAsync(id);
     }
 
     public Task<SearchResult<WorkModel>> GetWorksAsync(WorkFilter filter)
     {
-        return _unitOfWork.WorkRepository().SearchAsync(filter);
+        return _workRepository.SearchAsync(filter);
     }
 
-    public async Task UpdateWorkAsync(Ulid id, JsonPatchDocument<UpdateWorkDTO> updateWorkDto, ModelStateDictionary? modelState = null)
+    public async Task UpdateWorkAsync(Ulid id, JsonPatchDocument<UpdateWorkDTO> updateWorkDto)
     {
-        modelState ??= new ModelStateDictionary();
-
         var workModel = await _workRepository.GetWithTasksAsync(id);
-        if (workModel == null)
-        {
-            throw new NotFoundException();
-        }
 
-        var workDto = _mapper.Map<UpdateWorkDTO>(workModel);
-        updateWorkDto.ApplyToAndValidate(workDto, modelState);
+        workModel.ThrowNotFoundIfNull();
 
-        if (!modelState.IsValid)
-        {
-            throw new BadRequestException("Invalid model state");
-        }
-
-        _mapper.Map(workDto, workModel);
+        _patchUpdateService.ApplyPatch(workModel, updateWorkDto);
         await _unitOfWork.CommitAsync();
     }
 
@@ -74,7 +64,7 @@ public class WorkService : IWorkService
     {
         try
         {
-            _unitOfWork.WorkRepository().DeleteById(id);
+            _workRepository.DeleteById(id);
             await _unitOfWork.CommitAsync();
         }
         catch (DbUpdateConcurrencyException)

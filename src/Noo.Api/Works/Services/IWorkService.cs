@@ -1,5 +1,4 @@
 using SystemTextJsonPatch;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Works.DTO;
 using Noo.Api.Works.Models;
 using Noo.Api.Core.DataAbstraction.Db;
@@ -15,7 +14,7 @@ public interface IWorkService
 
     public Task<Ulid> CreateWorkAsync(CreateWorkDTO work);
 
-    public Task UpdateWorkAsync(Ulid id, JsonPatchDocument<UpdateWorkDTO> workUpdatePayload, ModelStateDictionary? modelState = null);
+    public Task UpdateWorkAsync(Ulid id, JsonPatchDocument<UpdateWorkDTO> workUpdatePayload);
 
     public Task DeleteWorkAsync(Ulid id);
 }
