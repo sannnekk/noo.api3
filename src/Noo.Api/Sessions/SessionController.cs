@@ -83,8 +83,8 @@ public class SessionController : ApiController
     [Produces(
         null, StatusCodes.Status204NoContent,
         StatusCodes.Status401Unauthorized,
-    StatusCodes.Status403Forbidden,
-    StatusCodes.Status404NotFound
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
     )]
     public async Task<IActionResult> DeleteSessionAsync([FromRoute] Ulid sessionId)
     {

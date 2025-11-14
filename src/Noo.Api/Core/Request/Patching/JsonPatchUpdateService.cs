@@ -1,6 +1,7 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.Exceptions;
+using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Core.Utils.Json;
 using SystemTextJsonPatch;
@@ -17,6 +18,10 @@ public class JsonPatchUpdateService : IJsonPatchUpdateService
         _mapper = mapper;
     }
 
+    /// <summary>
+	/// Applies a JSON Patch document to an entity.
+	/// </summary>
+	/// <exception cref="BadRequestException"></exception>
     public void ApplyPatch<TEntity, TUpdateDto>(
         TEntity entity,
         JsonPatchDocument<TUpdateDto> patchDocument

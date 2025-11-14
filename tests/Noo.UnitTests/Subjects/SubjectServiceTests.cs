@@ -1,5 +1,5 @@
 using AutoMapper;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Subjects.DTO;
 using Noo.Api.Subjects.Filters;
 using Noo.Api.Subjects.Models;
@@ -25,7 +25,9 @@ public class SubjectServiceTests
         using var context = TestHelpers.CreateInMemoryDb(dbName);
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new SubjectService(uow, mapper);
+        var repository = new SubjectRepository(context);
+        var jsonPatchService = new JsonPatchUpdateService(mapper);
+        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
 
         var create = new SubjectCreationDTO { Name = "Biology", Color = "#abcdef" };
         var id = await service.CreateSubjectAsync(create);
@@ -41,19 +43,23 @@ public class SubjectServiceTests
 
         var patch = new SystemTextJsonPatch.JsonPatchDocument<SubjectUpdateDTO>();
         patch.Replace(x => x.Name, "Biology 2");
-        await service.UpdateSubjectAsync(id, patch, new ModelStateDictionary());
+        await service.UpdateSubjectAsync(id, patch);
 
         var updated = await service.GetSubjectByIdAsync(id);
         Assert.Equal("Biology 2", updated!.Name);
 
         using var deleteContext = TestHelpers.CreateInMemoryDb(dbName);
         var deleteUow = TestHelpers.CreateUowMock(deleteContext).Object;
-        var deleteService = new SubjectService(deleteUow, mapper);
+        var deleteRepository = new SubjectRepository(deleteContext);
+        var deleteJsonPatchService = new JsonPatchUpdateService(mapper);
+        var deleteService = new SubjectService(deleteUow, deleteRepository, deleteJsonPatchService, mapper);
         await deleteService.DeleteSubjectAsync(id);
 
         using var verifyContext = TestHelpers.CreateInMemoryDb(dbName);
         var verifyUow = TestHelpers.CreateUowMock(verifyContext).Object;
-        var verifyService = new SubjectService(verifyUow, mapper);
+        var verifyRepository = new SubjectRepository(verifyContext);
+        var verifyJsonPatchService = new JsonPatchUpdateService(mapper);
+        var verifyService = new SubjectService(verifyUow, verifyRepository, verifyJsonPatchService, mapper);
         var afterDelete = await verifyService.GetSubjectByIdAsync(id);
         Assert.Null(afterDelete);
     }

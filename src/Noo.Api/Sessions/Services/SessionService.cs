@@ -1,7 +1,6 @@
 using AutoMapper;
-using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.DataAbstraction.Db;
-using Noo.Api.Core.Exceptions.Http;
+using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Sessions.Models;
 using Noo.Api.Sessions.Utils;
@@ -15,11 +14,11 @@ public class SessionService : ISessionService
     private readonly ISessionRepository _sessionRepository;
     private readonly IMapper _mapper;
 
-    public SessionService(IUnitOfWork unitOfWork, IMapper mapper)
+    public SessionService(IUnitOfWork unitOfWork, ISessionRepository sessionRepository, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
-        _sessionRepository = _unitOfWork.SessionRepository();
+        _sessionRepository = sessionRepository;
     }
 
     public async Task<Ulid> CreateSessionIfNotExistsAsync(HttpContext context, Ulid userId)
@@ -32,19 +31,15 @@ public class SessionService : ISessionService
         var incoming = context.AsSessionModel(userId);
 
         // Deduplicate: prefer deviceId when present; else fallback to user agent for browsers
-        var set = _unitOfWork.Context.GetDbSet<SessionModel>();
         SessionModel? existing = null;
+
         if (!string.IsNullOrWhiteSpace(incoming.DeviceId))
         {
-            existing = await set
-                .OrderByDescending(s => s.LastRequestAt ?? s.UpdatedAt ?? s.CreatedAt)
-                .FirstOrDefaultAsync(s => s.UserId == userId && s.DeviceId == incoming.DeviceId);
+            existing = await _sessionRepository.GetByDeviceIdAsync(userId, incoming.DeviceId);
         }
         else if (!string.IsNullOrWhiteSpace(incoming.UserAgent))
         {
-            existing = await set
-                .OrderByDescending(s => s.LastRequestAt ?? s.UpdatedAt ?? s.CreatedAt)
-                .FirstOrDefaultAsync(s => s.UserId == userId && s.UserAgent == incoming.UserAgent);
+            existing = await _sessionRepository.GetByUserAgentAsync(userId, incoming.UserAgent);
         }
 
         if (existing is null)
@@ -72,23 +67,17 @@ public class SessionService : ISessionService
 
     public Task DeleteAllSessionsAsync(Ulid userId)
     {
-        _sessionRepository.DeleteAllSessionsAsync(userId);
+        _sessionRepository.DeleteAllSessions(userId);
         return _unitOfWork.CommitAsync();
     }
 
     public async Task DeleteSessionAsync(Ulid sessionId, Ulid userId)
     {
-        // Enforce ownership strictly: only delete when the session belongs to the user.
-        var set = _unitOfWork.Context.GetDbSet<SessionModel>();
-        var entity = await set.FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == userId);
+        var model = await _sessionRepository.GetAsync(sessionId, userId);
 
-        if (entity is null)
-        {
-            // Surface as 404 to callers that care (e.g., DELETE /session/{id}).
-            throw new NotFoundException();
-        }
+        model.ThrowNotFoundIfNull();
 
-        set.Remove(entity);
+        _sessionRepository.Delete(model);
         await _unitOfWork.CommitAsync();
     }
 

@@ -1,6 +1,7 @@
 using AutoMapper;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Exceptions;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Subjects.DTO;
 using Noo.Api.Subjects.Filters;
@@ -13,15 +14,15 @@ namespace Noo.Api.Subjects.Services;
 public class SubjectService : ISubjectService
 {
     private readonly IUnitOfWork _unitOfWork;
-
     private readonly ISubjectRepository _subjectRepository;
-
+    private readonly IJsonPatchUpdateService _jsonPatchUpdateService;
     private readonly IMapper _mapper;
 
-    public SubjectService(IUnitOfWork unitOfWork, IMapper mapper)
+    public SubjectService(IUnitOfWork unitOfWork, ISubjectRepository subjectRepository, IJsonPatchUpdateService jsonPatchUpdateService, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
-        _subjectRepository = unitOfWork.SubjectRepository();
+        _subjectRepository = subjectRepository;
+        _jsonPatchUpdateService = jsonPatchUpdateService;
         _mapper = mapper;
     }
 
@@ -51,10 +52,15 @@ public class SubjectService : ISubjectService
         return _subjectRepository.SearchAsync(filter);
     }
 
-    public async Task UpdateSubjectAsync(Ulid id, JsonPatchDocument<SubjectUpdateDTO> updateSubjectDto, ModelStateDictionary? modelState = null)
+    public async Task UpdateSubjectAsync(Ulid id, JsonPatchDocument<SubjectUpdateDTO> updateSubjectDto)
     {
-        await _subjectRepository.UpdateWithJsonPatchAsync(id, updateSubjectDto, _mapper, modelState);
+        var model = await _subjectRepository.GetByIdAsync(id);
 
+        model.ThrowNotFoundIfNull();
+
+        _jsonPatchUpdateService.ApplyPatch(model, updateSubjectDto);
+
+        _subjectRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 }

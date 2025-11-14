@@ -1,6 +1,6 @@
 using AutoMapper;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.Exceptions.Http;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Subjects.DTO;
 using Noo.Api.Subjects.Filters;
 using Noo.Api.Subjects.Models;
@@ -24,7 +24,10 @@ public class SubjectServiceAdditionalTests
         var db = Guid.NewGuid().ToString();
         using var context = TestHelpers.CreateInMemoryDb(db);
         var uow = TestHelpers.CreateUowMock(context).Object;
-        var service = new SubjectService(uow, CreateMapper());
+        var mapper = CreateMapper();
+        var repository = new SubjectRepository(context);
+        var jsonPatchService = new JsonPatchUpdateService(mapper);
+        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
         var result = await service.GetSubjectByIdAsync(Ulid.NewUlid());
         Assert.Null(result);
     }
@@ -35,10 +38,13 @@ public class SubjectServiceAdditionalTests
         var db = Guid.NewGuid().ToString();
         using var context = TestHelpers.CreateInMemoryDb(db);
         var uow = TestHelpers.CreateUowMock(context).Object;
-        var service = new SubjectService(uow, CreateMapper());
+        var mapper = CreateMapper();
+        var repository = new SubjectRepository(context);
+        var jsonPatchService = new JsonPatchUpdateService(mapper);
+        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
         var patch = new SystemTextJsonPatch.JsonPatchDocument<SubjectUpdateDTO>();
         patch.Replace(x => x.Name, "New");
-        await Assert.ThrowsAsync<NotFoundException>(() => service.UpdateSubjectAsync(Ulid.NewUlid(), patch, new ModelStateDictionary()));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.UpdateSubjectAsync(Ulid.NewUlid(), patch));
     }
 
     [Fact]
@@ -48,13 +54,15 @@ public class SubjectServiceAdditionalTests
         using var context = TestHelpers.CreateInMemoryDb(db);
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new SubjectService(uow, mapper);
+        var repository = new SubjectRepository(context);
+        var jsonPatchService = new JsonPatchUpdateService(mapper);
+        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
 
         var id = await service.CreateSubjectAsync(new SubjectCreationDTO { Name = "Math", Color = "#123456" });
 
         var patch = new SystemTextJsonPatch.JsonPatchDocument<SubjectUpdateDTO>();
         patch.Replace(x => x.Color, "not-a-color"); // invalid regex
-        await Assert.ThrowsAsync<BadRequestException>(() => service.UpdateSubjectAsync(id, patch, new ModelStateDictionary()));
+        await Assert.ThrowsAsync<BadRequestException>(() => service.UpdateSubjectAsync(id, patch));
     }
 
     [Fact]
@@ -63,7 +71,10 @@ public class SubjectServiceAdditionalTests
         var db = Guid.NewGuid().ToString();
         using var context = TestHelpers.CreateInMemoryDb(db);
         var uow = TestHelpers.CreateUowMock(context).Object;
-        var service = new SubjectService(uow, CreateMapper());
+        var mapper = CreateMapper();
+        var repository = new SubjectRepository(context);
+        var jsonPatchService = new JsonPatchUpdateService(mapper);
+        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
         // In EF InMemory provider DeleteById + Commit on non-existent throws DbUpdateConcurrencyException
         await Assert.ThrowsAsync<Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException>(() => service.DeleteSubjectAsync(Ulid.NewUlid()));
     }
@@ -75,7 +86,9 @@ public class SubjectServiceAdditionalTests
         using var context = TestHelpers.CreateInMemoryDb(db);
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new SubjectService(uow, mapper);
+        var repository = new SubjectRepository(context);
+        var jsonPatchService = new JsonPatchUpdateService(mapper);
+        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
 
         for (int i = 0; i < 15; i++)
         {
@@ -101,11 +114,13 @@ public class SubjectServiceAdditionalTests
         using var context = TestHelpers.CreateInMemoryDb(db);
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new SubjectService(uow, mapper);
+        var repository = new SubjectRepository(context);
+        var jsonPatchService = new JsonPatchUpdateService(mapper);
+        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
         var id = await service.CreateSubjectAsync(new SubjectCreationDTO { Name = "Physics", Color = "#abcdef" });
         var before = await service.GetSubjectByIdAsync(id);
         var emptyPatch = new SystemTextJsonPatch.JsonPatchDocument<SubjectUpdateDTO>();
-        await service.UpdateSubjectAsync(id, emptyPatch, new ModelStateDictionary());
+        await service.UpdateSubjectAsync(id, emptyPatch);
         var after = await service.GetSubjectByIdAsync(id);
         Assert.Equal(before!.Name, after!.Name);
         Assert.Equal(before.Color, after.Color);

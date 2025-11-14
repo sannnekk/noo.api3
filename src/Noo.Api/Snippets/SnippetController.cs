@@ -84,13 +84,13 @@ public class SnippetController : ApiController
     )
     {
         var userId = User.GetId();
-        await _snippetService.UpdateSnippetAsync(userId, snippetId, snippetUpdateDto, ModelState);
+        await _snippetService.UpdateSnippetAsync(userId, snippetId, snippetUpdateDto);
 
         return SendResponse();
     }
 
     /// <summary>
-    /// Deletes an existing snippet for the authenticated user.
+    /// Deletes a snippet for the authenticated user.
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpDelete("{snippetId}")]

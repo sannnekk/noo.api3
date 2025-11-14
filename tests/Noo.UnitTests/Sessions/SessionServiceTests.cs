@@ -28,7 +28,8 @@ public class SessionServiceTests
         var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx);
         var mapper = CreateMapper();
-        var svc = new SessionService(uow.Object, mapper);
+        var repository = new SessionRepository(ctx);
+        var svc = new SessionService(uow.Object, repository, mapper);
         return (svc, ctx, uow);
     }
 

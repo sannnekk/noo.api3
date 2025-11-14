@@ -1,6 +1,7 @@
 using AutoMapper;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Exceptions;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Support.DTO;
 using Noo.Api.Support.Models;
@@ -14,15 +15,20 @@ public class SupportService : ISupportService
     private readonly ISupportArticleRepository _articleRepository;
     private readonly ISupportCategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IJsonPatchUpdateService _jsonPatchUpdateService;
     private readonly IMapper _mapper;
 
     public SupportService(
         IUnitOfWork unitOfWork,
+        ISupportArticleRepository articleRepository,
+        ISupportCategoryRepository categoryRepository,
+        IJsonPatchUpdateService jsonPatchUpdateService,
         IMapper mapper)
     {
         _unitOfWork = unitOfWork;
-        _articleRepository = unitOfWork.SupportArticleRepository();
-        _categoryRepository = unitOfWork.SupportCategoryRepository();
+        _articleRepository = articleRepository;
+        _categoryRepository = categoryRepository;
+        _jsonPatchUpdateService = jsonPatchUpdateService;
         _mapper = mapper;
     }
 
@@ -69,15 +75,27 @@ public class SupportService : ISupportService
         return _categoryRepository.GetCategoryTreeAsync(false);
     }
 
-    public async Task UpdateArticleAsync(Ulid articleId, JsonPatchDocument<UpdateSupportArticleDTO> dto, ModelStateDictionary modelState)
+    public async Task UpdateArticleAsync(Ulid articleId, JsonPatchDocument<UpdateSupportArticleDTO> dto)
     {
-        await _articleRepository.UpdateWithJsonPatchAsync(articleId, dto, _mapper, modelState);
+        var model = await _articleRepository.GetByIdAsync(articleId);
+
+        model.ThrowNotFoundIfNull();
+
+        _jsonPatchUpdateService.ApplyPatch(model, dto);
+
+        _articleRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 
-    public async Task UpdateCategoryAsync(Ulid categoryId, JsonPatchDocument<UpdateSupportCategoryDTO> dto, ModelStateDictionary modelState)
+    public async Task UpdateCategoryAsync(Ulid categoryId, JsonPatchDocument<UpdateSupportCategoryDTO> dto)
     {
-        await _categoryRepository.UpdateWithJsonPatchAsync(categoryId, dto, _mapper, modelState);
+        var model = await _categoryRepository.GetByIdAsync(categoryId);
+
+        model.ThrowNotFoundIfNull();
+
+        _jsonPatchUpdateService.ApplyPatch(model, dto);
+
+        _categoryRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 }

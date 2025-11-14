@@ -79,6 +79,7 @@ public class UserService : IUserService
 
     public async Task DeleteUserAsync(Ulid id)
     {
+        // TODO: soft delete instead
         _userRepository.DeleteById(id);
         await _unitOfWork.CommitAsync();
     }

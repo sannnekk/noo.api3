@@ -1,11 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.Support.Models;
 
 namespace Noo.Api.Support.Services;
 
+[RegisterScoped(typeof(ISupportCategoryRepository))]
 public class SupportCategoryRepository : Repository<SupportCategoryModel>, ISupportCategoryRepository
 {
+    public SupportCategoryRepository(NooDbContext dbContext) : base(dbContext)
+    {
+    }
+
     public async Task<IEnumerable<SupportCategoryModel>> GetCategoryTreeAsync(bool includeInactive = false)
     {
         return await Context.GetDbSet<SupportCategoryModel>()
@@ -16,16 +22,5 @@ public class SupportCategoryRepository : Repository<SupportCategoryModel>, ISupp
             .Include(c => c.Articles)
             .AsNoTracking()
             .ToListAsync();
-    }
-}
-
-public static class IUnitOfWorkSupportCategoryRepositoryExtensions
-{
-    public static ISupportCategoryRepository SupportCategoryRepository(this IUnitOfWork unitOfWork)
-    {
-        return new SupportCategoryRepository()
-        {
-            Context = unitOfWork.Context
-        };
     }
 }

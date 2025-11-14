@@ -1,17 +1,13 @@
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.Support.Models;
 
 namespace Noo.Api.Support.Services;
 
-public class SupportArticleRepository : Repository<SupportArticleModel>, ISupportArticleRepository;
-
-public static class IUnitOfWorkSupportArticleRepositoryExtensions
+[RegisterScoped(typeof(ISupportArticleRepository))]
+public class SupportArticleRepository : Repository<SupportArticleModel>, ISupportArticleRepository
 {
-    public static ISupportArticleRepository SupportArticleRepository(this IUnitOfWork unitOfWork)
+    public SupportArticleRepository(NooDbContext dbContext) : base(dbContext)
     {
-        return new SupportArticleRepository()
-        {
-            Context = unitOfWork.Context
-        };
     }
 }

@@ -1,9 +1,11 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace Noo.Api.Statistics.DTO;
 
 public record StatisticsNumberBlockDTO
 {
+    [Required]
     [JsonPropertyName("title")]
     public string Title { get; init; } = string.Empty;
 

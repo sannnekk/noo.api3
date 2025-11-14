@@ -1,17 +1,13 @@
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.Subjects.Models;
 
 namespace Noo.Api.Subjects.Services;
 
-public class SubjectRepository : Repository<SubjectModel>, ISubjectRepository { }
-
-public static class UnitIOfWorkSubjectRepositoryExtensions
+[RegisterScoped(typeof(ISubjectRepository))]
+public class SubjectRepository : Repository<SubjectModel>, ISubjectRepository
 {
-    public static ISubjectRepository SubjectRepository(this IUnitOfWork unitOfWork)
+    public SubjectRepository(NooDbContext dbContext) : base(dbContext)
     {
-        return new SubjectRepository()
-        {
-            Context = unitOfWork.Context
-        };
     }
 }

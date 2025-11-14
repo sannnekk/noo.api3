@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Support.DTO;
 using Noo.Api.Support.Models;
@@ -41,7 +42,11 @@ public class SupportServiceTests
         var mapperCfg = new MapperConfiguration(cfg => cfg.AddProfile(new SupportMapperProfile()));
         var mapper = mapperCfg.CreateMapper();
 
-        var svc = new SupportService(uow.Object, mapper);
+        var articleRepo = new SupportArticleRepository(ctx);
+        var categoryRepo = new SupportCategoryRepository(ctx);
+        var jsonPatchService = new JsonPatchUpdateService(mapper);
+
+        var svc = new SupportService(uow.Object, articleRepo, categoryRepo, jsonPatchService, mapper);
         return (svc, ctx);
     }
 
@@ -174,7 +179,7 @@ public class SupportServiceTests
         var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportArticleDTO>()
             .Replace(a => a.Title, "New title")
             .Replace(a => a.IsActive, false);
-        await svc.UpdateArticleAsync(art.Id, patch, new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary());
+        await svc.UpdateArticleAsync(art.Id, patch);
 
         var updated = await ctx.GetDbSet<SupportArticleModel>().FindAsync(art.Id);
         Assert.Equal("New title", updated!.Title);
@@ -192,7 +197,7 @@ public class SupportServiceTests
         var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportCategoryDTO>()
             .Replace(c => c.Name, "Root Updated")
             .Replace(c => c.IsPinned, true);
-        await svc.UpdateCategoryAsync(root.Id, patch, new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary());
+        await svc.UpdateCategoryAsync(root.Id, patch);
 
         var updated = await ctx.GetDbSet<SupportCategoryModel>().FindAsync(root.Id);
         Assert.Equal("Root Updated", updated!.Name);
@@ -203,13 +208,13 @@ public class SupportServiceTests
     public async Task UpdateArticleAsync_NotFound_Throws()
     {
         var (svc, _) = CreateService();
-        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(() => svc.UpdateArticleAsync(Ulid.NewUlid(), new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportArticleDTO>(), new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary()));
+        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(() => svc.UpdateArticleAsync(Ulid.NewUlid(), new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportArticleDTO>()));
     }
 
     [Fact]
     public async Task UpdateCategoryAsync_NotFound_Throws()
     {
         var (svc, _) = CreateService();
-        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(() => svc.UpdateCategoryAsync(Ulid.NewUlid(), new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportCategoryDTO>(), new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary()));
+        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(() => svc.UpdateCategoryAsync(Ulid.NewUlid(), new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportCategoryDTO>()));
     }
 }

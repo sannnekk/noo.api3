@@ -7,6 +7,10 @@ namespace Noo.Api.Users.DTO;
 public record UserDTO
 {
     [Required]
+    [JsonPropertyName("_entityName")]
+    public string EntityName => "User";
+
+    [Required]
     [JsonPropertyName("id")]
     public Ulid Id { get; set; }
 

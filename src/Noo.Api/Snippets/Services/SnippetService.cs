@@ -1,9 +1,8 @@
 using AutoMapper;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.DataAbstraction.Db;
-using Noo.Api.Core.Exceptions.Http;
+using Noo.Api.Core.Exceptions;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Utils.DI;
-using Noo.Api.Core.Utils.Json;
 using Noo.Api.Snippets.DTO;
 using Noo.Api.Snippets.Filters;
 using Noo.Api.Snippets.Models;
@@ -15,15 +14,15 @@ namespace Noo.Api.Snippets.Services;
 public class SnippetService : ISnippetService
 {
     private readonly IUnitOfWork _unitOfWork;
-
     private readonly ISnippetRepository _snippetRepository;
-
+    private readonly IJsonPatchUpdateService _jsonPatchUpdateService;
     private readonly IMapper _mapper;
 
-    public SnippetService(IUnitOfWork unitOfWork, IMapper mapper)
+    public SnippetService(IUnitOfWork unitOfWork, ISnippetRepository snippetRepository, IJsonPatchUpdateService jsonPatchUpdateService, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
-        _snippetRepository = unitOfWork.SnippetRepository();
+        _snippetRepository = snippetRepository;
+        _jsonPatchUpdateService = jsonPatchUpdateService;
         _mapper = mapper;
     }
 
@@ -38,13 +37,9 @@ public class SnippetService : ISnippetService
 
     public async Task DeleteSnippetAsync(Ulid userId, Ulid snippetId)
     {
-        var snippet = await _unitOfWork.SnippetRepository()
-            .GetAsync(snippetId, userId);
+        var snippet = await _snippetRepository.GetAsync(snippetId, userId);
 
-        if (snippet == null)
-        {
-            throw new NotFoundException();
-        }
+        snippet.ThrowNotFoundIfNull();
 
         _snippetRepository.Delete(snippet);
         await _unitOfWork.CommitAsync();
@@ -62,30 +57,15 @@ public class SnippetService : ISnippetService
         return _snippetRepository.GetManyAsync(filter);
     }
 
-    public async Task UpdateSnippetAsync(Ulid userId, Ulid snippetId, JsonPatchDocument<UpdateSnippetDTO> updateSnippetDto, ModelStateDictionary? modelState = null)
+    public async Task UpdateSnippetAsync(Ulid userId, Ulid snippetId, JsonPatchDocument<UpdateSnippetDTO> updateSnippetDto)
     {
-        var repository = _unitOfWork.SnippetRepository();
-        var model = await repository.GetByIdAsync(snippetId) ?? throw new NotFoundException();
+        var model = await _snippetRepository.GetAsync(snippetId, userId);
 
-        if (model == null || model.UserId != userId)
-        {
-            throw new NotFoundException();
-        }
+        model.ThrowNotFoundIfNull();
 
-        var dto = _mapper.Map<UpdateSnippetDTO>(model);
+        _jsonPatchUpdateService.ApplyPatch(model, updateSnippetDto);
 
-        modelState ??= new ModelStateDictionary();
-
-        updateSnippetDto.ApplyToAndValidate(dto, modelState);
-
-        if (!modelState.IsValid)
-        {
-            throw new BadRequestException();
-        }
-
-        _mapper.Map(dto, model);
-
-        repository.Update(model);
+        _snippetRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 }
