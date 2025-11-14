@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Users.DTO;
@@ -24,5 +23,5 @@ public interface IUserService
     public Task BlockUserAsync(Ulid id);
     public Task UnblockUserAsync(Ulid id);
     public Task DeleteUserAsync(Ulid id);
-    public Task UpdateUserAsync(Ulid id, JsonPatchDocument<UpdateUserDTO> patchUser, ModelStateDictionary? modelState = null);
+    public Task UpdateUserAsync(Ulid id, JsonPatchDocument<UpdateUserDTO> patchUserDto);
 }

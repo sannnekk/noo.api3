@@ -1,6 +1,6 @@
 using AutoMapper;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.Exceptions.Http;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Users.DTO;
 using Noo.Api.Users.Filters;
@@ -76,7 +76,9 @@ public class UserServiceTests
         using var context = TestHelpers.CreateInMemoryDb(dbName);
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new UserService(uow, mapper);
+        var userRepo = new UserRepository(context);
+        var patchUpdateService = new JsonPatchUpdateService(mapper);
+        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
 
         var id = await service.CreateUserAsync(MakePayload());
         Assert.NotEqual(default, id);
@@ -92,7 +94,7 @@ public class UserServiceTests
 
         var patch = new JsonPatchDocument<UpdateUserDTO>();
         patch.Replace(x => x.Name, "John Updated");
-        await service.UpdateUserAsync(id, patch, new ModelStateDictionary());
+        await service.UpdateUserAsync(id, patch);
 
         var updated = await service.GetUserByIdAsync(id);
         Assert.Equal("John Updated", updated!.Name);
@@ -101,14 +103,18 @@ public class UserServiceTests
         using (var deleteContext = TestHelpers.CreateInMemoryDb(dbName))
         {
             var deleteUow = TestHelpers.CreateUowMock(deleteContext).Object;
-            var deleteService = new UserService(deleteUow, mapper);
+            var deleteUserRepo = new UserRepository(deleteContext);
+            var deletePatchUpdateService = new JsonPatchUpdateService(mapper);
+            var deleteService = new UserService(deleteUow, deleteUserRepo, deletePatchUpdateService, mapper);
             await deleteService.DeleteUserAsync(id);
         }
 
         using (var verifyContext = TestHelpers.CreateInMemoryDb(dbName))
         {
             var verifyUow = TestHelpers.CreateUowMock(verifyContext).Object;
-            var verifyService = new UserService(verifyUow, mapper);
+            var verifyUserRepo = new UserRepository(verifyContext);
+            var verifyPatchUpdateService = new JsonPatchUpdateService(mapper);
+            var verifyService = new UserService(verifyUow, verifyUserRepo, verifyPatchUpdateService, mapper);
             var afterDelete = await verifyService.GetUserByIdAsync(id);
             Assert.Null(afterDelete);
         }
@@ -121,7 +127,9 @@ public class UserServiceTests
         using var context = TestHelpers.CreateInMemoryDb(dbName);
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new UserService(uow, mapper);
+        var userRepo = new UserRepository(context);
+        var patchUpdateService = new JsonPatchUpdateService(mapper);
+        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
 
         var studentId = await service.CreateUserAsync(MakePayload("stud", "stud@example.com", role: UserRoles.Student));
         await service.ChangeRoleAsync(studentId, UserRoles.Mentor);
@@ -141,7 +149,9 @@ public class UserServiceTests
         using var context = TestHelpers.CreateInMemoryDb(dbName);
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new UserService(uow, mapper);
+        var userRepo = new UserRepository(context);
+        var patchUpdateService = new JsonPatchUpdateService(mapper);
+        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
 
         // Not found
         await Assert.ThrowsAsync<NotFoundException>(() => service.ChangeRoleAsync(Ulid.NewUlid(), UserRoles.Mentor));
@@ -166,7 +176,9 @@ public class UserServiceTests
         using var context = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new UserService(uow, mapper);
+        var userRepo = new UserRepository(context);
+        var patchUpdateService = new JsonPatchUpdateService(mapper);
+        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
 
         var id = await service.CreateUserAsync(MakePayload("u1", "u1@example.com"));
 
@@ -185,7 +197,9 @@ public class UserServiceTests
         using var context = TestHelpers.CreateInMemoryDb(dbName);
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new UserService(uow, mapper);
+        var userRepo = new UserRepository(context);
+        var patchUpdateService = new JsonPatchUpdateService(mapper);
+        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
 
         var id = await service.CreateUserAsync(MakePayload("u2", "u2@example.com"));
 
@@ -193,7 +207,9 @@ public class UserServiceTests
         using (var verifyCtx = TestHelpers.CreateInMemoryDb(dbName))
         {
             var verifyUow = TestHelpers.CreateUowMock(verifyCtx).Object;
-            var verifyService = new UserService(verifyUow, mapper);
+            var verifyUserRepo = new UserRepository(verifyCtx);
+            var verifyPatchUpdateService = new JsonPatchUpdateService(mapper);
+            var verifyService = new UserService(verifyUow, verifyUserRepo, verifyPatchUpdateService, mapper);
             Assert.True(await verifyService.IsBlockedAsync(id));
         }
 
@@ -201,7 +217,9 @@ public class UserServiceTests
         using (var verifyCtx2 = TestHelpers.CreateInMemoryDb(dbName))
         {
             var verifyUow2 = TestHelpers.CreateUowMock(verifyCtx2).Object;
-            var verifyService2 = new UserService(verifyUow2, mapper);
+            var verifyUserRepo2 = new UserRepository(verifyCtx2);
+            var verifyPatchUpdateService2 = new JsonPatchUpdateService(mapper);
+            var verifyService2 = new UserService(verifyUow2, verifyUserRepo2, verifyPatchUpdateService2, mapper);
             Assert.False(await verifyService2.IsBlockedAsync(id));
         }
     }
@@ -212,7 +230,9 @@ public class UserServiceTests
         using var context = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new UserService(uow, mapper);
+        var userRepo = new UserRepository(context);
+        var patchUpdateService = new JsonPatchUpdateService(mapper);
+        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.UserExistsAsync(null, null));
 
@@ -238,7 +258,9 @@ public class UserServiceTests
         using var context = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new UserService(uow, mapper);
+        var userRepo = new UserRepository(context);
+        var patchUpdateService = new JsonPatchUpdateService(mapper);
+        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
 
         var id = await service.CreateUserAsync(MakePayload("verify", "verify@example.com"));
         await service.VerifyUserAsync(id);
@@ -252,7 +274,9 @@ public class UserServiceTests
         using var context = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new UserService(uow, mapper);
+        var userRepo = new UserRepository(context);
+        var patchUpdateService = new JsonPatchUpdateService(mapper);
+        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
 
         var patch = new JsonPatchDocument<UpdateUserDTO>().Replace(x => x.Name, "N");
         await Assert.ThrowsAsync<NotFoundException>(() => service.UpdateUserAsync(Ulid.NewUlid(), patch));

@@ -87,7 +87,7 @@ public class UserController : ApiController
     )]
     public async Task<IActionResult> PatchUserAsync([FromRoute] Ulid userId, [FromBody] JsonPatchDocument<UpdateUserDTO> patchUser)
     {
-        await _userService.UpdateUserAsync(userId, patchUser, ModelState);
+        await _userService.UpdateUserAsync(userId, patchUser);
 
         return SendResponse();
     }
@@ -267,6 +267,10 @@ public class UserController : ApiController
     /// <summary>
     /// Deletes a user by their unique identifier.
     /// </summary>
+    /// <remarks>
+    /// The user is only soft-deleted, meaning their data is retained but they can no longer log in and do not appear in user searches.
+    /// </remarks>
+    /// TODO: implement soft deleting
     [HttpDelete("{userId}")]
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanDeleteUser)]

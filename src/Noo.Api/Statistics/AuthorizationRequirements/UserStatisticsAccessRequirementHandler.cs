@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
-using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Users.Filters;
 using Noo.Api.Users.Services;
 
@@ -10,11 +9,11 @@ namespace Noo.Api.Statistics.AuthorizationRequirements;
 [RegisterScoped(typeof(IAuthorizationHandler))]
 public class UserStatisticsAccessRequirementHandler : AuthorizationHandler<UserStatisticsAccessRequirement>
 {
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMentorAssignmentRepository _mentorAssignmentRepository;
 
-    public UserStatisticsAccessRequirementHandler(IUnitOfWork unitOfWork)
+    public UserStatisticsAccessRequirementHandler(IMentorAssignmentRepository mentorAssignmentRepository)
     {
-        _unitOfWork = unitOfWork;
+        _mentorAssignmentRepository = mentorAssignmentRepository;
     }
 
     protected override async Task HandleRequirementAsync(
@@ -64,7 +63,6 @@ public class UserStatisticsAccessRequirementHandler : AuthorizationHandler<UserS
                 return;
             }
 
-            var mentorAssignmentsRepo = _unitOfWork.MentorAssignmentRepository();
             var filter = new MentorAssignmentFilter
             {
                 MentorId = currentUserId,
@@ -72,7 +70,7 @@ public class UserStatisticsAccessRequirementHandler : AuthorizationHandler<UserS
                 Page = 1,
                 PerPage = 1
             };
-            var result = await mentorAssignmentsRepo.SearchAsync(filter);
+            var result = await _mentorAssignmentRepository.SearchAsync(filter);
             if (result.Items.Any())
             {
                 context.Succeed(requirement);

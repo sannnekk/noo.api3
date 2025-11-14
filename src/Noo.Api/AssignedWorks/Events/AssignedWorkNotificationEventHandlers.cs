@@ -24,12 +24,12 @@ public class AssignedWorkNotificationEventHandlers :
 
     private readonly IAssignedWorkLinkGenerator _assignedWorkLinkGenerator;
 
-    public AssignedWorkNotificationEventHandlers(INotificationService notificationService, IUnitOfWork unitOfWork, IAssignedWorkLinkGenerator assignedWorkLinkGenerator)
+    public AssignedWorkNotificationEventHandlers(INotificationService notificationService, IUnitOfWork unitOfWork, IUserRepository userRepository, IAssignedWorkLinkGenerator assignedWorkLinkGenerator)
     {
         _notificationService = notificationService;
         _assignedWorkLinkGenerator = assignedWorkLinkGenerator;
         _assignedWorkRepository = unitOfWork.AssignedWorkRepository();
-        _userRepository = unitOfWork.UserRepository();
+        _userRepository = userRepository;
     }
 
     public async Task Handle(HelperMentorRemovedEvent notification, CancellationToken cancellationToken)

@@ -17,9 +17,9 @@ public class UserDataCollector : IUserDataCollector
 
     private readonly IAssignedWorkRepository _assignedWorkRepository;
 
-    public UserDataCollector(IUnitOfWork unitOfWork)
+    public UserDataCollector(IUnitOfWork unitOfWork, IUserRepository userRepository)
     {
-        _userRepository = unitOfWork.UserRepository();
+        _userRepository = userRepository;
         _membershipRepository = unitOfWork.CourseMembershipRepository();
         _assignedWorkRepository = unitOfWork.AssignedWorkRepository();
     }

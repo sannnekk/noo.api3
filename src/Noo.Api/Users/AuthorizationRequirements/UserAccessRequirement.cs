@@ -8,7 +8,7 @@ namespace Noo.Api.Users.AuthorizationRequirements;
 /// Rules:
 /// - Admin/Teacher/Assistant: can access anybody.
 /// - Student: only self.
-/// - Mentor: self or any student they are assigned to (mentor assignments table).
+/// - Mentor: self or any student they are assigned to (check via mentor assignments).
 /// </summary>
 public class UserAccessRequirement : IAuthorizationRequirement
 {

@@ -6,6 +6,7 @@ using Noo.Api.Users.DTO;
 
 namespace Noo.Api.Users.AuthorizationRequirements;
 
+// TODO: rewrite
 [RegisterScoped(typeof(IAuthorizationHandler))]
 public class MentorAssignRequirementHandler : AuthorizationHandler<MentorAssignRequirement>
 {
@@ -27,7 +28,7 @@ public class MentorAssignRequirementHandler : AuthorizationHandler<MentorAssignR
         }
 
         // Elevated roles can always assign
-        if (requirement.ElevatedRoles.Any(role => role == currentRole))
+        if (requirement.AlwaysAllowedRoles.Any(role => role == currentRole))
         {
             context.Succeed(requirement);
             return;

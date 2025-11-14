@@ -8,5 +8,8 @@ namespace Noo.Api.Users.AuthorizationRequirements;
 /// </summary>
 public class UserDeleteRequirement : IAuthorizationRequirement
 {
-    public UserRoles AdminRole => UserRoles.Admin;
+    public IEnumerable<UserRoles> AlwaysAllowedRoles { get; } =
+    [
+        UserRoles.Admin
+    ];
 }

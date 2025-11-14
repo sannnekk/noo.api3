@@ -1,11 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.UserSettings.Models;
 
 namespace Noo.Api.UserSettings.Services;
 
+[RegisterScoped(typeof(IUserSettingsRepository))]
 public class UserSettingsRepository : Repository<UserSettingsModel>, IUserSettingsRepository
 {
+    public UserSettingsRepository(NooDbContext context) : base(context)
+    {
+    }
+
     public async Task<UserSettingsModel> GetOrCreateAsync(Ulid userId)
     {
         var settings = await Context.GetDbSet<UserSettingsModel>().FirstOrDefaultAsync(settings => settings.UserId == userId);
@@ -21,16 +27,5 @@ public class UserSettingsRepository : Repository<UserSettingsModel>, IUserSettin
         }
 
         return settings;
-    }
-}
-
-public static class IUnitOfWorkUserSettingsRepositoryExtensions
-{
-    public static IUserSettingsRepository UserSettingsRepository(this IUnitOfWork unitOfWork)
-    {
-        return new UserSettingsRepository()
-        {
-            Context = unitOfWork.Context
-        };
     }
 }

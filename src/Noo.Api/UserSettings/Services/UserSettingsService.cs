@@ -15,10 +15,10 @@ public class UserSettingsService : IUserSettingsService
 
     private readonly IMapper _mapper;
 
-    public UserSettingsService(IUnitOfWork unitOfWork, IMapper mapper)
+    public UserSettingsService(IUnitOfWork unitOfWork, IMapper mapper, IUserSettingsRepository userSettingsRepository)
     {
         _unitOfWork = unitOfWork;
-        _userSettingsRepository = unitOfWork.UserSettingsRepository();
+        _userSettingsRepository = userSettingsRepository;
         _mapper = mapper;
     }
 

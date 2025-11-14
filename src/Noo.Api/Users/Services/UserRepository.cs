@@ -1,12 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.Users.Models;
 
 namespace Noo.Api.Users.Services;
 
+[RegisterScoped(typeof(IUserRepository))]
 public class UserRepository : Repository<UserModel>, IUserRepository
 {
+    public UserRepository(NooDbContext context) : base(context)
+    {
+    }
+
     public Task<UserModel?> GetByUsernameOrEmailAsync(string usernameOrEmail)
     {
         var repository = Context.GetDbSet<UserModel>();
@@ -103,16 +109,5 @@ public class UserRepository : Repository<UserModel>, IUserRepository
             .Where(x => x.Role == role)
             .AsNoTracking()
             .ToListAsync();
-    }
-}
-
-public static class IUnitOfWorkUserRepositoryExtensions
-{
-    public static IUserRepository UserRepository(this IUnitOfWork unitOfWork)
-    {
-        return new UserRepository()
-        {
-            Context = unitOfWork.Context
-        };
     }
 }

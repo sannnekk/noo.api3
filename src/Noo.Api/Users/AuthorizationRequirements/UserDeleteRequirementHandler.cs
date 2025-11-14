@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Noo.Api.Core.Request;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
 
@@ -15,17 +16,18 @@ public class UserDeleteRequirementHandler : AuthorizationHandler<UserDeleteRequi
             return Task.CompletedTask;
         }
 
-        var routeUserIdValue = httpContext.GetRouteData().Values["userId"]?.ToString();
-        if (!Ulid.TryParse(routeUserIdValue, out var targetUserId))
+        var targetUserId = httpContext.GetRouteData().Values.GetUlidValue("userId");
+
+        var currentUserId = context.User.GetId();
+        var currentRole = context.User.GetRole();
+
+        if (currentRole == null)
         {
             context.Fail();
             return Task.CompletedTask;
         }
 
-        var currentUserId = context.User.GetId();
-        var currentRole = context.User.GetRole();
-
-        if (currentRole == requirement.AdminRole || currentUserId == targetUserId)
+        if (requirement.AlwaysAllowedRoles.Contains(currentRole.Value) || currentUserId == targetUserId)
         {
             context.Succeed(requirement);
         }

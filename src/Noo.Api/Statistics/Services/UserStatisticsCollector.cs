@@ -1,4 +1,3 @@
-using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Sessions;
 using Noo.Api.Sessions.Services;
@@ -16,9 +15,9 @@ public class UserStatisticsCollector : IUserStatisticsCollector
 
     private readonly IActiveUserService _activeUserService;
 
-    public UserStatisticsCollector(IUnitOfWork unitOfWork, IOnlineService onlineService, IActiveUserService activeUserService)
+    public UserStatisticsCollector(IOnlineService onlineService, IUserRepository userRepository, IActiveUserService activeUserService)
     {
-        _userRepository = unitOfWork.UserRepository();
+        _userRepository = userRepository;
         _onlineService = onlineService;
         _activeUserService = activeUserService;
     }

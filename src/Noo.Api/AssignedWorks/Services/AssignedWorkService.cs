@@ -33,13 +33,13 @@ public class AssignedWorkService : IAssignedWorkService
 
     private readonly IMapper _mapper;
 
-    public AssignedWorkService(IUnitOfWork unitOfWork, ICurrentUser currentUser, IMediator mediator, IMapper mapper)
+    public AssignedWorkService(IUnitOfWork unitOfWork, IUserRepository userRepository, ICurrentUser currentUser, IMediator mediator, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _assignedWorkRepository = _unitOfWork.AssignedWorkRepository();
         _assignedWorkAnswerRepository = _unitOfWork.AssignedWorkAnswerRepository();
         _assignedWorkCommentRepository = _unitOfWork.AssignedWorkCommentRepository();
-        _userRepository = _unitOfWork.UserRepository();
+        _userRepository = userRepository;
         _currentUser = currentUser;
         _mediator = mediator;
         _mapper = mapper;

@@ -7,6 +7,7 @@ using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Notifications.DTO;
 using Noo.Api.Notifications.Services;
 using Noo.Api.Users.Models;
+using Noo.Api.Users.Services;
 using Noo.Api.Works.Types;
 using Noo.UnitTests.Common;
 
@@ -21,7 +22,8 @@ public class AssignedWorkNotificationEventHandlersTests
         var notif = new Mock<INotificationService>();
         var linkGen = new Mock<IAssignedWorkLinkGenerator>();
         linkGen.Setup(l => l.GenerateViewLink(It.IsAny<Ulid>())).Returns("link");
-        var handler = new AssignedWorkNotificationEventHandlers(notif.Object, uow.Object, linkGen.Object);
+        var userRepo = new UserRepository(ctx);
+        var handler = new AssignedWorkNotificationEventHandlers(notif.Object, uow.Object, userRepo, linkGen.Object);
         return (handler, ctx, uow, notif, linkGen);
     }
 

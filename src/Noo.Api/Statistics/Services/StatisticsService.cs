@@ -1,4 +1,3 @@
-using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
@@ -18,11 +17,11 @@ public class StatisticsService : IStatisticsService
 
     private readonly IAssignedWorkStatisticsCollector _assignedWorkStatisticsCollector;
 
-    public StatisticsService(IUserStatisticsCollector userStatisticsCollector, IAssignedWorkStatisticsCollector assignedWorkStatisticsCollector, IUnitOfWork unitOfWork)
+    public StatisticsService(IUserStatisticsCollector userStatisticsCollector, IAssignedWorkStatisticsCollector assignedWorkStatisticsCollector, IUserRepository userRepository)
     {
         _userStatisticsCollector = userStatisticsCollector;
         _assignedWorkStatisticsCollector = assignedWorkStatisticsCollector;
-        _userRepository = unitOfWork.UserRepository();
+        _userRepository = userRepository;
     }
 
     public async Task<StatisticsDTO> GetUserStatisticsAsync(Ulid userId, WorkType? workType, DateTime? from, DateTime? to)

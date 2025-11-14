@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using Noo.Api.UserSettings.DTO;
 using Noo.Api.UserSettings.Models;
 using Noo.Api.UserSettings.Services;
@@ -22,8 +23,9 @@ public class UserSettingsServiceTests
         using var context = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
+        var userSettingsRepo = new UserSettingsRepository(uow.Context);
 
-        var service = new UserSettingsService(uow, mapper);
+        var service = new UserSettingsService(uow, mapper, userSettingsRepo);
         var userId = Ulid.NewUlid();
 
         var settings = await service.GetUserSettingsAsync(userId);
@@ -41,7 +43,8 @@ public class UserSettingsServiceTests
         using var context = TestHelpers.CreateInMemoryDb(dbName);
         var uow = TestHelpers.CreateUowMock(context);
         var mapper = CreateMapper();
-        var service = new UserSettingsService(uow.Object, mapper);
+        var userSettingsRepo = new UserSettingsRepository(uow.Object.Context);
+        var service = new UserSettingsService(uow.Object, mapper, userSettingsRepo);
 
         var userId = Ulid.NewUlid();
 
@@ -57,11 +60,9 @@ public class UserSettingsServiceTests
 
         // Verify persisted values in a fresh context to avoid tracking issues
         using var verifyCtx = TestHelpers.CreateInMemoryDb(dbName);
-        var verifyUow = TestHelpers.CreateUowMock(verifyCtx).Object;
-        var repo = verifyUow.UserSettingsRepository();
-        var saved = await repo.GetOrCreateAsync(userId);
+        var saved = await verifyCtx.GetDbSet<UserSettingsModel>().FirstOrDefaultAsync(s => s.UserId == userId);
 
-        Assert.Equal("Dark", saved.Theme);
+        Assert.Equal("Dark", saved!.Theme);
         Assert.Equal("Large", saved.FontSize);
     }
 
@@ -71,7 +72,8 @@ public class UserSettingsServiceTests
         using var context = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
-        var service = new UserSettingsService(uow, mapper);
+        var userSettingsRepo = new UserSettingsRepository(uow.Context);
+        var service = new UserSettingsService(uow, mapper, userSettingsRepo);
 
         var userId = Ulid.NewUlid();
         var entity = new UserSettingsModel { Id = Ulid.NewUlid(), UserId = userId, Theme = "Light", FontSize = "Small" };

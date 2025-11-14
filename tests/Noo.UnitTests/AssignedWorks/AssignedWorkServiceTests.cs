@@ -10,12 +10,12 @@ using Noo.Api.AssignedWorks.Events;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Users.Models;
+using Noo.Api.Users.Services;
 using Noo.UnitTests.Common;
 using Noo.Api.Works.Models;
 using Noo.Api.Works.Types;
 using Noo.Api.Core.Utils.Richtext.Delta;
-using Noo.Api.AssignedWorks; // for AssignedWorkConfig
-                             // using Noo.Api.AssignedWorks.Models; // for AssignedWorkMapperProfile
+using Noo.Api.AssignedWorks;
 
 namespace Noo.UnitTests.AssignedWorks;
 
@@ -34,7 +34,8 @@ public class AssignedWorkServiceTests
         var mediator = new Mock<IMediator>();
         var mapperCfg = new MapperConfiguration(cfg => cfg.AddProfile(new AssignedWorkMapperProfile()));
         var mapper = mapperCfg.CreateMapper();
-        var svc = new AssignedWorkService(uowMock.Object, currentUser.Object, mediator.Object, mapper);
+        var userRepo = new UserRepository(ctx);
+        var svc = new AssignedWorkService(uowMock.Object, userRepo, currentUser.Object, mediator.Object, mapper);
         return (svc, ctx, uowMock, currentUser, mediator);
     }
 

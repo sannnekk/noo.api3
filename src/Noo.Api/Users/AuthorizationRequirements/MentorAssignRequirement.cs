@@ -8,7 +8,7 @@ namespace Noo.Api.Users.AuthorizationRequirements;
 /// </summary>
 public class MentorAssignRequirement : IAuthorizationRequirement
 {
-    public IEnumerable<UserRoles> ElevatedRoles { get; } = [
+    public IEnumerable<UserRoles> AlwaysAllowedRoles { get; } = [
         UserRoles.Admin,
         UserRoles.Teacher
     ];

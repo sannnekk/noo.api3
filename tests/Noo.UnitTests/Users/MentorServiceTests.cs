@@ -13,7 +13,8 @@ public class MentorServiceTests
         var dbName = Guid.NewGuid().ToString();
         using var context = TestHelpers.CreateInMemoryDb(dbName);
         var uow = TestHelpers.CreateUowMock(context).Object;
-        var mentorService = new MentorService(uow);
+        var mentorAssignmentRepo = new MentorAssignmentRepository(context);
+        var mentorService = new MentorService(uow, mentorAssignmentRepo);
 
         var studentId = Ulid.NewUlid();
         var mentorId = Ulid.NewUlid();
@@ -36,14 +37,16 @@ public class MentorServiceTests
         using (var unassignCtx = TestHelpers.CreateInMemoryDb(dbName))
         {
             var unassignUow = TestHelpers.CreateUowMock(unassignCtx).Object;
-            var unassignService = new MentorService(unassignUow);
+            var unassignMentorAssignmentRepo = new MentorAssignmentRepository(unassignCtx);
+            var unassignService = new MentorService(unassignUow, unassignMentorAssignmentRepo);
             await unassignService.UnassignMentorAsync(assignmentId);
         }
 
         using (var verifyCtx = TestHelpers.CreateInMemoryDb(dbName))
         {
             var verifyUow = TestHelpers.CreateUowMock(verifyCtx).Object;
-            var verifyService = new MentorService(verifyUow);
+            var verifyMentorAssignmentRepo = new MentorAssignmentRepository(verifyCtx);
+            var verifyService = new MentorService(verifyUow, verifyMentorAssignmentRepo);
             var afterDelete = await verifyService.GetMentorAssignmentsAsync(studentId, new MentorAssignmentFilter { Page = 1, PerPage = 10 });
             Assert.Equal(0, afterDelete.Total);
         }

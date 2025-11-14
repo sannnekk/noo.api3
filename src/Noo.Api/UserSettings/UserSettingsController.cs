@@ -51,6 +51,11 @@ public class UserSettingsController : ApiController
     /// <summary>
     /// Update the current user settings.
     /// </summary>
+    /// <remarks>
+    /// This update endpoint, unlike others, uses a full DTO instead of a patch document.
+    /// This is because user settings are typically small and it's easier to manage them as a whole. And they are always loaded as a whole
+    /// so partial updates are less relevant.
+    /// </remarks>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpPatch]
     [Authorize(Policy = UserSettingsPolicies.CanPatchUserSettings)]

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Noo.Api.Core.Request;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
 
@@ -15,13 +16,7 @@ public class UserPatchRequirementHandler : AuthorizationHandler<UserPatchRequire
             return Task.CompletedTask;
         }
 
-        var userIdValue = httpContext.GetRouteData().Values["userId"]?.ToString();
-        if (!Ulid.TryParse(userIdValue, out var targetUserId))
-        {
-            context.Fail();
-            return Task.CompletedTask;
-        }
-
+        var targetUserId = httpContext.GetRouteData().Values.GetUlidValue("userId");
         var currentUserId = context.User.GetId();
 
         if (currentUserId == targetUserId)

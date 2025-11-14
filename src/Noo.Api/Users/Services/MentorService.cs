@@ -12,10 +12,10 @@ public class MentorService : IMentorService
 
     private readonly IMentorAssignmentRepository _mentorAssignmentRepository;
 
-    public MentorService(IUnitOfWork unitOfWork)
+    public MentorService(IUnitOfWork unitOfWork, IMentorAssignmentRepository mentorAssignmentRepository)
     {
         _unitOfWork = unitOfWork;
-        _mentorAssignmentRepository = unitOfWork.MentorAssignmentRepository();
+        _mentorAssignmentRepository = mentorAssignmentRepository;
     }
 
     public async Task<Ulid> AssignMentorAsync(Ulid studentId, Ulid mentorId, Ulid subjectId)

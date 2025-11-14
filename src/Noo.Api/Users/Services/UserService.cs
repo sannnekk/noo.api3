@@ -1,10 +1,10 @@
 using AutoMapper;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Exceptions.Http;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
-using Noo.Api.Core.Utils.Json;
 using Noo.Api.Users.DTO;
 using Noo.Api.Users.Filters;
 using Noo.Api.Users.Models;
@@ -22,13 +22,18 @@ public class UserService : IUserService
 
     private readonly IMapper _mapper;
 
+    private readonly IJsonPatchUpdateService _patchUpdateService;
+
     public UserService(
         IUnitOfWork unitOfWork,
+        IUserRepository userRepository,
+        IJsonPatchUpdateService patchUpdateService,
         IMapper mapper
     )
     {
         _unitOfWork = unitOfWork;
-        _userRepository = unitOfWork.UserRepository();
+        _userRepository = userRepository;
+        _patchUpdateService = patchUpdateService;
         _mapper = mapper;
     }
 
@@ -103,27 +108,13 @@ public class UserService : IUserService
         return _userRepository.UnblockUserAsync(id);
     }
 
-    public async Task UpdateUserAsync(Ulid id, JsonPatchDocument<UpdateUserDTO> patchUser, ModelStateDictionary? modelState = null)
+    public async Task UpdateUserAsync(Ulid id, JsonPatchDocument<UpdateUserDTO> patchUserDto)
     {
         var model = await _userRepository.GetByIdAsync(id) ?? throw new NotFoundException();
 
-        if (model == null)
-        {
-            throw new NotFoundException();
-        }
+        model.ThrowNotFoundIfNull();
 
-        var dto = _mapper.Map<UpdateUserDTO>(model);
-
-        modelState ??= new ModelStateDictionary();
-
-        patchUser.ApplyToAndValidate(dto, modelState);
-
-        if (!modelState.IsValid)
-        {
-            throw new BadRequestException();
-        }
-
-        _mapper.Map(dto, model);
+        _patchUpdateService.ApplyPatch(model, patchUserDto);
 
         _userRepository.Update(model);
         await _unitOfWork.CommitAsync();

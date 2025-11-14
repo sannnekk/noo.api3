@@ -1,20 +1,19 @@
 using Microsoft.AspNetCore.Authorization;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
-using Noo.Api.Core.DataAbstraction.Db;
-using Noo.Api.Users.Filters;
 using Noo.Api.Users.Services;
+using Noo.Api.Core.Request;
 
 namespace Noo.Api.Users.AuthorizationRequirements;
 
 [RegisterScoped(typeof(IAuthorizationHandler))]
 public class UserAccessRequirementHandler : AuthorizationHandler<UserAccessRequirement>
 {
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMentorAssignmentRepository _mentorAssignmentRepository;
 
-    public UserAccessRequirementHandler(IUnitOfWork unitOfWork)
+    public UserAccessRequirementHandler(IMentorAssignmentRepository mentorAssignmentRepository)
     {
-        _unitOfWork = unitOfWork;
+        _mentorAssignmentRepository = mentorAssignmentRepository;
     }
 
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, UserAccessRequirement requirement)
@@ -46,15 +45,7 @@ public class UserAccessRequirementHandler : AuthorizationHandler<UserAccessRequi
         // studentId -> mentor assignments (student perspective)
         // mentorId -> mentor assignments (mentor perspective)
         var routeValues = httpContext.GetRouteData().Values;
-        Ulid? targetUserId = null;
-        foreach (var key in new[] { "userId", "studentId", "mentorId" })
-        {
-            if (routeValues.TryGetValue(key, out var valueObj) && valueObj != null && Ulid.TryParse(valueObj.ToString(), out var parsed))
-            {
-                targetUserId = parsed;
-                break;
-            }
-        }
+        var targetUserId = routeValues.GetUlidValue("userId");
 
         if (targetUserId is null)
         {
@@ -70,22 +61,10 @@ public class UserAccessRequirementHandler : AuthorizationHandler<UserAccessRequi
         }
 
         // Mentor: can access data of assigned students
-        if (currentUserRole == UserRoles.Mentor)
+        if (currentUserRole == UserRoles.Mentor && await _mentorAssignmentRepository.GetAsync(currentUserId, targetUserId.Value) != null)
         {
-            var mentorAssignmentsRepo = _unitOfWork.MentorAssignmentRepository();
-            var filter = new MentorAssignmentFilter
-            {
-                MentorId = currentUserId,
-                StudentId = targetUserId,
-                Page = 1,
-                PerPage = 1
-            };
-            var result = await mentorAssignmentsRepo.SearchAsync(filter);
-            if (result.Items.Any())
-            {
-                context.Succeed(requirement);
-                return;
-            }
+            context.Succeed(requirement);
+            return;
         }
 
         context.Fail();
