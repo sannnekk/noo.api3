@@ -1,11 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.Courses.Models;
 
 namespace Noo.Api.Courses.Services;
 
+[RegisterScoped(typeof(ICourseRepository))]
 public class CourseRepository : Repository<CourseModel>, ICourseRepository
 {
+    public CourseRepository(NooDbContext dbContext) : base(dbContext)
+    {
+    }
+
     public async Task<CourseModel?> GetWithChapterTreeAsync(Ulid courseId, bool includeInactive = false, int maxDepth = 2)
     {
         var chapters = await Context.GetDbSet<CourseChapterModel>()
@@ -51,15 +57,3 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
         return chapter;
     }
 }
-
-public static class IUnitOfWorkCourseRepositoryExtensions
-{
-    public static ICourseRepository CourseRepository(this IUnitOfWork unitOfWork)
-    {
-        return new CourseRepository()
-        {
-            Context = unitOfWork.Context
-        };
-    }
-}
-

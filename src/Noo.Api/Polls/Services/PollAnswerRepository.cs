@@ -1,17 +1,13 @@
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.Polls.Models;
 
 namespace Noo.Api.Polls.Services;
 
-public class PollAnswerRepository : Repository<PollAnswerModel>, IPollAnswerRepository;
-
-public static class IUnitOfWorkPollAnswerRepositoryExtension
+[RegisterScoped(typeof(IPollAnswerRepository))]
+public class PollAnswerRepository : Repository<PollAnswerModel>, IPollAnswerRepository
 {
-    public static IPollAnswerRepository PollAnswerRepository(this IUnitOfWork unitOfWork)
+    public PollAnswerRepository(NooDbContext dbContext) : base(dbContext)
     {
-        return new PollAnswerRepository()
-        {
-            Context = unitOfWork.Context,
-        };
     }
 }

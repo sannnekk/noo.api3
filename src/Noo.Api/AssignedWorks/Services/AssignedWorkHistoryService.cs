@@ -1,18 +1,19 @@
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 
 namespace Noo.Api.AssignedWorks.Services;
 
-public class AssignedWorkHistoryService
+[RegisterScoped(typeof(IAssignedWorkHistoryService))]
+public class AssignedWorkHistoryService : IAssignedWorkHistoryService
 {
     private readonly IAssignedWorkHistoryRepository _assignedWorkHistoryRepository;
-
     private readonly IUnitOfWork _unitOfWork;
 
-    public AssignedWorkHistoryService(IUnitOfWork unitOfWork)
+    public AssignedWorkHistoryService(IUnitOfWork unitOfWork, IAssignedWorkHistoryRepository assignedWorkHistoryRepository)
     {
         _unitOfWork = unitOfWork;
-        _assignedWorkHistoryRepository = unitOfWork.AssignedWorkHistoryRepository();
+        _assignedWorkHistoryRepository = assignedWorkHistoryRepository;
     }
 
     public Task<IEnumerable<AssignedWorkStatusHistoryModel>> GetHistoryAsync(Ulid assignedWorkId)

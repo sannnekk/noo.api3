@@ -1,5 +1,4 @@
 using Noo.Api.AssignedWorks.Services;
-using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.ThirdPartyServices.Google;
 using Noo.Api.Core.Utils.DI;
@@ -17,11 +16,11 @@ public class UserDataCollector : IUserDataCollector
 
     private readonly IAssignedWorkRepository _assignedWorkRepository;
 
-    public UserDataCollector(IUnitOfWork unitOfWork, IUserRepository userRepository)
+    public UserDataCollector(IUserRepository userRepository, ICourseMembershipRepository membershipRepository, IAssignedWorkRepository assignedWorkRepository)
     {
         _userRepository = userRepository;
-        _membershipRepository = unitOfWork.CourseMembershipRepository();
-        _assignedWorkRepository = unitOfWork.AssignedWorkRepository();
+        _membershipRepository = membershipRepository;
+        _assignedWorkRepository = assignedWorkRepository;
     }
 
     public async Task<DataTable> GetUsersFromCourseAsync(Ulid courseId)

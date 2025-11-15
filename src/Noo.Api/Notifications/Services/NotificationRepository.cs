@@ -1,12 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.Notifications.Filters;
 using Noo.Api.Notifications.Models;
 
 namespace Noo.Api.Notifications.Services;
 
+[RegisterScoped(typeof(INotificationRepository))]
 public class NotificationRepository : Repository<NotificationModel>, INotificationRepository
 {
+    public NotificationRepository(NooDbContext dbContext) : base(dbContext)
+    {
+    }
+
     public Task<SearchResult<NotificationModel>> GetForUserAsync(Ulid userId, NotificationFilter filter)
     {
         filter.UserId = userId;
@@ -29,15 +35,3 @@ public class NotificationRepository : Repository<NotificationModel>, INotificati
             .ExecuteDeleteAsync();
     }
 }
-
-public static class IUnitOfWorkNotificationRepositoryExtensions
-{
-    public static INotificationRepository NotificationRepository(this IUnitOfWork unitOfWork)
-    {
-        return new NotificationRepository
-        {
-            Context = unitOfWork.Context
-        };
-    }
-}
-

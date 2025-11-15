@@ -32,16 +32,17 @@ public class GoogleSheetsIntegrationService : IGoogleSheetsIntegrationService
 
     public GoogleSheetsIntegrationService(
         IUnitOfWork unitOfWork,
+        IGoogleSheetsIntegrationRepository integrationRepository,
         IMapper mapper,
-    IGoogleAuthService googleAuth,
-    IGoogleSheetsService googleSheets,
-    IPollDataCollector pollDataCollector,
-    IUserDataCollector userDataCollector,
-    IGoogleOAuthExchangeService oauthExchange
+        IGoogleAuthService googleAuth,
+        IGoogleSheetsService googleSheets,
+        IPollDataCollector pollDataCollector,
+        IUserDataCollector userDataCollector,
+        IGoogleOAuthExchangeService oauthExchange
     )
     {
         _unitOfWork = unitOfWork;
-        _integrationRepository = _unitOfWork.GoogleSheetsIntegrationRepository();
+        _integrationRepository = integrationRepository;
         _mapper = mapper;
         _googleAuth = googleAuth;
         _googleSheets = googleSheets;

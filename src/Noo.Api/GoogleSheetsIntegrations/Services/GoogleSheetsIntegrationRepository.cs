@@ -1,17 +1,13 @@
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.GoogleSheetsIntegrations.Models;
 
 namespace Noo.Api.GoogleSheetsIntegrations.Services;
 
-public class GoogleSheetsIntegrationRepository : Repository<GoogleSheetsIntegrationModel>, IGoogleSheetsIntegrationRepository;
-
-public static class GoogleSheetsIntegrationRepositoryExtensions
+[RegisterScoped(typeof(IGoogleSheetsIntegrationRepository))]
+public class GoogleSheetsIntegrationRepository : Repository<GoogleSheetsIntegrationModel>, IGoogleSheetsIntegrationRepository
 {
-    public static IGoogleSheetsIntegrationRepository GoogleSheetsIntegrationRepository(this IUnitOfWork unitOfWork)
+    public GoogleSheetsIntegrationRepository(NooDbContext dbContext) : base(dbContext)
     {
-        return new GoogleSheetsIntegrationRepository
-        {
-            Context = unitOfWork.Context
-        };
     }
 }

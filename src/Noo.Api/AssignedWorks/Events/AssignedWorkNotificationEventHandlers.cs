@@ -1,6 +1,5 @@
 using MediatR;
 using Noo.Api.AssignedWorks.Services;
-using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils;
 using Noo.Api.Notifications.Services;
 using Noo.Api.Users.Services;
@@ -24,11 +23,11 @@ public class AssignedWorkNotificationEventHandlers :
 
     private readonly IAssignedWorkLinkGenerator _assignedWorkLinkGenerator;
 
-    public AssignedWorkNotificationEventHandlers(INotificationService notificationService, IUnitOfWork unitOfWork, IUserRepository userRepository, IAssignedWorkLinkGenerator assignedWorkLinkGenerator)
+    public AssignedWorkNotificationEventHandlers(INotificationService notificationService, IAssignedWorkRepository assignedWorkRepository, IUserRepository userRepository, IAssignedWorkLinkGenerator assignedWorkLinkGenerator)
     {
         _notificationService = notificationService;
         _assignedWorkLinkGenerator = assignedWorkLinkGenerator;
-        _assignedWorkRepository = unitOfWork.AssignedWorkRepository();
+        _assignedWorkRepository = assignedWorkRepository;
         _userRepository = userRepository;
     }
 

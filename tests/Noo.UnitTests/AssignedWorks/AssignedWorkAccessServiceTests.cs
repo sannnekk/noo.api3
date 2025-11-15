@@ -18,7 +18,8 @@ public class AssignedWorkAccessServiceTests
         user.SetupGet(x => x.UserId).Returns(Ulid.NewUlid());
         user.SetupGet(x => x.UserRole).Returns(role);
         user.SetupGet(x => x.IsAuthenticated).Returns(true);
-        var svc = new AssignedWorkAccessService(uow.Object, user.Object);
+        var repo = new AssignedWorkRepository(ctx);
+        var svc = new AssignedWorkAccessService(repo, user.Object);
         return (svc, ctx, uow, user);
     }
 

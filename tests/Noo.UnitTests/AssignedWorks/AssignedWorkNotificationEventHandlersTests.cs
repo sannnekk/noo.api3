@@ -23,7 +23,8 @@ public class AssignedWorkNotificationEventHandlersTests
         var linkGen = new Mock<IAssignedWorkLinkGenerator>();
         linkGen.Setup(l => l.GenerateViewLink(It.IsAny<Ulid>())).Returns("link");
         var userRepo = new UserRepository(ctx);
-        var handler = new AssignedWorkNotificationEventHandlers(notif.Object, uow.Object, userRepo, linkGen.Object);
+        var assignedWorkRepo = new AssignedWorkRepository(ctx);
+        var handler = new AssignedWorkNotificationEventHandlers(notif.Object, assignedWorkRepo, userRepo, linkGen.Object);
         return (handler, ctx, uow, notif, linkGen);
     }
 

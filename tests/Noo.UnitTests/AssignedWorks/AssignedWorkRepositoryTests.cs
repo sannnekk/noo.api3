@@ -12,7 +12,7 @@ public class AssignedWorkRepositoryTests
     {
         using var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx).Object;
-        var repo = uow.AssignedWorkRepository();
+        var repo = new AssignedWorkRepository(ctx);
         var studentId = Ulid.NewUlid();
         var aw = new AssignedWorkModel
         {
@@ -37,7 +37,7 @@ public class AssignedWorkRepositoryTests
     {
         using var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx).Object;
-        var repo = uow.AssignedWorkRepository();
+        var repo = new AssignedWorkRepository(ctx);
         var aw = new AssignedWorkModel
         {
             Title = "Test",

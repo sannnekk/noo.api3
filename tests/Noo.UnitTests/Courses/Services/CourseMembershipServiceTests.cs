@@ -29,7 +29,8 @@ public class CourseMembershipServiceTests
         var uow = TestHelpers.CreateUowMock(ctx).Object;
         var mapper = CreateMapper();
         var current = MakeUser(UserRoles.Admin);
-        var service = new CourseMembershipService(uow, mapper, current);
+        var courseMembershipRepo = new CourseMembershipRepository(ctx);
+        var service = new CourseMembershipService(uow, courseMembershipRepo, mapper, current);
 
         var courseId = Ulid.NewUlid();
         var studentId = Ulid.NewUlid();

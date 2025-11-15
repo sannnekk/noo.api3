@@ -1,17 +1,13 @@
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.Courses.Models;
 
 namespace Noo.Api.Courses.Services;
 
-public class CourseContentRepository : Repository<CourseMaterialContentModel>, ICourseContentRepository;
-
-public static class CourseContentRepositoryExtensions
+[RegisterScoped(typeof(ICourseContentRepository))]
+public class CourseContentRepository : Repository<CourseMaterialContentModel>, ICourseContentRepository
 {
-    public static ICourseContentRepository CourseContentRepository(this IUnitOfWork unitOfWork)
+    public CourseContentRepository(NooDbContext dbContext) : base(dbContext)
     {
-        return new CourseContentRepository
-        {
-            Context = unitOfWork.Context
-        };
     }
 }

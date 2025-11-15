@@ -1,7 +1,6 @@
 using System.Linq.Expressions;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Services;
-using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Statistics.DTO;
 using Noo.Api.Works.Types;
@@ -13,9 +12,9 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
 {
     private readonly IAssignedWorkRepository _assignedWorkRepository;
 
-    public AssignedWorkStatisticsCollector(IUnitOfWork unitOfWork)
+    public AssignedWorkStatisticsCollector(IAssignedWorkRepository assignedWorkRepository)
     {
-        _assignedWorkRepository = unitOfWork.AssignedWorkRepository();
+        _assignedWorkRepository = assignedWorkRepository;
     }
 
     public async Task<StatisticsBlockDTO> GetAssignedWorkStatisticsAsync(WorkType? workType, DateTime from, DateTime to)

@@ -1,10 +1,9 @@
 using AutoMapper;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.DataAbstraction.Db;
-using Noo.Api.Core.Exceptions.Http;
+using Noo.Api.Core.Exceptions;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
-using Noo.Api.Core.Utils.Json;
 using Noo.Api.Polls.DTO;
 using Noo.Api.Polls.Exceptions;
 using Noo.Api.Polls.Filters;
@@ -17,37 +16,22 @@ namespace Noo.Api.Polls.Services;
 public class PollService : IPollService
 {
     private readonly IMapper _mapper;
-
     private readonly IPollRepository _pollRepository;
-
     private readonly IPollParticipationRepository _pollParticipationRepository;
-
     private readonly IUnitOfWork _unitOfWork;
-
     private readonly IPollAnswerRepository _pollAnswerRepository;
+    private readonly ICurrentUser _currentUser;
+    private readonly IJsonPatchUpdateService _jsonPatchUpdateService;
 
-    private readonly ICurrentUser? _currentUser;
-
-    // Keep current DI-friendly ctor
-    public PollService(IMapper mapper, IUnitOfWork unitOfWork, ICurrentUser currentUser)
+    public PollService(IMapper mapper, IUnitOfWork unitOfWork, IPollRepository pollRepository, IPollParticipationRepository pollParticipationRepository, IPollAnswerRepository pollAnswerRepository, ICurrentUser currentUser, IJsonPatchUpdateService jsonPatchUpdateService)
     {
         _mapper = mapper;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
-        _pollRepository = unitOfWork.PollRepository();
-        _pollParticipationRepository = unitOfWork.PollParticipationRepository();
-        _pollAnswerRepository = unitOfWork.PollAnswerRepository();
-    }
-
-    // Overload used by unit tests that don't provide ICurrentUser
-    public PollService(IMapper mapper, IUnitOfWork unitOfWork)
-    {
-        _mapper = mapper;
-        _unitOfWork = unitOfWork;
-        _currentUser = null;
-        _pollRepository = unitOfWork.PollRepository();
-        _pollParticipationRepository = unitOfWork.PollParticipationRepository();
-        _pollAnswerRepository = unitOfWork.PollAnswerRepository();
+        _pollRepository = pollRepository;
+        _pollParticipationRepository = pollParticipationRepository;
+        _pollAnswerRepository = pollAnswerRepository;
+        _jsonPatchUpdateService = jsonPatchUpdateService;
     }
 
     public Task<Ulid> CreatePollAsync(CreatePollDTO createPollDto)
@@ -112,58 +96,25 @@ public class PollService : IPollService
         await _unitOfWork.CommitAsync();
     }
 
-    public async Task UpdatePollAnswerAsync(Ulid answerId, JsonPatchDocument<UpdatePollAnswerDTO> updateAnswerDto, ModelStateDictionary modelState)
+    public async Task UpdatePollAnswerAsync(Ulid answerId, JsonPatchDocument<UpdatePollAnswerDTO> updateAnswerDto)
     {
         var model = await _pollAnswerRepository.GetByIdAsync(answerId);
 
-        if (model == null)
-        {
-            throw new NotFoundException();
-        }
+        model.ThrowNotFoundIfNull();
 
-        // Map manually to avoid mapping configuration dependency in tests
-        var dto = new UpdatePollAnswerDTO
-        {
-            Value = model.Value
-        };
-
-        modelState ??= new ModelStateDictionary();
-
-        updateAnswerDto.ApplyToAndValidate(dto, modelState);
-
-        if (!modelState.IsValid)
-        {
-            throw new BadRequestException();
-        }
-
-        // Map back manually
-        model.Value = dto.Value;
+        _jsonPatchUpdateService.ApplyPatch(model, updateAnswerDto);
 
         _pollAnswerRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 
-    public async Task UpdatePollAsync(Ulid id, JsonPatchDocument<UpdatePollDTO> updatePollDto, ModelStateDictionary? modelState = null)
+    public async Task UpdatePollAsync(Ulid id, JsonPatchDocument<UpdatePollDTO> updatePollDto)
     {
         var model = await _pollRepository.GetByIdAsync(id);
 
-        if (model == null)
-        {
-            throw new NotFoundException();
-        }
+        model.ThrowNotFoundIfNull();
 
-        var dto = _mapper.Map<UpdatePollDTO>(model);
-
-        modelState ??= new ModelStateDictionary();
-
-        updatePollDto.ApplyToAndValidate(dto, modelState);
-
-        if (!modelState.IsValid)
-        {
-            throw new BadRequestException();
-        }
-
-        _mapper.Map(dto, model);
+        _jsonPatchUpdateService.ApplyPatch(model, updatePollDto);
 
         _pollRepository.Update(model);
         await _unitOfWork.CommitAsync();

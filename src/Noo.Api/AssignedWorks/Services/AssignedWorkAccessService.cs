@@ -1,5 +1,4 @@
 using Noo.Api.AssignedWorks.Types;
-using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
@@ -9,16 +8,12 @@ namespace Noo.Api.AssignedWorks.Services;
 [RegisterScoped(typeof(IAssignedWorkAccessService))]
 public class AssignedWorkAccessService : IAssignedWorkAccessService
 {
-    private readonly IUnitOfWork _unitOfWork;
-
     private readonly IAssignedWorkRepository _assignedWorkRepository;
-
     private readonly ICurrentUser _currentUser;
 
-    public AssignedWorkAccessService(IUnitOfWork unitOfWork, ICurrentUser currentUser)
+    public AssignedWorkAccessService(IAssignedWorkRepository assignedWorkRepository, ICurrentUser currentUser)
     {
-        _unitOfWork = unitOfWork;
-        _assignedWorkRepository = _unitOfWork.AssignedWorkRepository();
+        _assignedWorkRepository = assignedWorkRepository;
         _currentUser = currentUser;
     }
 

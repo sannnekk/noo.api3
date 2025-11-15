@@ -2,7 +2,6 @@ using MediatR;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Services;
 using Noo.Api.AssignedWorks.Types;
-using Noo.Api.Core.DataAbstraction.Db;
 
 namespace Noo.Api.AssignedWorks.Events;
 
@@ -17,9 +16,9 @@ public class AssignedWorkHistoryEventHandlers :
 {
     private readonly IAssignedWorkHistoryRepository _historyRepository;
 
-    public AssignedWorkHistoryEventHandlers(IUnitOfWork unitOfWork)
+    public AssignedWorkHistoryEventHandlers(IAssignedWorkHistoryRepository historyRepository)
     {
-        _historyRepository = unitOfWork.AssignedWorkHistoryRepository();
+        _historyRepository = historyRepository;
     }
 
     public Task Handle(HelperMentorRemovedEvent @event, CancellationToken cancellationToken)

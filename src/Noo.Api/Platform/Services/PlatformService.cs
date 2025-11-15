@@ -6,7 +6,7 @@ using Noo.Api.Platform.Types;
 
 namespace Noo.Api.Platform.Services;
 
-[RegisterTransient(typeof(IPlatformService))]
+[RegisterScoped(typeof(IPlatformService))]
 public class PlatformService : IPlatformService
 {
     public string GetPlatformVersion()

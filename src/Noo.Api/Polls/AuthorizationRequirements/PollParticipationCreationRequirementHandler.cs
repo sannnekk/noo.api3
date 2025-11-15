@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
-using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Polls.Services;
 
 namespace Noo.Api.Polls.AuthorizationRequirements;
@@ -9,11 +8,13 @@ namespace Noo.Api.Polls.AuthorizationRequirements;
 [RegisterScoped(typeof(IAuthorizationHandler))]
 public class PollParticipationCreationRequirementHandler : AuthorizationHandler<PollParticipationCreationRequirement>
 {
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IPollRepository _pollRepository;
+    private readonly IPollParticipationRepository _participationRepository;
 
-    public PollParticipationCreationRequirementHandler(IUnitOfWork unitOfWork)
+    public PollParticipationCreationRequirementHandler(IPollRepository pollRepository, IPollParticipationRepository participationRepository)
     {
-        _unitOfWork = unitOfWork;
+        _pollRepository = pollRepository;
+        _participationRepository = participationRepository;
     }
 
     protected override async Task HandleRequirementAsync(
@@ -33,8 +34,7 @@ public class PollParticipationCreationRequirementHandler : AuthorizationHandler<
             return;
         }
 
-        var pollRepository = _unitOfWork.PollRepository();
-        var poll = await pollRepository.GetByIdAsync(pollId);
+        var poll = await _pollRepository.GetByIdAsync(pollId);
         if (poll == null)
         {
             context.Fail();
@@ -59,11 +59,10 @@ public class PollParticipationCreationRequirementHandler : AuthorizationHandler<
             return;
         }
 
-        var participationRepository = _unitOfWork.PollParticipationRepository();
         var userId = context.User.GetId();
         if (userId != Ulid.Empty)
         {
-            var alreadyParticipated = await participationRepository.ParticipationExistsAsync(pollId, userId, null);
+            var alreadyParticipated = await _participationRepository.ParticipationExistsAsync(pollId, userId, null);
             if (alreadyParticipated)
             {
                 context.Fail();

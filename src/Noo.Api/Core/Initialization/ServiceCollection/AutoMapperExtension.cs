@@ -7,10 +7,12 @@ public static class AutoMapperExtension
 {
     public static void AddAutoMapperProfiles(this IServiceCollection services)
     {
-        var profiles = _getProfiles();
+        var profiles = getProfiles();
 
         var config = new MapperConfiguration(config =>
         {
+            config.AddGlobalIgnore("EntityName");
+
             foreach (var profile in profiles)
             {
                 config.AddProfile(profile);
@@ -23,7 +25,7 @@ public static class AutoMapperExtension
         services.AddSingleton(_ => config.CreateMapper());
     }
 
-    private static IEnumerable<Type> _getProfiles()
+    private static List<Type> getProfiles()
     {
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 

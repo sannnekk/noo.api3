@@ -1,11 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.Polls.Models;
 
 namespace Noo.Api.Polls.Services;
 
+[RegisterScoped(typeof(IPollRepository))]
 public class PollRepository : Repository<PollModel>, IPollRepository
 {
+    public PollRepository(NooDbContext dbContext) : base(dbContext)
+    {
+    }
+
     public Task<PollModel?> GetWithQuestionsAsync(Ulid pollId)
     {
         return Context.Set<PollModel>()
@@ -13,17 +19,5 @@ public class PollRepository : Repository<PollModel>, IPollRepository
             .Include(p => p.Questions.OrderBy(q => q.Order))
             .AsNoTracking()
             .FirstOrDefaultAsync();
-    }
-}
-
-
-public static class IUnitOfWorkPollRepositoryExtension
-{
-    public static IPollRepository PollRepository(this IUnitOfWork unitOfWork)
-    {
-        return new PollRepository()
-        {
-            Context = unitOfWork.Context,
-        };
     }
 }

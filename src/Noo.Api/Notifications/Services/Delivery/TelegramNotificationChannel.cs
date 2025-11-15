@@ -11,7 +11,7 @@ public class TelegramNotificationChannel : INotificationChannel
 
     public Task SendAsync(NotificationModel model, CancellationToken ct = default)
     {
-        // Placeholder: integrate Telegram Bot API here
+        // TODO: integrate Telegram Bot API here
         return Task.CompletedTask;
     }
 }

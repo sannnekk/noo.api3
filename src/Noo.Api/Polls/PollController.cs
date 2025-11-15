@@ -194,7 +194,7 @@ public class PollController : ApiController
     )]
     public async Task<IActionResult> UpdatePollAnswerAsync([FromRoute] Ulid answerId, [FromBody] JsonPatchDocument<UpdatePollAnswerDTO> updateAnswerDto)
     {
-        await _pollService.UpdatePollAnswerAsync(answerId, updateAnswerDto, ModelState);
+        await _pollService.UpdatePollAnswerAsync(answerId, updateAnswerDto);
 
         return SendResponse();
     }

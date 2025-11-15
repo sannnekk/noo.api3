@@ -8,6 +8,7 @@ using Noo.Api.Courses.Services;
 using Noo.UnitTests.Common;
 using SystemTextJsonPatch;
 using Noo.Api.Courses;
+using Noo.Api.Core.Request.Patching;
 
 namespace Noo.UnitTests.Courses;
 
@@ -39,7 +40,12 @@ public class CourseServiceTests
     {
         using var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx).Object;
-        var service = new CourseService(uow, MakeUser(UserRoles.Admin), CreateMapper());
+        var courseRepo = new CourseRepository(ctx);
+        var courseContentRepo = new CourseContentRepository(ctx);
+        var currentUser = MakeUser(UserRoles.Admin);
+        var mapper = CreateMapper();
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+        var service = new CourseService(uow, courseRepo, courseContentRepo, currentUser, mapper, jsonPatch);
 
         var id = await service.CreateAsync(MakeCreateCourseDto());
         Assert.NotEqual(default, id);
@@ -55,6 +61,10 @@ public class CourseServiceTests
     {
         using var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx).Object;
+        var courseRepo = new CourseRepository(ctx);
+        var courseContentRepo = new CourseContentRepository(ctx);
+        var mapper = CreateMapper();
+        var jsonPatch = new JsonPatchUpdateService(mapper);
 
         // Seed couple of courses directly
         var c1 = new CourseModel { Name = "A", SubjectId = Ulid.NewUlid() };
@@ -63,13 +73,13 @@ public class CourseServiceTests
         await uow.CommitAsync();
 
         // Admin sees all
-        var adminService = new CourseService(uow, MakeUser(UserRoles.Admin), CreateMapper());
+        var adminService = new CourseService(uow, courseRepo, courseContentRepo, MakeUser(UserRoles.Admin), mapper, jsonPatch);
         var adminSearch = await adminService.SearchAsync(new CourseFilter { Page = 1, PerPage = 10 });
         Assert.Equal(2, adminSearch.Total);
 
         // Student sees none unless membership exists
         var student = MakeUser(UserRoles.Student);
-        var studentService = new CourseService(uow, student, CreateMapper());
+        var studentService = new CourseService(uow, courseRepo, courseContentRepo, student, mapper, jsonPatch);
         var studentSearch = await studentService.SearchAsync(new CourseFilter { Page = 1, PerPage = 10 });
         Assert.Equal(0, studentSearch.Total);
     }
@@ -80,7 +90,12 @@ public class CourseServiceTests
         var dbName = Guid.NewGuid().ToString();
         using var ctx = TestHelpers.CreateInMemoryDb(dbName);
         var uow = TestHelpers.CreateUowMock(ctx).Object;
-        var service = new CourseService(uow, MakeUser(UserRoles.Admin), CreateMapper());
+        var courseRepo = new CourseRepository(ctx);
+        var courseContentRepo = new CourseContentRepository(ctx);
+        var currentUser = MakeUser(UserRoles.Admin);
+        var mapper = CreateMapper();
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+        var service = new CourseService(uow, courseRepo, courseContentRepo, currentUser, mapper, jsonPatch);
 
         var id = await service.CreateAsync(MakeCreateCourseDto("ToDelete"));
         await service.SoftDeleteAsync(id);
@@ -98,7 +113,12 @@ public class CourseServiceTests
     {
         using var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx).Object;
-        var service = new CourseService(uow, MakeUser(UserRoles.Admin), CreateMapper());
+        var courseRepo = new CourseRepository(ctx);
+        var courseContentRepo = new CourseContentRepository(ctx);
+        var currentUser = MakeUser(UserRoles.Admin);
+        var mapper = CreateMapper();
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+        var service = new CourseService(uow, courseRepo, courseContentRepo, currentUser, mapper, jsonPatch);
 
         var dto = new CreateCourseMaterialContentDTO
         {
@@ -127,7 +147,12 @@ public class CourseServiceTests
 
         using var ctx = TestHelpers.CreateInMemoryDb(dbName);
         var uow = TestHelpers.CreateUowMock(ctx).Object;
-        var service = new CourseService(uow, MakeUser(UserRoles.Admin), CreateMapper());
+        var courseRepo = new CourseRepository(ctx);
+        var courseContentRepo = new CourseContentRepository(ctx);
+        var currentUser = MakeUser(UserRoles.Admin);
+        var mapper = CreateMapper();
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+        var service = new CourseService(uow, courseRepo, courseContentRepo, currentUser, mapper, jsonPatch);
 
         var original = MakeCreateCourseDto("Initial Name");
         newStart = original.StartDate!.Value.AddDays(2);
@@ -143,7 +168,7 @@ public class CourseServiceTests
             .Replace(x => x.SubjectId, newSubject)
             .Replace(x => x.ThumbnailId, newThumb);
 
-        await service.UpdateAsync(id, patch, new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary());
+        await service.UpdateAsync(id, patch);
 
         var verifyUow = TestHelpers.CreateUowMock(ctx).Object;
         var course = await verifyUow.Context.GetDbSet<CourseModel>().FindAsync(id);
@@ -168,7 +193,12 @@ public class CourseServiceTests
         using (var ctx = TestHelpers.CreateInMemoryDb(dbName))
         {
             var uow = TestHelpers.CreateUowMock(ctx).Object;
-            var service = new CourseService(uow, MakeUser(UserRoles.Admin), CreateMapper());
+            var courseRepo = new CourseRepository(ctx);
+            var courseContentRepo = new CourseContentRepository(ctx);
+            var currentUser = MakeUser(UserRoles.Admin);
+            var mapper = CreateMapper();
+            var jsonPatch = new JsonPatchUpdateService(mapper);
+            var service = new CourseService(uow, courseRepo, courseContentRepo, currentUser, mapper, jsonPatch);
 
             contentId = await service.CreateMaterialContentAsync(new CreateCourseMaterialContentDTO
             {
@@ -185,7 +215,7 @@ public class CourseServiceTests
             patch.Replace(x => x.Content, new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText());
 #pragma warning restore RCS1201 // Use method chaining
 
-            await service.UpdateContentAsync(contentId, patch, new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary());
+            await service.UpdateContentAsync(contentId, patch);
         }
 
         using (var verifyCtx = TestHelpers.CreateInMemoryDb(dbName))

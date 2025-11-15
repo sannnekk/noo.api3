@@ -1,11 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.Polls.Models;
 
 namespace Noo.Api.Polls.Services;
 
+[RegisterScoped(typeof(IPollParticipationRepository))]
 public class PollParticipationRepository : Repository<PollParticipationModel>, IPollParticipationRepository
 {
+    public PollParticipationRepository(NooDbContext dbContext) : base(dbContext)
+    {
+    }
+
     public Task<List<PollParticipationModel>> GetByPollIdAsync(Ulid pollId)
     {
         return Context.Set<PollParticipationModel>()
@@ -34,16 +40,5 @@ public class PollParticipationRepository : Repository<PollParticipationModel>, I
 
         // No identifier provided; treat as no duplicate
         return Task.FromResult(false);
-    }
-}
-
-public static class IUnitOfWorkPollParticipationRepositoryExtension
-{
-    public static IPollParticipationRepository PollParticipationRepository(this IUnitOfWork unitOfWork)
-    {
-        return new PollParticipationRepository()
-        {
-            Context = unitOfWork.Context,
-        };
     }
 }

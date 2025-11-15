@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Filters;
@@ -15,6 +14,6 @@ public interface ICourseService
     public Task<CourseMaterialContentModel?> GetContentByIdAsync(Ulid contentId);
     public Task<SearchResult<CourseModel>> SearchAsync(CourseFilter filter);
     public Task SoftDeleteAsync(Ulid courseId);
-    public Task UpdateAsync(Ulid courseId, JsonPatchDocument<UpdateCourseDTO> courseUpdateDto, ModelStateDictionary modelState);
-    public Task UpdateContentAsync(Ulid contentId, JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto, ModelStateDictionary modelState);
+    public Task UpdateAsync(Ulid courseId, JsonPatchDocument<UpdateCourseDTO> courseUpdateDto);
+    public Task UpdateContentAsync(Ulid contentId, JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto);
 }

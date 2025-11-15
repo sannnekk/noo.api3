@@ -15,10 +15,10 @@ public class NotificationService : INotificationService
     private readonly INotificationRepository _repository;
     private readonly IEventPublisher _events;
 
-    public NotificationService(IUnitOfWork unitOfWork, IEventPublisher events)
+    public NotificationService(IUnitOfWork unitOfWork, INotificationRepository notificationRepository, IEventPublisher events)
     {
         _unitOfWork = unitOfWork;
-        _repository = _unitOfWork.NotificationRepository();
+        _repository = notificationRepository;
         _events = events;
     }
 

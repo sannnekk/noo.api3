@@ -1,6 +1,7 @@
 using AutoMapper;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Exceptions;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Courses.DTO;
@@ -15,26 +16,27 @@ namespace Noo.Api.Courses.Services;
 public class CourseService : ICourseService
 {
     private readonly IUnitOfWork _unitOfWork;
-
     private readonly ICourseRepository _courseRepository;
-
     private readonly ICourseContentRepository _courseContentRepository;
-
     private readonly ICurrentUser _currentUser;
-
     private readonly IMapper _mapper;
+    private readonly IJsonPatchUpdateService _jsonPatchUpdateService;
 
     public CourseService(
         IUnitOfWork unitOfWork,
+        ICourseRepository courseRepository,
+        ICourseContentRepository courseContentRepository,
         ICurrentUser currentUser,
-        IMapper mapper
+        IMapper mapper,
+        IJsonPatchUpdateService jsonPatchUpdateService
     )
     {
         _unitOfWork = unitOfWork;
-        _courseRepository = unitOfWork.CourseRepository();
-        _courseContentRepository = unitOfWork.CourseContentRepository();
+        _courseRepository = courseRepository;
+        _courseContentRepository = courseContentRepository;
         _currentUser = currentUser;
         _mapper = mapper;
+        _jsonPatchUpdateService = jsonPatchUpdateService;
     }
 
     public async Task<Ulid> CreateAsync(CreateCourseDTO dto)
@@ -85,15 +87,27 @@ public class CourseService : ICourseService
         await _unitOfWork.CommitAsync();
     }
 
-    public async Task UpdateAsync(Ulid courseId, JsonPatchDocument<UpdateCourseDTO> courseUpdateDto, ModelStateDictionary modelState)
+    public async Task UpdateAsync(Ulid courseId, JsonPatchDocument<UpdateCourseDTO> courseUpdateDto)
     {
-        await _courseRepository.UpdateWithJsonPatchAsync(courseId, courseUpdateDto, _mapper, modelState);
+        var model = await _courseRepository.GetWithChapterTreeAsync(courseId);
+
+        model.ThrowNotFoundIfNull();
+
+        _jsonPatchUpdateService.ApplyPatch(model, courseUpdateDto);
+
+        _courseRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 
-    public async Task UpdateContentAsync(Ulid contentId, JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto, ModelStateDictionary modelState)
+    public async Task UpdateContentAsync(Ulid contentId, JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto)
     {
-        await _courseContentRepository.UpdateWithJsonPatchAsync(contentId, contentUpdateDto, _mapper, modelState);
+        var model = await _courseContentRepository.GetByIdAsync(contentId);
+
+        model.ThrowNotFoundIfNull();
+
+        _jsonPatchUpdateService.ApplyPatch(model, contentUpdateDto);
+
+        _courseContentRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 }

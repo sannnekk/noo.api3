@@ -11,6 +11,7 @@ public class CalendarPolicies : IPolicyRegistrar
 
     public void RegisterPolicies(AuthorizationOptions options)
     {
+        // TODO: Refine these policies as needed
         options.AddPolicy(CanGetCalendarEvents, policy =>
         {
             policy.RequireAuthenticatedUser().RequireNotBlocked();

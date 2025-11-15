@@ -35,7 +35,10 @@ public class AssignedWorkServiceTests
         var mapperCfg = new MapperConfiguration(cfg => cfg.AddProfile(new AssignedWorkMapperProfile()));
         var mapper = mapperCfg.CreateMapper();
         var userRepo = new UserRepository(ctx);
-        var svc = new AssignedWorkService(uowMock.Object, userRepo, currentUser.Object, mediator.Object, mapper);
+        var assignedWorkRepo = new AssignedWorkRepository(ctx);
+        var assignedWorkAnswerRepo = new AssignedWorkAnswerRepository(ctx);
+        var assignedWorkCommentRepo = new AssignedWorkCommentRepository(ctx);
+        var svc = new AssignedWorkService(uowMock.Object, userRepo, assignedWorkRepo, assignedWorkAnswerRepo, assignedWorkCommentRepo, currentUser.Object, mediator.Object, mapper);
         return (svc, ctx, uowMock, currentUser, mediator);
     }
 

@@ -1,18 +1,13 @@
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 
 namespace Noo.Api.AssignedWorks.Services;
 
-public class AssignedWorkCommentRepository : Repository<AssignedWorkCommentModel>, IAssignedWorkCommentRepository;
-
-
-public static class IUnitOfWorkAssignedWorkCommentRepositoryExtensions
+[RegisterScoped(typeof(IAssignedWorkCommentRepository))]
+public class AssignedWorkCommentRepository : Repository<AssignedWorkCommentModel>, IAssignedWorkCommentRepository
 {
-    public static IAssignedWorkCommentRepository AssignedWorkCommentRepository(this IUnitOfWork unitOfWork)
+    public AssignedWorkCommentRepository(NooDbContext dbContext) : base(dbContext)
     {
-        return new AssignedWorkCommentRepository()
-        {
-            Context = unitOfWork.Context,
-        };
     }
 }

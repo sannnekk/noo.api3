@@ -11,7 +11,7 @@ public class HttpNotificationChannel : INotificationChannel
 
     public Task SendAsync(NotificationModel model, CancellationToken ct = default)
     {
-        // Placeholder: could push to SignalR/WebSocket or external webhook.
+        // TODO: could push to SignalR/WebSocket or external webhook.
         return Task.CompletedTask;
     }
 }

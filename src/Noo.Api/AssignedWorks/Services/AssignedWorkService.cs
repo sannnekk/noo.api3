@@ -18,27 +18,29 @@ namespace Noo.Api.AssignedWorks.Services;
 public class AssignedWorkService : IAssignedWorkService
 {
     private readonly IUnitOfWork _unitOfWork;
-
     private readonly IAssignedWorkRepository _assignedWorkRepository;
-
     private readonly IAssignedWorkAnswerRepository _assignedWorkAnswerRepository;
-
     private readonly IAssignedWorkCommentRepository _assignedWorkCommentRepository;
-
     private readonly IUserRepository _userRepository;
-
     private readonly ICurrentUser _currentUser;
-
     private readonly IMediator _mediator;
-
     private readonly IMapper _mapper;
 
-    public AssignedWorkService(IUnitOfWork unitOfWork, IUserRepository userRepository, ICurrentUser currentUser, IMediator mediator, IMapper mapper)
+    public AssignedWorkService(
+        IUnitOfWork unitOfWork,
+        IUserRepository userRepository,
+        IAssignedWorkRepository assignedWorkRepository,
+        IAssignedWorkAnswerRepository assignedWorkAnswerRepository,
+        IAssignedWorkCommentRepository assignedWorkCommentRepository,
+        ICurrentUser currentUser,
+        IMediator mediator,
+        IMapper mapper
+    )
     {
         _unitOfWork = unitOfWork;
-        _assignedWorkRepository = _unitOfWork.AssignedWorkRepository();
-        _assignedWorkAnswerRepository = _unitOfWork.AssignedWorkAnswerRepository();
-        _assignedWorkCommentRepository = _unitOfWork.AssignedWorkCommentRepository();
+        _assignedWorkRepository = assignedWorkRepository;
+        _assignedWorkAnswerRepository = assignedWorkAnswerRepository;
+        _assignedWorkCommentRepository = assignedWorkCommentRepository;
         _userRepository = userRepository;
         _currentUser = currentUser;
         _mediator = mediator;

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Noo.Api.Media.DTO;
 using Noo.Api.NooTube.Types;
@@ -7,9 +8,15 @@ namespace Noo.Api.NooTube.DTO;
 
 public record NooTubeVideoDTO
 {
+    [Required]
+    [JsonPropertyName("_entityName")]
+    public string EntityName => "NooTubeVideo";
+
+    [Required]
     [JsonPropertyName("id")]
     public Ulid Id { get; init; }
 
+    [Required]
     [JsonPropertyName("title")]
     public string Title { get; set; } = string.Empty;
 
@@ -28,18 +35,22 @@ public record NooTubeVideoDTO
     [JsonPropertyName("externalThumbnailUrl")]
     public string? ExternalThumbnailUrl { get; set; }
 
+    [Required]
     [JsonPropertyName("serviceType")]
     public NooTubeServiceType ServiceType { get; set; }
 
+    [Required]
     [JsonPropertyName("state")]
     public VideoState State { get; set; } = VideoState.NotUploaded;
 
     [JsonPropertyName("duration")]
     public int? Duration { get; set; }
 
+    [Required]
     [JsonPropertyName("publishedAt")]
     public DateTime PublishedAt { get; set; }
 
+    [Required]
     [JsonPropertyName("uploadedById")]
     public Ulid UploadedById { get; set; }
 

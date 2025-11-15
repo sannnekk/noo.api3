@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Polls.AuthorizationRequirements;
 
 namespace Noo.Api.Polls;
 
@@ -75,7 +76,7 @@ public class PollPolicies : IPolicyRegistrar
             policy
                 .RequireAuthenticatedUser()
                 .RequireNotBlocked()
-                .AddRequirements(new AuthorizationRequirements.PollParticipationCreationRequirement());
+                .AddRequirements(new PollParticipationCreationRequirement());
         });
 
         options.AddPolicy(CanUpdateAnswer, policy =>

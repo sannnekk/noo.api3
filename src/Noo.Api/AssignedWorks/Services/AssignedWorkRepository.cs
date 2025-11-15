@@ -4,13 +4,19 @@ using Noo.Api.AssignedWorks.DTO;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils.DI;
 using Noo.Api.Users.Models;
 using Noo.Api.Works.Types;
 
 namespace Noo.Api.AssignedWorks.Services;
 
+[RegisterScoped(typeof(IAssignedWorkRepository))]
 public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWorkRepository
 {
+    public AssignedWorkRepository(NooDbContext dbContext) : base(dbContext)
+    {
+    }
+
     public Task<AssignedWorkProgressDTO?> GetProgressAsync(Ulid assignedWorkId, Ulid? userId)
     {
         return Context.Set<AssignedWorkModel>()
@@ -157,17 +163,5 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
             .Where(aw => aw.StudentId == studentId && (workType == null || aw.Type == workType))
             .GroupBy(aw => new { aw.CreatedAt.Year, aw.CreatedAt.Month })
             .ToDictionaryAsync(g => new DateTime(g.Key.Year, g.Key.Month, 1), g => g.Average(aw => aw.Score));
-    }
-}
-
-
-public static class IUnitOfWorkAssignedWorkRepositoryExtensions
-{
-    public static IAssignedWorkRepository AssignedWorkRepository(this IUnitOfWork unitOfWork)
-    {
-        return new AssignedWorkRepository()
-        {
-            Context = unitOfWork.Context,
-        };
     }
 }

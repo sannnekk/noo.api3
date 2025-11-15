@@ -14,21 +14,19 @@ namespace Noo.Api.Courses.Services;
 public class CourseMembershipService : ICourseMembershipService
 {
     private readonly ICourseMembershipRepository _courseMembershipRepository;
-
     private readonly IUnitOfWork _unitOfWork;
-
     private readonly IMapper _mapper;
-
     private readonly ICurrentUser _currentUser;
 
     public CourseMembershipService(
         IUnitOfWork unitOfWork,
+        ICourseMembershipRepository courseMembershipRepository,
         IMapper mapper,
         ICurrentUser currentUser
     )
     {
         _unitOfWork = unitOfWork;
-        _courseMembershipRepository = unitOfWork.CourseMembershipRepository();
+        _courseMembershipRepository = courseMembershipRepository;
         _mapper = mapper;
         _currentUser = currentUser;
     }

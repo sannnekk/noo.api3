@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Noo.Api.Polls.Types;
 using Noo.Api.Users.DTO;
@@ -6,9 +7,15 @@ namespace Noo.Api.Polls.DTO;
 
 public record PollParticipationDTO
 {
+    [Required]
+    [JsonPropertyName("_entityName")]
+    public string EntityName { get; init; } = "PollParticipation";
+
+    [Required]
     [JsonPropertyName("id")]
     public Ulid Id { get; init; }
 
+    [Required]
     [JsonPropertyName("pollId")]
     public Ulid PollId { get; init; }
 
@@ -19,6 +26,7 @@ public record PollParticipationDTO
     [JsonPropertyName("userId")]
     public Ulid? UserId { get; init; }
 
+    [Required]
     [JsonPropertyName("userType")]
     public ParticipatingUserType UserType { get; init; }
 
@@ -36,6 +44,7 @@ public record PollParticipationDTO
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IEnumerable<PollAnswerDTO>? Answers { get; init; }
 
+    [Required]
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; init; }
 

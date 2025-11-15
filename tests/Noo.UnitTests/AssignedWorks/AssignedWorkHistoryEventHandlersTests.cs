@@ -12,7 +12,8 @@ public class AssignedWorkHistoryEventHandlersTests
     {
         using var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx).Object;
-        var handler = new AssignedWorkHistoryEventHandlers(uow);
+        var historyRepo = new AssignedWorkHistoryRepository(ctx);
+        var handler = new AssignedWorkHistoryEventHandlers(historyRepo);
         var awId = Ulid.NewUlid();
         // simulate various events
         await handler.Handle(new AssignedWorkSolvedEvent(awId), CancellationToken.None);
@@ -24,7 +25,7 @@ public class AssignedWorkHistoryEventHandlersTests
         await handler.Handle(new HelperMentorRemovedEvent(Ulid.NewUlid(), awId), CancellationToken.None);
         // Persist changes because handlers only Add to repository; in the app, UnitOfWork commit happens in service pipeline.
         await ctx.SaveChangesAsync();
-        var repo = uow.AssignedWorkHistoryRepository();
+        var repo = historyRepo;
         var history = (await repo.GetHistoryAsync(awId)).ToList();
         // 7 events
         Assert.Equal(7, history.Count);

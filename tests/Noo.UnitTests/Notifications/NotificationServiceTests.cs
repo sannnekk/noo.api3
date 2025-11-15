@@ -23,7 +23,7 @@ public class NotificationServiceTests
             .Setup(p => p.PublishAsync(It.IsAny<NotificationCreatedEvent>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var svc = new NotificationService(uow, publisher.Object);
+        var svc = new NotificationService(uow, new NotificationRepository(ctx), publisher.Object);
 
         var user1 = Ulid.NewUlid();
         var user2 = Ulid.NewUlid();
@@ -62,7 +62,7 @@ public class NotificationServiceTests
         using var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx).Object;
         var publisher = new Mock<IEventPublisher>();
-        var svc = new NotificationService(uow, publisher.Object);
+        var svc = new NotificationService(uow, new NotificationRepository(ctx), publisher.Object);
 
         var user = Ulid.NewUlid();
         await svc.BulkCreateNotificationsAsync(new BulkCreateNotificationsDTO
@@ -91,7 +91,7 @@ public class NotificationServiceTests
     {
         using var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx).Object;
-        var svc = new NotificationService(uow, new Mock<IEventPublisher>().Object);
+        var svc = new NotificationService(uow, new NotificationRepository(ctx), new Mock<IEventPublisher>().Object);
 
         var u1 = Ulid.NewUlid();
         var u2 = Ulid.NewUlid();

@@ -18,9 +18,9 @@ public class CalendarService : ICalendarService
 
     private readonly IMapper _mapper;
 
-    public CalendarService(IUnitOfWork unitOfWork, IMapper mapper)
+    public CalendarService(IUnitOfWork unitOfWork, ICalendarEventRepository calendarEventRepository, IMapper mapper)
     {
-        _calendarEventRepository = unitOfWork.CalendarEventRepository();
+        _calendarEventRepository = calendarEventRepository;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
     }

@@ -1,4 +1,3 @@
-using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.ThirdPartyServices.Google;
 using Noo.Api.Core.Utils.DI;
@@ -14,10 +13,10 @@ public class PollDataCollector : IPollDataCollector
 
     private readonly IPollRepository _pollRepository;
 
-    public PollDataCollector(IUnitOfWork unitOfWork)
+    public PollDataCollector(IPollRepository pollRepository, IPollParticipationRepository pollParticipationRepository)
     {
-        _participationRepository = unitOfWork.PollParticipationRepository();
-        _pollRepository = unitOfWork.PollRepository();
+        _participationRepository = pollParticipationRepository;
+        _pollRepository = pollRepository;
     }
 
     public async Task<DataTable> GetPollResultsAsync(Ulid pollId)

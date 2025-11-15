@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
-using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Polls.Services;
 
 namespace Noo.Api.Polls.AuthorizationRequirements;
@@ -9,11 +8,11 @@ namespace Noo.Api.Polls.AuthorizationRequirements;
 [RegisterScoped(typeof(IAuthorizationHandler))]
 public class PollParticipationAccessRequirementHandler : AuthorizationHandler<PollParticipationAccessRequirement>
 {
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IPollParticipationRepository _pollParticipationRepository;
 
-    public PollParticipationAccessRequirementHandler(IUnitOfWork unitOfWork)
+    public PollParticipationAccessRequirementHandler(IPollParticipationRepository pollParticipationRepository)
     {
-        _unitOfWork = unitOfWork;
+        _pollParticipationRepository = pollParticipationRepository;
     }
 
     protected override async Task HandleRequirementAsync(
@@ -49,8 +48,7 @@ public class PollParticipationAccessRequirementHandler : AuthorizationHandler<Po
             return;
         }
 
-        var participationRepository = _unitOfWork.PollParticipationRepository();
-        var participation = await participationRepository.GetByIdAsync(participationId);
+        var participation = await _pollParticipationRepository.GetByIdAsync(participationId);
         if (participation == null)
         {
             context.Fail();
