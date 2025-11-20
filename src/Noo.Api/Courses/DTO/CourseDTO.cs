@@ -49,7 +49,7 @@ public record CourseDTO
 
     [JsonPropertyName("chapters")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public IEnumerable<CourseChapterDTO> Chapters = [];
+    public IEnumerable<CourseChapterDTO> Chapters { get; init; } = [];
 
     [Required]
     [JsonPropertyName("createdAt")]

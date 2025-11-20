@@ -26,4 +26,7 @@ public record CreateCourseDTO
     [JsonPropertyName("subjectId")]
     [Required]
     public Ulid SubjectId { get; init; }
+
+    [JsonPropertyName("chapters")]
+    public IEnumerable<CreateCourseChapterDTO> Chapters { get; init; } = [];
 }

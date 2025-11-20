@@ -24,4 +24,7 @@ public record UpdateCourseDTO
 
     [JsonPropertyName("subjectId")]
     public Ulid? SubjectId { get; init; }
+
+    [JsonPropertyName("chapters")]
+    public IDictionary<string, UpdateCourseChapterDTO>? Chapters { get; init; }
 }

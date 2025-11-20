@@ -18,7 +18,6 @@ public class CourseMaterialModel : OrderedModel
     [MaxLength(255)]
     public string Title { get; set; } = default!;
 
-    [Required]
     [Column("title_color", TypeName = DbDataTypes.Varchar63)]
     [MaxLength(63)]
     public string? TitleColor { get; set; }
@@ -36,9 +35,8 @@ public class CourseMaterialModel : OrderedModel
     public Ulid ChapterId { get; set; }
 
     [Column("content_id", TypeName = DbDataTypes.Ulid)]
-    [Required]
     [ForeignKey(nameof(Content))]
-    public Ulid ContentId { get; set; }
+    public Ulid? ContentId { get; set; }
 
     #region Navigation properties
 

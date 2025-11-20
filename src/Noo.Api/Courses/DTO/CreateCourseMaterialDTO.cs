@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Noo.Api.Courses.DTO;
 
-public record CreateCourseChapterDTO
+public record CreateCourseMaterialDTO
 {
     [JsonPropertyName("title")]
     [Required]
@@ -11,17 +11,14 @@ public record CreateCourseChapterDTO
     [MaxLength(255)]
     public string Title { get; init; } = string.Empty;
 
-    [JsonPropertyName("color")]
+    [JsonPropertyName("titleColor")]
     [MaxLength(63)]
-    public string? Color { get; set; }
+    public string? TitleColor { get; set; }
 
     [JsonPropertyName("isActive")]
     [Required]
     public bool IsActive { get; init; }
 
-    [JsonPropertyName("subChapters")]
-    public IEnumerable<CreateCourseChapterDTO> SubChapters { get; init; } = [];
-
-    [JsonPropertyName("materials")]
-    public IEnumerable<CreateCourseMaterialDTO> Materials { get; init; } = [];
+    [JsonPropertyName("publishAt")]
+    public DateTime? PublishAt { get; init; }
 }

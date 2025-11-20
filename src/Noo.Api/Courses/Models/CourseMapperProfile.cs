@@ -14,7 +14,6 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-            .ForMember(dest => dest.Chapters, opt => opt.Ignore())
             .ForMember(dest => dest.Editors, opt => opt.Ignore())
             .ForMember(dest => dest.Authors, opt => opt.Ignore())
             .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
@@ -22,19 +21,77 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
             .ForMember(dest => dest.Subject, opt => opt.Ignore());
 
-        // update mappings for patch operations
-        CreateMap<CourseModel, UpdateCourseDTO>();
+        // Update mappings for patch operations
+        // Map Model -> UpdateDTO (converts collections to dictionaries by ID)
+        CreateMap<CourseModel, UpdateCourseDTO>()
+            .ForMember(dest => dest.Chapters, opt => opt.MapFrom((src, _, _, context) =>
+                src.Chapters.MapCollectionToDictionary<CourseChapterModel, UpdateCourseChapterDTO>(context)));
+
         CreateMap<UpdateCourseDTO, CourseModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-            .ForMember(dest => dest.Chapters, opt => opt.Ignore())
             .ForMember(dest => dest.Editors, opt => opt.Ignore())
             .ForMember(dest => dest.Authors, opt => opt.Ignore())
             .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
             .ForMember(dest => dest.Memberships, opt => opt.Ignore())
             .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
-            .ForMember(dest => dest.Subject, opt => opt.Ignore());
+            .ForMember(dest => dest.Subject, opt => opt.Ignore())
+            .ForMember(dest => dest.Chapters, opt => opt.MapFrom((src, _, _, context) =>
+                src.Chapters.MapDictionaryToCollection<UpdateCourseChapterDTO, CourseChapterModel>(context.Mapper)));
+
+        // Chapter mappings
+        CreateMap<CourseChapterModel, UpdateCourseChapterDTO>()
+            .ForMember(dest => dest.SubChapters, opt => opt.MapFrom((src, _, _, context) =>
+                src.SubChapters.MapCollectionToDictionary<CourseChapterModel, UpdateCourseChapterDTO>(context)))
+            .ForMember(dest => dest.Materials, opt => opt.MapFrom((src, _, _, context) =>
+                src.Materials.MapCollectionToDictionary<CourseMaterialModel, UpdateCourseMaterialDTO>(context)));
+
+        CreateMap<UpdateCourseChapterDTO, CourseChapterModel>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.Order, opt => opt.Ignore())
+            .ForMember(dest => dest.Course, opt => opt.Ignore())
+            .ForMember(dest => dest.CourseId, opt => opt.Ignore())
+            .ForMember(dest => dest.ParentChapter, opt => opt.Ignore())
+            .ForMember(dest => dest.SubChapters, opt => opt.MapFrom((src, _, _, context) =>
+                src.SubChapters.MapDictionaryToCollection<UpdateCourseChapterDTO, CourseChapterModel>(context.Mapper)))
+            .ForMember(dest => dest.Materials, opt => opt.MapFrom((src, _, _, context) =>
+                src.Materials.MapDictionaryToCollection<UpdateCourseMaterialDTO, CourseMaterialModel>(context.Mapper)));
+
+        // Material mappings
+        CreateMap<CourseMaterialModel, UpdateCourseMaterialDTO>();
+
+        CreateMap<UpdateCourseMaterialDTO, CourseMaterialModel>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.Order, opt => opt.Ignore())
+            .ForMember(dest => dest.Chapter, opt => opt.Ignore())
+            .ForMember(dest => dest.Content, opt => opt.Ignore())
+            .ForMember(dest => dest.Reactions, opt => opt.Ignore());
+
+        CreateMap<CreateCourseChapterDTO, CourseChapterModel>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.Order, opt => opt.Ignore())
+            .ForMember(dest => dest.Course, opt => opt.Ignore())
+            .ForMember(dest => dest.CourseId, opt => opt.Ignore())
+            .ForMember(dest => dest.ParentChapter, opt => opt.Ignore())
+            .ForMember(dest => dest.ParentChapterId, opt => opt.Ignore());
+
+        CreateMap<CreateCourseMaterialDTO, CourseMaterialModel>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.Order, opt => opt.Ignore())
+            .ForMember(dest => dest.Chapter, opt => opt.Ignore())
+            .ForMember(dest => dest.ChapterId, opt => opt.Ignore())
+            .ForMember(dest => dest.Content, opt => opt.Ignore())
+            .ForMember(dest => dest.ContentId, opt => opt.Ignore())
+            .ForMember(dest => dest.Reactions, opt => opt.Ignore());
 
         // Allow creating content entities from DTOs
         CreateMap<CreateCourseMaterialContentDTO, CourseMaterialContentModel>()
@@ -45,8 +102,8 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Work, opt => opt.Ignore());
 
         // Update content mappings for patch operations
-        CreateMap<CourseMaterialContentModel, Noo.Api.Courses.UpdateCourseMaterialContentDTO>();
-        CreateMap<Noo.Api.Courses.UpdateCourseMaterialContentDTO, CourseMaterialContentModel>()
+        CreateMap<CourseMaterialContentModel, UpdateCourseMaterialContentDTO>();
+        CreateMap<UpdateCourseMaterialContentDTO, CourseMaterialContentModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
@@ -57,12 +114,16 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
             .ForMember(dest => dest.ThumbnailId, opt => opt.MapFrom(src => src.ThumbnailId))
-            .ForMember(dest => dest.Chapters, opt => opt.MapFrom(src => src.Chapters))
-            .ForMember(dest => dest.MemberCount, opt => opt.MapFrom<CourseMemberCountValueResolver>())
+            // TODO: implement
+            //.ForMember(dest => dest.MemberCount, opt => opt.MapFrom<CourseMemberCountValueResolver>())
+            // TODO: remove
+            .ForMember(dest => dest.MemberCount, opt => opt.Ignore())
             .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
-            .ForMember(dest => dest.Subject, opt => opt.Ignore());
+            .ForMember(dest => dest.Subject, opt => opt.Ignore())
+            .MaxDepth(CourseConfig.MaxChapterTreeDepth);
 
-        CreateMap<CourseChapterModel, CourseChapterDTO>();
+        CreateMap<CourseChapterModel, CourseChapterDTO>()
+            .MaxDepth(CourseConfig.MaxChapterTreeDepth);
         CreateMap<CourseMaterialModel, CourseMaterialDTO>();
 
         CreateMap<CourseMaterialContentModel, CourseMaterialContentDTO>()

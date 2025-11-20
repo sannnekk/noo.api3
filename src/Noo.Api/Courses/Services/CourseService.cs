@@ -61,7 +61,7 @@ public class CourseService : ICourseService
 
     public Task<CourseModel?> GetByIdAsync(Ulid id, bool includeInactive)
     {
-        return _courseRepository.GetWithChapterTreeAsync(id, includeInactive);
+        return _courseRepository.GetWithChapterTreeAsync(id, true/* includeInactive */);
     }
 
     public Task<CourseMaterialContentModel?> GetContentByIdAsync(Ulid contentId)
