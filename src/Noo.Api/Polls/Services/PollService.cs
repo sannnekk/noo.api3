@@ -104,7 +104,6 @@ public class PollService : IPollService
 
         _jsonPatchUpdateService.ApplyPatch(model, updateAnswerDto);
 
-        _pollAnswerRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 
@@ -116,7 +115,6 @@ public class PollService : IPollService
 
         _jsonPatchUpdateService.ApplyPatch(model, updatePollDto);
 
-        _pollRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 

@@ -28,7 +28,8 @@ public static class NestedEntityMappingExtensions
 
         return entities.ToDictionary(
             entity => entity.Id.ToString(),
-            entity => context.Mapper.Map<TDto>(entity)
+            context.Mapper.Map<TDto>,
+            StringComparer.OrdinalIgnoreCase
         );
     }
 

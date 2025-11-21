@@ -5,6 +5,10 @@ namespace Noo.Api.Courses.DTO;
 
 public record CreateCourseChapterDTO
 {
+    [JsonPropertyName("order")]
+    [Required]
+    public int Order { get; init; }
+
     [JsonPropertyName("title")]
     [Required]
     [MinLength(1)]

@@ -89,13 +89,12 @@ public class CourseService : ICourseService
 
     public async Task UpdateAsync(Ulid courseId, JsonPatchDocument<UpdateCourseDTO> courseUpdateDto)
     {
-        var model = await _courseRepository.GetWithChapterTreeAsync(courseId);
+        var model = await _courseRepository.GetWithChapterTreeAsync(courseId, includeInactive: true);
 
         model.ThrowNotFoundIfNull();
 
         _jsonPatchUpdateService.ApplyPatch(model, courseUpdateDto);
 
-        _courseRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 
@@ -107,7 +106,6 @@ public class CourseService : ICourseService
 
         _jsonPatchUpdateService.ApplyPatch(model, contentUpdateDto);
 
-        _courseContentRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 }

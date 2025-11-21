@@ -17,7 +17,7 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
         var chapters = await Context.GetDbSet<CourseChapterModel>()
             .Where(c => c.CourseId == courseId)
             .Where(c => includeInactive || c.IsActive)
-            .Include(c => c.Materials.Where(m => includeInactive || m.IsActive))
+            .Include(c => c.Materials.Where(m => includeInactive || m.IsActive).OrderBy(m => m.Order))
             .ToListAsync();
 
         var course = await Context.GetDbSet<CourseModel>()
@@ -37,6 +37,7 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
         course.Chapters = chapters
             .Where(c => c.ParentChapterId == null)
             .Select(c => BuildSubTree(c, chapters, maxDepth))
+            .OrderBy(c => c.Order)
             .ToList();
 
         return course;
@@ -52,6 +53,7 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
         chapter.SubChapters = chapters
             .Where(c => c.ParentChapterId == chapter.Id)
             .Select(c => BuildSubTree(c, chapters, maxDepth, currentDepth + 1))
+            .OrderBy(c => c.Order)
             .ToList();
 
         return chapter;

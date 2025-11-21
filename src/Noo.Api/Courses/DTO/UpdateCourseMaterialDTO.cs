@@ -8,6 +8,9 @@ public record UpdateCourseMaterialDTO
     [JsonPropertyName("id")]
     public Ulid? Id { get; init; }
 
+    [JsonPropertyName("order")]
+    public int? Order { get; init; }
+
     [MinLength(1)]
     [MaxLength(255)]
     [JsonPropertyName("title")]

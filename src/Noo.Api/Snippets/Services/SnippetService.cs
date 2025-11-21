@@ -65,7 +65,6 @@ public class SnippetService : ISnippetService
 
         _jsonPatchUpdateService.ApplyPatch(model, updateSnippetDto);
 
-        _snippetRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 }

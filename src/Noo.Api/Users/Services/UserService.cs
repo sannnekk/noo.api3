@@ -117,7 +117,6 @@ public class UserService : IUserService
 
         _patchUpdateService.ApplyPatch(model, patchUserDto);
 
-        _userRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 

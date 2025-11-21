@@ -83,7 +83,6 @@ public class SupportService : ISupportService
 
         _jsonPatchUpdateService.ApplyPatch(model, dto);
 
-        _articleRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 
@@ -95,7 +94,6 @@ public class SupportService : ISupportService
 
         _jsonPatchUpdateService.ApplyPatch(model, dto);
 
-        _categoryRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 }

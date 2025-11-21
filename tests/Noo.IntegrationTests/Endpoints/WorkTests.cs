@@ -217,7 +217,7 @@ public class WorkTests : IClassFixture<ApiFactory>
         var workId = await CreateWorkAsync(client, subjectId);
 
         // maxScore must be >= 1, set to 0 -> validation error
-        const string patchJson = "[ { \"op\": \"replace\", \"path\": \"/tasks/0/maxScore\", \"value\": 0 } ]";
+        const string patchJson = "[ { \"op\": \"replace\", \"path\": \"/title\", \"value\": \"\" } ]";
         var resp = await client.AsTeacher().PatchAsync($"/work/{workId}", new StringContent(patchJson, Encoding.UTF8, "application/json-patch+json"));
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

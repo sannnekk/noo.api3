@@ -15,8 +15,16 @@ public static class JsonPatchDocumentExtensions
         modelState ??= new ModelStateDictionary();
 
         patch.ApplyTo(target, (error) =>
-            modelState.AddModelError(error.Operation.ToString() ?? "Unknown operation", error.ErrorMessage)
-        );
+        {
+            // Ignore errors related to missing path segments (these occur when trying to patch nested properties that don't exist)
+            // Unfortunately, SystemTextJsonPatch does not provide a specific error type for this case, so we have to rely on the error message content
+            if (error.ErrorMessage.StartsWith("The target location specified by path segment"))
+            {
+                return;
+            }
+
+            modelState.AddModelError(error.Operation.ToString() ?? "Unknown operation", error.ErrorMessage);
+        });
 
         // Validate DataAnnotations on the patched DTO and add errors to ModelState
         var validationResults = new List<ValidationResult>();

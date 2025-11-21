@@ -60,7 +60,6 @@ public class SubjectService : ISubjectService
 
         _jsonPatchUpdateService.ApplyPatch(model, updateSubjectDto);
 
-        _subjectRepository.Update(model);
         await _unitOfWork.CommitAsync();
     }
 }
