@@ -18,6 +18,7 @@ public class PollMapperProfile : Profile
             .ForMember(d => d.UpdatedAt, o => o.Ignore())
             .ForMember(d => d.Participations, o => o.Ignore())
             .ForMember(d => d.Questions, o => o.MapFrom(s => s.Questions))
+            .ForMember(d => d.CourseMaterialContents, o => o.Ignore())
             .ForMember(d => d.IsActive, o => o.MapFrom(s => s.IsActive ?? true))
             .ForMember(d => d.IsAuthRequired, o => o.MapFrom(s => s.IsAuthRequired ?? true));
 
@@ -28,6 +29,7 @@ public class PollMapperProfile : Profile
             .ForMember(d => d.CreatedAt, o => o.Ignore())
             .ForMember(d => d.UpdatedAt, o => o.Ignore())
             .ForMember(d => d.Participations, o => o.Ignore())
+            .ForMember(d => d.CourseMaterialContents, o => o.Ignore())
             .ForMember(d => d.Questions, o => o.Ignore());
 
         // Question

@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Noo.Api.Core.Utils.Richtext;
-using Noo.Api.Works.DTO;
+using Noo.Api.Media.DTO;
+using Noo.Api.NooTube.DTO;
+using Noo.Api.Polls.DTO;
 
 namespace Noo.Api.Courses.DTO;
 
@@ -19,22 +21,20 @@ public record CourseMaterialContentDTO
     [JsonPropertyName("content")]
     public IRichTextType Content { get; init; } = default!;
 
-    [JsonPropertyName("workId")]
-    public Ulid? WorkId { get; init; }
+    [JsonPropertyName("poll")]
+    public PollDTO? Poll { get; init; }
 
     [Required]
-    [JsonPropertyName("isWorkAvailable")]
-    public bool IsWorkAvailable { get; init; }
+    [JsonPropertyName("nooTubeVideos")]
+    public IEnumerable<NooTubeVideoDTO> NooTubeVideos { get; init; } = [];
 
-    [JsonPropertyName("workSolveDeadlineAt")]
-    public DateTime? WorkSolveDeadlineAt { get; init; }
+    [Required]
+    [JsonPropertyName("medias")]
+    public IEnumerable<MediaDTO> Medias { get; init; } = [];
 
-    [JsonPropertyName("workCheckDeadlineAt")]
-    public DateTime? WorkCheckDeadlineAt { get; init; }
-
-    [JsonPropertyName("work")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WorkDTO? Work { get; init; }
+    [Required]
+    [JsonPropertyName("workAssignments")]
+    public IEnumerable<CourseWorkAssignmentDTO> WorkAssignments { get; init; } = [];
 
     [Required]
     [JsonPropertyName("createdAt")]

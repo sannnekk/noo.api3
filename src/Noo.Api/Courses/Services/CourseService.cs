@@ -66,7 +66,7 @@ public class CourseService : ICourseService
 
     public Task<CourseMaterialContentModel?> GetContentByIdAsync(Ulid contentId)
     {
-        return _courseContentRepository.GetByIdAsync(contentId);
+        return _courseContentRepository.GetAsync(contentId);
     }
 
     public Task<SearchResult<CourseModel>> SearchAsync(CourseFilter filter)
@@ -100,7 +100,7 @@ public class CourseService : ICourseService
 
     public async Task UpdateContentAsync(Ulid contentId, JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto)
     {
-        var model = await _courseContentRepository.GetByIdAsync(contentId);
+        var model = await _courseContentRepository.GetAsync(contentId);
 
         model.ThrowNotFoundIfNull();
 

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.DataAbstraction;
 using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
+using Noo.Api.Courses.Models;
 using Noo.Api.Media.Models;
 using Noo.Api.NooTube.Types;
 using Noo.Api.Users.Models;
@@ -54,9 +55,9 @@ public class NooTubeVideoModel : BaseModel
     [Column("published_at", TypeName = DbDataTypes.DateTimeWithoutTZ)]
     public DateTime? PublishedAt { get; set; }
 
-    [Column("uploaded_by_id", TypeName = DbDataTypes.Ulid)]
+    [Column("uploaded_by_user_id", TypeName = DbDataTypes.Ulid)]
     [ForeignKey(nameof(UploadedByUser))]
-    public Ulid? UploadedById { get; set; }
+    public Ulid? UploadedByUserId { get; set; }
 
     #region Navigation Properties
 
@@ -71,6 +72,8 @@ public class NooTubeVideoModel : BaseModel
     public ICollection<NooTubeVideoCommentModel> Comments { get; set; } = [];
 
     public ICollection<NooTubeVideoReactionModel> Reactions { get; set; } = [];
+
+    public ICollection<CourseMaterialContentModel> CourseMaterialContents { get; set; } = [];
 
     #endregion
 }

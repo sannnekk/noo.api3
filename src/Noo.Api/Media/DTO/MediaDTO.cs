@@ -7,7 +7,7 @@ public record MediaDTO
 {
     [Required]
     [JsonPropertyName("_entityName")]
-    public string EntityName { get; init; } = "Media";
+    public string EntityName => "Media";
 
     [Required]
     [JsonPropertyName("id")]

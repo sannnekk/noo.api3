@@ -40,7 +40,7 @@ public class WorkMapperProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Subject, opt => opt.Ignore())
-            .ForMember(dest => dest.CourseMaterialContents, opt => opt.Ignore())
+            .ForMember(dest => dest.CourseWorkAssignments, opt => opt.Ignore())
             .ForMember(dest => dest.Tasks, opt => opt.MapFrom((src, _, _, context) =>
                 src.Tasks.MapDictionaryToCollection<UpdateWorkTaskDTO, WorkTaskModel>(context.Mapper)));
 
@@ -49,6 +49,6 @@ public class WorkMapperProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Subject, opt => opt.Ignore())
-            .ForMember(dest => dest.CourseMaterialContents, opt => opt.Ignore());
+            .ForMember(dest => dest.CourseWorkAssignments, opt => opt.Ignore());
     }
 }

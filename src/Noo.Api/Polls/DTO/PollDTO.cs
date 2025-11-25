@@ -7,7 +7,7 @@ public record PollDTO
 {
     [Required]
     [JsonPropertyName("_entityName")]
-    public string EntityName { get; init; } = "Poll";
+    public string EntityName => "Poll";
 
     [Required]
     [JsonPropertyName("id")]

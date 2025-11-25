@@ -1,22 +1,36 @@
 using AutoMapper;
 using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Models;
+using Noo.Api.Media.Models;
+using Noo.Api.NooTube.Models;
+using Noo.Api.Polls.Models;
+using Noo.Api.Users.Models;
 
 namespace Noo.UnitTests.Courses;
 
 public class CourseMapperProfileTests
 {
+    private static MapperConfiguration CreateConfiguration()
+        => new(cfg =>
+        {
+            cfg.AddProfile(new CourseMapperProfile());
+            cfg.AddProfile(new NooTubeMapperProfile());
+            cfg.AddProfile(new MediaMapperProfile());
+            cfg.AddProfile(new PollMapperProfile());
+            cfg.AddProfile(new UserMapperProfile());
+        });
+
     [Fact]
     public void CourseProfile_Config_Valid()
     {
-        var cfg = new MapperConfiguration(c => c.AddProfile(new CourseMapperProfile()));
+        var cfg = CreateConfiguration();
         cfg.AssertConfigurationIsValid();
     }
 
     [Fact]
     public void Map_CreateCourse_To_Model_Maps_Fields()
     {
-        var mapper = new MapperConfiguration(c => c.AddProfile(new CourseMapperProfile())).CreateMapper();
+        var mapper = CreateConfiguration().CreateMapper();
         var dto = new CreateCourseDTO
         {
             Name = "Test",
@@ -32,7 +46,7 @@ public class CourseMapperProfileTests
     [Fact]
     public void Map_CreateMembership_To_Model_Maps_Fields()
     {
-        var mapper = new MapperConfiguration(c => c.AddProfile(new CourseMapperProfile())).CreateMapper();
+        var mapper = CreateConfiguration().CreateMapper();
         var dto = new CreateCourseMembershipDTO
         {
             CourseId = Ulid.NewUlid(),

@@ -51,12 +51,12 @@ public record NooTubeVideoDTO
     public DateTime PublishedAt { get; set; }
 
     [Required]
-    [JsonPropertyName("uploadedById")]
-    public Ulid UploadedById { get; set; }
+    [JsonPropertyName("uploadedByUserId")]
+    public Ulid UploadedByUserId { get; set; }
 
-    [JsonPropertyName("uploadedBy")]
+    [JsonPropertyName("uploadedByUser")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public UserDTO? UploadedBy { get; set; }
+    public UserDTO? UploadedByUser { get; set; }
 
     [JsonPropertyName("thumbnail")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

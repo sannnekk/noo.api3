@@ -125,19 +125,34 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Material, opt => opt.Ignore())
-            .ForMember(dest => dest.Work, opt => opt.Ignore());
+            // TODO: add mapping
+            .ForMember(dest => dest.Poll, opt => opt.Ignore())
+            // TODO: add mapping
+            .ForMember(dest => dest.NooTubeVideos, opt => opt.Ignore())
+            // TODO: add mapping
+            .ForMember(dest => dest.Medias, opt => opt.Ignore())
+            .ForMember(dest => dest.Reactions, opt => opt.Ignore());
 
-        CreateMap<CourseMaterialContentModel, UpdateCourseMaterialContentDTO>();
+        CreateMap<CourseMaterialContentModel, UpdateCourseMaterialContentDTO>()
+            // TODO: add mapping
+            .ForMember(dest => dest.NooTubeVideoIds, opt => opt.Ignore())
+            // TODO: add mapping
+            .ForMember(dest => dest.MediaIds, opt => opt.Ignore());
 
         CreateMap<UpdateCourseMaterialContentDTO, CourseMaterialContentModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-            .ForMember(dest => dest.Material, opt => opt.Ignore())
-            .ForMember(dest => dest.Work, opt => opt.Ignore());
+            // TODO: add mapping
+            .ForMember(dest => dest.NooTubeVideos, opt => opt.Ignore())
+            // TODO: add mapping
+            .ForMember(dest => dest.Medias, opt => opt.Ignore())
+            // TODO: add mapping
+            .ForMember(dest => dest.Poll, opt => opt.Ignore())
+            .ForMember(dest => dest.Reactions, opt => opt.Ignore())
+            .ForMember(dest => dest.Material, opt => opt.Ignore());
 
-        CreateMap<CourseMaterialContentModel, CourseMaterialContentDTO>()
-                .ForMember(dest => dest.Work, opt => opt.Ignore());
+        CreateMap<CourseMaterialContentModel, CourseMaterialContentDTO>();
 
         // Course membership
         CreateMap<CourseMembershipModel, CourseMembershipDTO>()
@@ -156,6 +171,27 @@ public class CourseMapperProfile : Profile
                 .ForMember(dest => dest.IsArchived, opt => opt.MapFrom(_ => false))
                 .ForMember(dest => dest.Type, opt => opt.MapFrom(_ => CourseMembershipType.ManualAssigned))
                 .ForMember(dest => dest.AssignerId, opt => opt.Ignore());
+
+        // Course work assignment
+        CreateMap<CreateCourseWorkAssignmentDTO, CourseWorkAssignmentModel>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.CourseMaterialContentId, opt => opt.Ignore())
+            .ForMember(dest => dest.CourseMaterialContent, opt => opt.Ignore())
+            .ForMember(dest => dest.Work, opt => opt.Ignore());
+
+        CreateMap<CourseWorkAssignmentModel, CourseWorkAssignmentDTO>();
+
+        CreateMap<UpdateCourseWorkAssignmentDTO, CourseWorkAssignmentModel>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.CourseMaterialContentId, opt => opt.Ignore())
+            .ForMember(dest => dest.CourseMaterialContent, opt => opt.Ignore())
+            .ForMember(dest => dest.Work, opt => opt.Ignore());
+
+        CreateMap<CourseWorkAssignmentModel, UpdateCourseWorkAssignmentDTO>();
     }
 
     private static void ApplyCourseHierarchy(CourseModel course)

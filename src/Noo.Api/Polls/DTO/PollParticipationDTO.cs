@@ -9,7 +9,7 @@ public record PollParticipationDTO
 {
     [Required]
     [JsonPropertyName("_entityName")]
-    public string EntityName { get; init; } = "PollParticipation";
+    public string EntityName => "PollParticipation";
 
     [Required]
     [JsonPropertyName("id")]

@@ -10,9 +10,9 @@ namespace Noo.Api.Courses.Models;
 [Model("course_reaction")]
 public class CourseMaterialReactionModel : BaseModel
 {
-    [Column("material_id", TypeName = DbDataTypes.Ulid)]
-    [ForeignKey(nameof(Material))]
-    public Ulid MaterialId { get; set; }
+    [Column("material_content_id", TypeName = DbDataTypes.Ulid)]
+    [ForeignKey(nameof(MaterialContent))]
+    public Ulid MaterialContentId { get; set; }
 
     [Column("user_id", TypeName = DbDataTypes.Ulid)]
     [ForeignKey(nameof(User))]
@@ -23,8 +23,8 @@ public class CourseMaterialReactionModel : BaseModel
 
     #region Navigation properties
 
-    [InverseProperty(nameof(CourseMaterialModel.Reactions))]
-    public CourseMaterialModel Material { get; set; } = default!;
+    [InverseProperty(nameof(CourseMaterialContentModel.Reactions))]
+    public CourseMaterialContentModel MaterialContent { get; set; } = default!;
 
     [InverseProperty(nameof(UserModel.CourseMaterialReactions))]
     public UserModel User { get; set; } = default!;

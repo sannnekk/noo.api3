@@ -44,7 +44,7 @@ public class WorkMapperProfileTests
         Assert.Equal(dto.Description, model.Description);
         Assert.Equal(dto.SubjectId, model.SubjectId);
         Assert.Null(model.Subject);
-        Assert.NotNull(model.CourseMaterialContents);
+        Assert.NotNull(model.CourseWorkAssignments);
     }
 
     [Fact(DisplayName = "Mapper: WorkModel -> UpdateWorkDTO and back updates title only")]

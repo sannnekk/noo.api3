@@ -7,6 +7,10 @@ namespace Noo.Api.Users.DTO;
 public record MentorAssignmentDTO
 {
     [Required]
+    [JsonPropertyName("_entityName")]
+    public string EntityName => "MentorAssignment";
+
+    [Required]
     [JsonPropertyName("id")]
     public Ulid Id { get; set; }
 

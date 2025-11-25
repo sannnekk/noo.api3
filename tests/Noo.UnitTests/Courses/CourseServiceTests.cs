@@ -7,7 +7,6 @@ using Noo.Api.Courses.Models;
 using Noo.Api.Courses.Services;
 using Noo.UnitTests.Common;
 using SystemTextJsonPatch;
-using Noo.Api.Courses;
 using Noo.Api.Core.Request.Patching;
 
 namespace Noo.UnitTests.Courses;
@@ -122,9 +121,7 @@ public class CourseServiceTests
 
         var dto = new CreateCourseMaterialContentDTO
         {
-            Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText(),
-            IsWorkAvailable = true,
-            WorkSolveDeadlineAt = DateTime.UtcNow.AddDays(1)
+            Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText()
         };
 
         var contentId = await service.CreateMaterialContentAsync(dto);
@@ -132,7 +129,6 @@ public class CourseServiceTests
 
         var fetched = await service.GetContentByIdAsync(contentId);
         Assert.NotNull(fetched);
-        Assert.True(fetched!.IsWorkAvailable);
     }
 
     [Fact]
@@ -202,16 +198,11 @@ public class CourseServiceTests
 
             contentId = await service.CreateMaterialContentAsync(new CreateCourseMaterialContentDTO
             {
-                Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText(),
-                IsWorkAvailable = false
+                Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText()
             });
 
             var patch = new JsonPatchDocument<UpdateCourseMaterialContentDTO>();
-#pragma warning disable RCS1201 // Use method chaining
-            patch.Replace(x => x.IsWorkAvailable, true);
-            patch.Replace(x => x.WorkId, newWorkId);
-            patch.Replace(x => x.WorkSolveDeadlineAt, newSolve);
-            patch.Replace(x => x.WorkCheckDeadlineAt, newCheck);
+#pragma warning disable RCS1201 // Use met
             patch.Replace(x => x.Content, new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText());
 #pragma warning restore RCS1201 // Use method chaining
 
@@ -223,10 +214,6 @@ public class CourseServiceTests
             var verifyUow = TestHelpers.CreateUowMock(verifyCtx).Object;
             var content = await verifyUow.Context.GetDbSet<CourseMaterialContentModel>().FindAsync(contentId);
             Assert.NotNull(content);
-            Assert.True(content!.IsWorkAvailable);
-            Assert.Equal(newWorkId, content.WorkId);
-            Assert.Equal(newSolve, content.WorkSolveDeadlineAt);
-            Assert.Equal(newCheck, content.WorkCheckDeadlineAt);
             Assert.NotNull(content.Content);
         }
     }

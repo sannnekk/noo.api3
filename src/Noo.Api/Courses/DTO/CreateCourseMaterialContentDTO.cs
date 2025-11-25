@@ -10,16 +10,15 @@ public record CreateCourseMaterialContentDTO
     [Required]
     public IRichTextType Content { get; init; } = default!;
 
-    [JsonPropertyName("workId")]
-    public Ulid? WorkId { get; init; }
+    [JsonPropertyName("pollId")]
+    public Ulid? PollId { get; init; }
 
-    [JsonPropertyName("isWorkAvailable")]
-    [Required]
-    public bool IsWorkAvailable { get; init; }
+    [JsonPropertyName("nootubeVideoIds")]
+    public IEnumerable<Ulid> NooTubeVideoIds { get; init; } = [];
 
-    [JsonPropertyName("workSolveDeadlineAt")]
-    public DateTime? WorkSolveDeadlineAt { get; init; }
+    [JsonPropertyName("mediaIds")]
+    public IEnumerable<Ulid> MediaIds { get; init; } = [];
 
-    [JsonPropertyName("workCheckDeadlineAt")]
-    public DateTime? WorkCheckDeadlineAt { get; init; }
+    [JsonPropertyName("workAssignments")]
+    public IEnumerable<CreateCourseWorkAssignmentDTO> WorkAssignments { get; init; } = [];
 }

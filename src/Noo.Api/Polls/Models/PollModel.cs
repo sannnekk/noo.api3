@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Noo.Api.Core.DataAbstraction;
 using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
+using Noo.Api.Courses.Models;
 
 namespace Noo.Api.Polls.Models;
 
@@ -34,6 +35,8 @@ public class PollModel : BaseModel
     public ICollection<PollQuestionModel> Questions { get; set; } = [];
 
     public ICollection<PollParticipationModel> Participations { get; set; } = [];
+
+    public ICollection<CourseMaterialContentModel> CourseMaterialContents { get; set; } = [];
 
     #endregion
 }

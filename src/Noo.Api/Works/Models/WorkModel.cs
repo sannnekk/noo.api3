@@ -43,8 +43,7 @@ public class WorkModel : BaseModel
     [InverseProperty(nameof(SubjectModel.Works))]
     public SubjectModel? Subject { get; set; }
 
-    [InverseProperty(nameof(CourseMaterialContentModel.Work))]
-    public ICollection<CourseMaterialContentModel> CourseMaterialContents { get; set; } = [];
+    public ICollection<CourseWorkAssignmentModel> CourseWorkAssignments { get; set; } = [];
 
     #endregion
 }

@@ -8,7 +8,7 @@ public record GoogleSheetsIntegrationDTO
 {
     [Required]
     [JsonPropertyName("_entityName")]
-    public string EntityName { get; init; } = "GoogleSheetsIntegration";
+    public string EntityName => "GoogleSheetsIntegration";
 
     [Required]
     [JsonPropertyName("id")]

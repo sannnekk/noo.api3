@@ -57,5 +57,7 @@ public class MediaModel : OrderedModel
 
     public UserAvatarModel? UserAvatar { get; set; }
 
+    public ICollection<CourseMaterialContentModel>? CourseMaterialContents { get; set; }
+
     #endregion
 }
