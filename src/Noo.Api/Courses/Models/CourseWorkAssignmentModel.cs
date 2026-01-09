@@ -33,11 +33,11 @@ public class CourseWorkAssignmentModel : OrderedModel
 
     // TODO: change db type to DateOnly
     [Column("solve_deadline_at", TypeName = DbDataTypes.DateTimeWithoutTZ)]
-    public DateOnly? SolveDeadlineAt { get; set; }
+    public DateTime? SolveDeadlineAt { get; set; }
 
     // TODO: change db type to DateOnly
     [Column("check_deadline_at", TypeName = DbDataTypes.DateTimeWithoutTZ)]
-    public DateOnly? CheckDeadlineAt { get; set; }
+    public DateTime? CheckDeadlineAt { get; set; }
 
     #region Navigation properties
 

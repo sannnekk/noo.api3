@@ -202,6 +202,30 @@ namespace Noo.Api.Migrations
                 .Annotation("Relational:Collation", "utf8mb4_general_ci");
 
             migrationBuilder.CreateTable(
+                name: "course_material_content",
+                columns: table => new
+                {
+                    id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
+                    content = table.Column<string>(type: "JSON", nullable: true, collation: "utf8mb4_unicode_ci")
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    poll_id = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
+                    created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    updated_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_course_material_content", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_course_material_content_poll_poll_id",
+                        column: x => x.poll_id,
+                        principalTable: "poll",
+                        principalColumn: "id");
+                })
+                .Annotation("MySql:CharSet", "utf8mb4")
+                .Annotation("Relational:Collation", "utf8mb4_general_ci");
+
+            migrationBuilder.CreateTable(
                 name: "poll_question",
                 columns: table => new
                 {
@@ -388,7 +412,7 @@ namespace Noo.Api.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     duration = table.Column<uint>(type: "MEDIUMINT UNSIGNED", nullable: true),
                     published_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
-                    uploaded_by_id = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
+                    uploaded_by_user_id = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
                     created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     updated_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: true)
@@ -403,8 +427,8 @@ namespace Noo.Api.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_nootube_video_user_uploaded_by_id",
-                        column: x => x.uploaded_by_id,
+                        name: "FK_nootube_video_user_uploaded_by_user_id",
+                        column: x => x.uploaded_by_user_id,
                         principalTable: "user",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
@@ -603,6 +627,32 @@ namespace Noo.Api.Migrations
                         name: "FK_user_settings_user_user_id",
                         column: x => x.user_id,
                         principalTable: "user",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4")
+                .Annotation("Relational:Collation", "utf8mb4_general_ci");
+
+            migrationBuilder.CreateTable(
+                name: "course_material_content_mm_CourseMaterialContents_media",
+                columns: table => new
+                {
+                    course_material_content_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
+                    media_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_course_material_content_mm_CourseMaterialContents_media", x => new { x.course_material_content_id, x.media_id });
+                    table.ForeignKey(
+                        name: "FK_course_material_content_mm_CourseMaterialContents_media_cour~",
+                        column: x => x.course_material_content_id,
+                        principalTable: "course_material_content",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_course_material_content_mm_CourseMaterialContents_media_medi~",
+                        column: x => x.media_id,
+                        principalTable: "media",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 })
@@ -824,28 +874,38 @@ namespace Noo.Api.Migrations
                 .Annotation("Relational:Collation", "utf8mb4_general_ci");
 
             migrationBuilder.CreateTable(
-                name: "course_material_content",
+                name: "course_work_assignment",
                 columns: table => new
                 {
                     id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
-                    content = table.Column<string>(type: "JSON", nullable: true, collation: "utf8mb4_unicode_ci")
+                    course_material_content_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
+                    work_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
+                    note = table.Column<string>(type: "VARCHAR(255)", maxLength: 255, nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    work_id = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
-                    is_work_available = table.Column<bool>(type: "TINYINT(1)", nullable: false),
-                    work_solve_deadline_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
-                    work_check_deadline_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
+                    is_active = table.Column<bool>(type: "TINYINT(1)", nullable: false),
+                    deactivated_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
+                    solve_deadline_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
+                    check_deadline_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
                     created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    updated_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: true)
+                    updated_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: true),
+                    order = table.Column<int>(type: "INT", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_course_material_content", x => x.id);
+                    table.PrimaryKey("PK_course_work_assignment", x => x.id);
                     table.ForeignKey(
-                        name: "FK_course_material_content_work_work_id",
+                        name: "FK_course_work_assignment_course_material_content_course_materi~",
+                        column: x => x.course_material_content_id,
+                        principalTable: "course_material_content",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_course_work_assignment_work_work_id",
                         column: x => x.work_id,
                         principalTable: "work",
-                        principalColumn: "id");
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4")
                 .Annotation("Relational:Collation", "utf8mb4_general_ci");
@@ -863,7 +923,7 @@ namespace Noo.Api.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     right_answers = table.Column<string>(type: "VARCHAR(512)", maxLength: 16, nullable: true, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    type = table.Column<string>(type: "ENUM('Word','Text','Essay','FinalEssay')", nullable: false, collation: "utf8mb4_general_ci")
+                    type = table.Column<string>(type: "ENUM('Word','Text','Essay','FinalEssay','Dictation')", nullable: false, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     check_strategy = table.Column<string>(type: "ENUM('Manual', 'ExactMatchOrZero', 'ExactMatchWithWrongCharacter', 'MultipleChoice', 'Sequence')", nullable: false, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -883,6 +943,32 @@ namespace Noo.Api.Migrations
                         name: "FK_work_task_work_work_id",
                         column: x => x.work_id,
                         principalTable: "work",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4")
+                .Annotation("Relational:Collation", "utf8mb4_general_ci");
+
+            migrationBuilder.CreateTable(
+                name: "course_material_content_mm_CourseMaterialContents_nootube_video",
+                columns: table => new
+                {
+                    course_material_content_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
+                    noo_tube_video_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_course_material_content_mm_CourseMaterialContents_nootube_vi~", x => new { x.course_material_content_id, x.noo_tube_video_id });
+                    table.ForeignKey(
+                        name: "FK_course_material_content_mm_CourseMaterialContents_nootube_vi~",
+                        column: x => x.course_material_content_id,
+                        principalTable: "course_material_content",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_course_material_content_mm_CourseMaterialContents_nootube_v~1",
+                        column: x => x.noo_tube_video_id,
+                        principalTable: "nootube_video",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 })
@@ -985,6 +1071,42 @@ namespace Noo.Api.Migrations
                 .Annotation("Relational:Collation", "utf8mb4_general_ci");
 
             migrationBuilder.CreateTable(
+                name: "course_material",
+                columns: table => new
+                {
+                    id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
+                    title = table.Column<string>(type: "VARCHAR(255)", maxLength: 255, nullable: false, collation: "utf8mb4_general_ci")
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    title_color = table.Column<string>(type: "VARCHAR(63)", maxLength: 63, nullable: true, collation: "utf8mb4_general_ci")
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    is_active = table.Column<bool>(type: "TINYINT(1)", nullable: false),
+                    publish_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
+                    chapter_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
+                    content_id = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
+                    created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    updated_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: true),
+                    order = table.Column<int>(type: "INT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_course_material", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_course_material_course_chapter_chapter_id",
+                        column: x => x.chapter_id,
+                        principalTable: "course_chapter",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_course_material_course_material_content_content_id",
+                        column: x => x.content_id,
+                        principalTable: "course_material_content",
+                        principalColumn: "id");
+                })
+                .Annotation("MySql:CharSet", "utf8mb4")
+                .Annotation("Relational:Collation", "utf8mb4_general_ci");
+
+            migrationBuilder.CreateTable(
                 name: "assigned_work_status_history",
                 columns: table => new
                 {
@@ -1058,43 +1180,6 @@ namespace Noo.Api.Migrations
                 .Annotation("Relational:Collation", "utf8mb4_general_ci");
 
             migrationBuilder.CreateTable(
-                name: "course_material",
-                columns: table => new
-                {
-                    id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
-                    title = table.Column<string>(type: "VARCHAR(255)", maxLength: 255, nullable: false, collation: "utf8mb4_general_ci")
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    title_color = table.Column<string>(type: "VARCHAR(63)", maxLength: 63, nullable: false, collation: "utf8mb4_general_ci")
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    is_active = table.Column<bool>(type: "TINYINT(1)", nullable: false),
-                    publish_at = table.Column<DateTime>(type: "DATETIME(0)", nullable: true),
-                    chapter_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
-                    content_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
-                    created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    updated_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: true),
-                    order = table.Column<int>(type: "INT", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_course_material", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_course_material_course_chapter_chapter_id",
-                        column: x => x.chapter_id,
-                        principalTable: "course_chapter",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_course_material_course_material_content_content_id",
-                        column: x => x.content_id,
-                        principalTable: "course_material_content",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4")
-                .Annotation("Relational:Collation", "utf8mb4_general_ci");
-
-            migrationBuilder.CreateTable(
                 name: "assigned_work_answer",
                 columns: table => new
                 {
@@ -1141,10 +1226,11 @@ namespace Noo.Api.Migrations
                 columns: table => new
                 {
                     id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
-                    material_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
+                    material_content_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
                     user_id = table.Column<byte[]>(type: "BINARY(16)", nullable: false),
                     reaction = table.Column<string>(type: "ENUM('check', 'thinking')", nullable: false, collation: "utf8mb4_general_ci")
                         .Annotation("MySql:CharSet", "utf8mb4"),
+                    CourseMaterialModelId = table.Column<byte[]>(type: "BINARY(16)", nullable: true),
                     created_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     updated_at = table.Column<DateTime>(type: "TIMESTAMP(6)", nullable: true)
@@ -1153,9 +1239,14 @@ namespace Noo.Api.Migrations
                 {
                     table.PrimaryKey("PK_course_reaction", x => x.id);
                     table.ForeignKey(
-                        name: "FK_course_reaction_course_material_material_id",
-                        column: x => x.material_id,
+                        name: "FK_course_reaction_course_material_CourseMaterialModelId",
+                        column: x => x.CourseMaterialModelId,
                         principalTable: "course_material",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "FK_course_reaction_course_material_content_material_content_id",
+                        column: x => x.material_content_id,
+                        principalTable: "course_material_content",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -1293,9 +1384,19 @@ namespace Noo.Api.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_course_material_content_work_id",
+                name: "IX_course_material_content_poll_id",
                 table: "course_material_content",
-                column: "work_id");
+                column: "poll_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_course_material_content_mm_CourseMaterialContents_media_medi~",
+                table: "course_material_content_mm_CourseMaterialContents_media",
+                column: "media_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_course_material_content_mm_CourseMaterialContents_nootube_vi~",
+                table: "course_material_content_mm_CourseMaterialContents_nootube_video",
+                column: "noo_tube_video_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_course_membership_assigner_id",
@@ -1323,14 +1424,29 @@ namespace Noo.Api.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_course_reaction_material_id",
+                name: "IX_course_reaction_CourseMaterialModelId",
                 table: "course_reaction",
-                column: "material_id");
+                column: "CourseMaterialModelId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_course_reaction_material_content_id",
+                table: "course_reaction",
+                column: "material_content_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_course_reaction_user_id",
                 table: "course_reaction",
                 column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_course_work_assignment_course_material_content_id",
+                table: "course_work_assignment",
+                column: "course_material_content_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_course_work_assignment_work_id",
+                table: "course_work_assignment",
+                column: "work_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_media_hash",
@@ -1360,9 +1476,9 @@ namespace Noo.Api.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_nootube_video_uploaded_by_id",
+                name: "IX_nootube_video_uploaded_by_user_id",
                 table: "nootube_video",
-                column: "uploaded_by_id");
+                column: "uploaded_by_user_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_nootube_video_comment_user_id",
@@ -1515,6 +1631,12 @@ namespace Noo.Api.Migrations
                 name: "calendar_event");
 
             migrationBuilder.DropTable(
+                name: "course_material_content_mm_CourseMaterialContents_media");
+
+            migrationBuilder.DropTable(
+                name: "course_material_content_mm_CourseMaterialContents_nootube_video");
+
+            migrationBuilder.DropTable(
                 name: "course_membership");
 
             migrationBuilder.DropTable(
@@ -1525,6 +1647,9 @@ namespace Noo.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "course_reaction");
+
+            migrationBuilder.DropTable(
+                name: "course_work_assignment");
 
             migrationBuilder.DropTable(
                 name: "google_sheets_integration");
@@ -1584,6 +1709,9 @@ namespace Noo.Api.Migrations
                 name: "assigned_work_comment");
 
             migrationBuilder.DropTable(
+                name: "work");
+
+            migrationBuilder.DropTable(
                 name: "course_chapter");
 
             migrationBuilder.DropTable(
@@ -1593,13 +1721,10 @@ namespace Noo.Api.Migrations
                 name: "user");
 
             migrationBuilder.DropTable(
-                name: "poll");
-
-            migrationBuilder.DropTable(
                 name: "course");
 
             migrationBuilder.DropTable(
-                name: "work");
+                name: "poll");
 
             migrationBuilder.DropTable(
                 name: "media");

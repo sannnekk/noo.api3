@@ -11,7 +11,7 @@ public class LoginRateLimitPolicy : INamedRateLimitPolicy
         var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 5,
+            PermitLimit = 50,
             Window = TimeSpan.FromMinutes(1)
         });
     };

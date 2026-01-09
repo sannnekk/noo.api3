@@ -27,10 +27,10 @@ public record CourseWorkAssignmentDTO
     public DateTime? DeactivatedAt { get; init; }
 
     [JsonPropertyName("solveDeadlineAt")]
-    public DateOnly? SolveDeadlineAt { get; init; }
+    public DateTime? SolveDeadlineAt { get; init; }
 
     [JsonPropertyName("checkDeadlineAt")]
-    public DateOnly? CheckDeadlineAt { get; init; }
+    public DateTime? CheckDeadlineAt { get; init; }
 
     [Required]
     [JsonPropertyName("createdAt")]

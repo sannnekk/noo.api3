@@ -53,6 +53,8 @@ public class CourseService : ICourseService
     {
         var model = _mapper.Map<CourseMaterialContentModel>(dto);
 
+        AttachContentRelations(model);
+
         _courseContentRepository.Add(model);
         await _unitOfWork.CommitAsync();
 
@@ -106,6 +108,27 @@ public class CourseService : ICourseService
 
         _jsonPatchUpdateService.ApplyPatch(model, contentUpdateDto);
 
+        AttachContentRelations(model);
+
         await _unitOfWork.CommitAsync();
+    }
+
+    // TODO: ensure that its needed, delete otherwise
+    private void AttachContentRelations(CourseMaterialContentModel model)
+    {
+        if (model.Poll != null)
+        {
+            _unitOfWork.Context.Attach(model.Poll);
+        }
+
+        if (model.NooTubeVideos?.Count > 0)
+        {
+            _unitOfWork.Context.AttachRange(model.NooTubeVideos);
+        }
+
+        if (model.Medias?.Count > 0)
+        {
+            _unitOfWork.Context.AttachRange(model.Medias);
+        }
     }
 }

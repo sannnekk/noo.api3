@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Noo.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class CreateFirstTeacher : Migration
+    public partial class TeacherUser : Migration
     {
         private const string _id = "01K4Q57CF0R2PWWAAPJPZ5K71R";
 
@@ -33,9 +32,9 @@ namespace Noo.Api.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DeleteData(
-                table: "user",
-                keyColumn: "id",
-                keyValue: _id);
+                            table: "user",
+                            keyColumn: "id",
+                            keyValue: _id);
         }
     }
 }

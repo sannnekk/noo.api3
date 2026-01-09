@@ -59,7 +59,7 @@ public class CourseController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CoursePolicies.CanGetCourse)]
     [Produces(
-        typeof(ApiResponseDTO<CourseDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<CourseMaterialContentDTO>), StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,

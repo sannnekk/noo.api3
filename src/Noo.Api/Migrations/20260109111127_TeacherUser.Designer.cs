@@ -12,8 +12,8 @@ using Noo.Api.Core.DataAbstraction.Db;
 namespace Noo.Api.Migrations
 {
     [DbContext(typeof(NooDbContext))]
-    [Migration("20250909112153_Schema")]
-    partial class Schema
+    [Migration("20260109111127_TeacherUser")]
+    partial class TeacherUser
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -26,6 +26,40 @@ namespace Noo.Api.Migrations
 
             MySqlModelBuilderExtensions.HasCharSet(modelBuilder, "utf8mb4");
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
+
+            modelBuilder.Entity("CourseMaterialContentModelMediaModel", b =>
+                {
+                    b.Property<byte[]>("CourseMaterialContentsId")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("course_material_content_id");
+
+                    b.Property<byte[]>("MediasId")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("media_id");
+
+                    b.HasKey("CourseMaterialContentsId", "MediasId");
+
+                    b.HasIndex("MediasId");
+
+                    b.ToTable("course_material_content_mm_CourseMaterialContents_media");
+                });
+
+            modelBuilder.Entity("CourseMaterialContentModelNooTubeVideoModel", b =>
+                {
+                    b.Property<byte[]>("CourseMaterialContentsId")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("course_material_content_id");
+
+                    b.Property<byte[]>("NooTubeVideosId")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("noo_tube_video_id");
+
+                    b.HasKey("CourseMaterialContentsId", "NooTubeVideosId");
+
+                    b.HasIndex("NooTubeVideosId");
+
+                    b.ToTable("course_material_content_mm_CourseMaterialContents_nootube_video");
+                });
 
             modelBuilder.Entity("CourseModelUserModel", b =>
                 {
@@ -499,30 +533,18 @@ namespace Noo.Api.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
 
-                    b.Property<bool>("IsWorkAvailable")
-                        .HasColumnType("TINYINT(1)")
-                        .HasColumnName("is_work_available");
+                    b.Property<byte[]>("PollId")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("poll_id");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .ValueGeneratedOnUpdate()
                         .HasColumnType("TIMESTAMP(6)")
                         .HasColumnName("updated_at");
 
-                    b.Property<DateTime?>("WorkCheckDeadlineAt")
-                        .HasColumnType("DATETIME(0)")
-                        .HasColumnName("work_check_deadline_at");
-
-                    b.Property<byte[]>("WorkId")
-                        .HasColumnType("BINARY(16)")
-                        .HasColumnName("work_id");
-
-                    b.Property<DateTime?>("WorkSolveDeadlineAt")
-                        .HasColumnType("DATETIME(0)")
-                        .HasColumnName("work_solve_deadline_at");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("WorkId");
+                    b.HasIndex("PollId");
 
                     b.ToTable("course_material_content");
                 });
@@ -539,7 +561,6 @@ namespace Noo.Api.Migrations
                         .HasColumnName("chapter_id");
 
                     b.Property<byte[]>("ContentId")
-                        .IsRequired()
                         .HasColumnType("BINARY(16)")
                         .HasColumnName("content_id");
 
@@ -569,7 +590,6 @@ namespace Noo.Api.Migrations
                         .HasColumnName("title");
 
                     b.Property<string>("TitleColor")
-                        .IsRequired()
                         .HasMaxLength(63)
                         .HasColumnType("VARCHAR(63)")
                         .HasColumnName("title_color");
@@ -595,6 +615,9 @@ namespace Noo.Api.Migrations
                         .HasColumnType("BINARY(16)")
                         .HasColumnName("id");
 
+                    b.Property<byte[]>("CourseMaterialModelId")
+                        .HasColumnType("BINARY(16)");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TIMESTAMP(6)")
@@ -602,10 +625,10 @@ namespace Noo.Api.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
 
-                    b.Property<byte[]>("MaterialId")
+                    b.Property<byte[]>("MaterialContentId")
                         .IsRequired()
                         .HasColumnType("BINARY(16)")
-                        .HasColumnName("material_id");
+                        .HasColumnName("material_content_id");
 
                     b.Property<string>("Reaction")
                         .IsRequired()
@@ -624,7 +647,9 @@ namespace Noo.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MaterialId");
+                    b.HasIndex("CourseMaterialModelId");
+
+                    b.HasIndex("MaterialContentId");
 
                     b.HasIndex("UserId");
 
@@ -745,6 +770,68 @@ namespace Noo.Api.Migrations
                     b.HasIndex("ThumbnailId");
 
                     b.ToTable("course");
+                });
+
+            modelBuilder.Entity("Noo.Api.Courses.Models.CourseWorkAssignmentModel", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("CheckDeadlineAt")
+                        .HasColumnType("DATETIME(0)")
+                        .HasColumnName("check_deadline_at");
+
+                    b.Property<byte[]>("CourseMaterialContentId")
+                        .IsRequired()
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("course_material_content_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TIMESTAMP(6)")
+                        .HasColumnName("created_at");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
+
+                    b.Property<DateTime?>("DeactivatedAt")
+                        .HasColumnType("DATETIME(0)")
+                        .HasColumnName("deactivated_at");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("TINYINT(1)")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("VARCHAR(255)")
+                        .HasColumnName("note");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("INT")
+                        .HasColumnName("order");
+
+                    b.Property<DateTime?>("SolveDeadlineAt")
+                        .HasColumnType("DATETIME(0)")
+                        .HasColumnName("solve_deadline_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("TIMESTAMP(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<byte[]>("WorkId")
+                        .IsRequired()
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("work_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseMaterialContentId");
+
+                    b.HasIndex("WorkId");
+
+                    b.ToTable("course_work_assignment");
                 });
 
             modelBuilder.Entity("Noo.Api.GoogleSheetsIntegrations.Models.GoogleSheetsIntegrationModel", b =>
@@ -998,16 +1085,16 @@ namespace Noo.Api.Migrations
                         .HasColumnType("TIMESTAMP(6)")
                         .HasColumnName("updated_at");
 
-                    b.Property<byte[]>("UploadedById")
+                    b.Property<byte[]>("UploadedByUserId")
                         .HasColumnType("BINARY(16)")
-                        .HasColumnName("uploaded_by_id");
+                        .HasColumnName("uploaded_by_user_id");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ThumbnailId")
                         .IsUnique();
 
-                    b.HasIndex("UploadedById");
+                    b.HasIndex("UploadedByUserId");
 
                     b.ToTable("nootube_video");
                 });
@@ -1887,7 +1974,7 @@ namespace Noo.Api.Migrations
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("ENUM('Word','Text','Essay','FinalEssay')")
+                        .HasColumnType("ENUM('Word','Text','Essay','FinalEssay','Dictation')")
                         .HasColumnName("type");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -1905,6 +1992,37 @@ namespace Noo.Api.Migrations
                     b.HasIndex("WorkId");
 
                     b.ToTable("work_task");
+                });
+
+            modelBuilder.Entity("CourseMaterialContentModelMediaModel", b =>
+                {
+                    b.HasOne("Noo.Api.Courses.Models.CourseMaterialContentModel", null)
+                        .WithMany()
+                        .HasForeignKey("CourseMaterialContentsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Noo.Api.Media.Models.MediaModel", null)
+                        .WithMany()
+                        .HasForeignKey("MediasId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CourseMaterialContentModelNooTubeVideoModel", b =>
+                {
+                    b.HasOne("Noo.Api.Courses.Models.CourseMaterialContentModel", null)
+                        .WithMany()
+                        .HasForeignKey("CourseMaterialContentsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Noo.Api.NooTube.Models.NooTubeVideoModel", null)
+                        .WithMany()
+                        .HasForeignKey("NooTubeVideosId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_course_material_content_mm_CourseMaterialContents_nootube_v~1");
                 });
 
             modelBuilder.Entity("CourseModelUserModel", b =>
@@ -2062,11 +2180,11 @@ namespace Noo.Api.Migrations
 
             modelBuilder.Entity("Noo.Api.Courses.Models.CourseMaterialContentModel", b =>
                 {
-                    b.HasOne("Noo.Api.Works.Models.WorkModel", "Work")
+                    b.HasOne("Noo.Api.Polls.Models.PollModel", "Poll")
                         .WithMany("CourseMaterialContents")
-                        .HasForeignKey("WorkId");
+                        .HasForeignKey("PollId");
 
-                    b.Navigation("Work");
+                    b.Navigation("Poll");
                 });
 
             modelBuilder.Entity("Noo.Api.Courses.Models.CourseMaterialModel", b =>
@@ -2079,9 +2197,7 @@ namespace Noo.Api.Migrations
 
                     b.HasOne("Noo.Api.Courses.Models.CourseMaterialContentModel", "Content")
                         .WithOne("Material")
-                        .HasForeignKey("Noo.Api.Courses.Models.CourseMaterialModel", "ContentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("Noo.Api.Courses.Models.CourseMaterialModel", "ContentId");
 
                     b.Navigation("Chapter");
 
@@ -2090,9 +2206,13 @@ namespace Noo.Api.Migrations
 
             modelBuilder.Entity("Noo.Api.Courses.Models.CourseMaterialReactionModel", b =>
                 {
-                    b.HasOne("Noo.Api.Courses.Models.CourseMaterialModel", "Material")
+                    b.HasOne("Noo.Api.Courses.Models.CourseMaterialModel", null)
                         .WithMany("Reactions")
-                        .HasForeignKey("MaterialId")
+                        .HasForeignKey("CourseMaterialModelId");
+
+                    b.HasOne("Noo.Api.Courses.Models.CourseMaterialContentModel", "MaterialContent")
+                        .WithMany("Reactions")
+                        .HasForeignKey("MaterialContentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2102,7 +2222,7 @@ namespace Noo.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Material");
+                    b.Navigation("MaterialContent");
 
                     b.Navigation("User");
                 });
@@ -2150,6 +2270,25 @@ namespace Noo.Api.Migrations
                     b.Navigation("Thumbnail");
                 });
 
+            modelBuilder.Entity("Noo.Api.Courses.Models.CourseWorkAssignmentModel", b =>
+                {
+                    b.HasOne("Noo.Api.Courses.Models.CourseMaterialContentModel", "CourseMaterialContent")
+                        .WithMany("WorkAssignments")
+                        .HasForeignKey("CourseMaterialContentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Noo.Api.Works.Models.WorkModel", "Work")
+                        .WithMany("CourseWorkAssignments")
+                        .HasForeignKey("WorkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CourseMaterialContent");
+
+                    b.Navigation("Work");
+                });
+
             modelBuilder.Entity("Noo.Api.NooTube.Models.NooTubeVideoCommentModel", b =>
                 {
                     b.HasOne("Noo.Api.Users.Models.UserModel", "User")
@@ -2178,7 +2317,7 @@ namespace Noo.Api.Migrations
 
                     b.HasOne("Noo.Api.Users.Models.UserModel", "UploadedByUser")
                         .WithMany("UploadedVideos")
-                        .HasForeignKey("UploadedById")
+                        .HasForeignKey("UploadedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Thumbnail");
@@ -2408,6 +2547,10 @@ namespace Noo.Api.Migrations
                 {
                     b.Navigation("Material")
                         .IsRequired();
+
+                    b.Navigation("Reactions");
+
+                    b.Navigation("WorkAssignments");
                 });
 
             modelBuilder.Entity("Noo.Api.Courses.Models.CourseMaterialModel", b =>
@@ -2440,6 +2583,8 @@ namespace Noo.Api.Migrations
 
             modelBuilder.Entity("Noo.Api.Polls.Models.PollModel", b =>
                 {
+                    b.Navigation("CourseMaterialContents");
+
                     b.Navigation("Participations");
 
                     b.Navigation("Questions");
@@ -2508,7 +2653,7 @@ namespace Noo.Api.Migrations
 
             modelBuilder.Entity("Noo.Api.Works.Models.WorkModel", b =>
                 {
-                    b.Navigation("CourseMaterialContents");
+                    b.Navigation("CourseWorkAssignments");
 
                     b.Navigation("Tasks");
                 });

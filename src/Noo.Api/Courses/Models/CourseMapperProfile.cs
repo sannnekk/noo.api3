@@ -1,7 +1,11 @@
 using AutoMapper;
+using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.Utils.AutoMapper;
 using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Types;
+using Noo.Api.Media.Models;
+using Noo.Api.NooTube.Models;
+using Noo.Api.Polls.Models;
 
 namespace Noo.Api.Courses.Models;
 
@@ -125,30 +129,22 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Material, opt => opt.Ignore())
-            // TODO: add mapping
-            .ForMember(dest => dest.Poll, opt => opt.Ignore())
-            // TODO: add mapping
-            .ForMember(dest => dest.NooTubeVideos, opt => opt.Ignore())
-            // TODO: add mapping
-            .ForMember(dest => dest.Medias, opt => opt.Ignore())
+            .ForMember(dest => dest.Poll, opt => opt.MapFrom(src => MapPollStub(src.PollId)))
+            .ForMember(dest => dest.NooTubeVideos, opt => opt.MapFrom(src => MapEntitiesFromIds<NooTubeVideoModel>(src.NooTubeVideoIds)))
+            .ForMember(dest => dest.Medias, opt => opt.MapFrom(src => MapEntitiesFromIds<MediaModel>(src.MediaIds)))
             .ForMember(dest => dest.Reactions, opt => opt.Ignore());
 
         CreateMap<CourseMaterialContentModel, UpdateCourseMaterialContentDTO>()
-            // TODO: add mapping
-            .ForMember(dest => dest.NooTubeVideoIds, opt => opt.Ignore())
-            // TODO: add mapping
-            .ForMember(dest => dest.MediaIds, opt => opt.Ignore());
+            .ForMember(dest => dest.NooTubeVideoIds, opt => opt.MapFrom(src => src.NooTubeVideos == null ? null : src.NooTubeVideos.Select(v => v.Id)))
+            .ForMember(dest => dest.MediaIds, opt => opt.MapFrom(src => src.Medias == null ? null : src.Medias.Select(m => m.Id)));
 
         CreateMap<UpdateCourseMaterialContentDTO, CourseMaterialContentModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-            // TODO: add mapping
-            .ForMember(dest => dest.NooTubeVideos, opt => opt.Ignore())
-            // TODO: add mapping
-            .ForMember(dest => dest.Medias, opt => opt.Ignore())
-            // TODO: add mapping
-            .ForMember(dest => dest.Poll, opt => opt.Ignore())
+            .ForMember(dest => dest.NooTubeVideos, opt => opt.MapFrom(src => MapEntitiesFromIds<NooTubeVideoModel>(src.NooTubeVideoIds)))
+            .ForMember(dest => dest.Medias, opt => opt.MapFrom(src => MapEntitiesFromIds<MediaModel>(src.MediaIds)))
+            .ForMember(dest => dest.Poll, opt => opt.MapFrom(src => MapPollStub(src.PollId)))
             .ForMember(dest => dest.Reactions, opt => opt.Ignore())
             .ForMember(dest => dest.Material, opt => opt.Ignore());
 
@@ -221,5 +217,27 @@ public class CourseMapperProfile : Profile
 
         foreach (var subChapter in chapter.SubChapters)
             ApplyChapterHierarchy(course, subChapter, chapter);
+    }
+
+    private static PollModel? MapPollStub(Ulid? pollId)
+    {
+        if (!pollId.HasValue)
+            return null;
+
+        return new PollModel { Id = pollId.Value };
+    }
+
+    private static ICollection<TModel>? MapEntitiesFromIds<TModel>(IEnumerable<Ulid>? ids)
+        where TModel : BaseModel, new()
+    {
+        if (ids == null)
+            return null;
+
+        var idList = ids as IList<Ulid> ?? ids.ToList();
+
+        if (idList.Count == 0)
+            return [];
+
+        return idList.Select(id => new TModel { Id = id }).ToList();
     }
 }
