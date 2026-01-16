@@ -3,6 +3,7 @@ using Noo.Api.Sessions;
 using Noo.Api.Sessions.Services;
 using Noo.Api.Statistics.DTO;
 using Noo.Api.Users.Services;
+using Microsoft.Extensions.Options;
 
 namespace Noo.Api.Statistics.Services;
 
@@ -15,11 +16,14 @@ public class UserStatisticsCollector : IUserStatisticsCollector
 
     private readonly IActiveUserService _activeUserService;
 
-    public UserStatisticsCollector(IOnlineService onlineService, IUserRepository userRepository, IActiveUserService activeUserService)
+    private readonly SessionConfig _sessionOptions;
+
+    public UserStatisticsCollector(IOnlineService onlineService, IUserRepository userRepository, IActiveUserService activeUserService, IOptions<SessionConfig> sessionOptions)
     {
         _userRepository = userRepository;
         _onlineService = onlineService;
         _activeUserService = activeUserService;
+        _sessionOptions = sessionOptions.Value;
     }
 
     public async Task<StatisticsBlockDTO> GetUserStatisticsAsync(DateTime from, DateTime to)
@@ -57,14 +61,14 @@ public class UserStatisticsCollector : IUserStatisticsCollector
                 new()
                 {
                     Title = "Онлайн",
-                    Description = $"TTL ~ {SessionConfig.OnlineTtlMinutes} мин",
+                    Description = $"TTL ~ {_sessionOptions.OnlineTtlMinutes} мин",
                     Value = onlinePerRoleTask.Result.Values.Sum(),
                     SubValues = StatisticsHelpers.NormalizeDictionary(onlinePerRoleTask.Result)
                 },
                 new()
                 {
                     Title = "Активные",
-                    Description = $"За последние {SessionConfig.ActiveTtlDays} дн.",
+                    Description = $"За последние {_sessionOptions.ActiveTtlDays} дн.",
                     Value = activePerRoleTask.Result.Values.Sum(),
                     SubValues = StatisticsHelpers.NormalizeDictionary(activePerRoleTask.Result)
                 }

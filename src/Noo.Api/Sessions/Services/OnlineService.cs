@@ -2,6 +2,7 @@ using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
+using Microsoft.Extensions.Options;
 
 namespace Noo.Api.Sessions.Services;
 
@@ -10,12 +11,13 @@ public class OnlineService : IOnlineService
 {
     private readonly ICacheRepository _cache;
     private readonly NooDbContext _db;
-    private static readonly TimeSpan _onlineTtl = SessionConfig.OnlineTtl;
+    private readonly SessionConfig _options;
 
-    public OnlineService(ICacheRepository cache, NooDbContext db)
+    public OnlineService(ICacheRepository cache, NooDbContext db, IOptions<SessionConfig> options)
     {
         _cache = cache;
         _db = db;
+        _options = options.Value;
     }
 
     private static string SessionKey(Ulid sessionId) => $"online:session:{sessionId}";
@@ -42,14 +44,14 @@ public class OnlineService : IOnlineService
     public Task SetSessionOnlineAsync(Ulid sessionId)
     {
         var now = DateTime.UtcNow;
-        return _cache.SetAsync(SessionKey(sessionId), now, _onlineTtl);
+        return _cache.SetAsync(SessionKey(sessionId), now, _options.OnlineTtl);
     }
 
     // Parameterless overload: only set the generic user online key; do NOT attribute to a role implicitly.
     public Task SetUserOnlineAsync(Ulid userId)
     {
         var now = DateTime.UtcNow;
-        return _cache.SetAsync(UserKey(userId), now, _onlineTtl);
+        return _cache.SetAsync(UserKey(userId), now, _options.OnlineTtl);
     }
 
     public Task SetUserOnlineAsync(Ulid userId, UserRoles role)
@@ -58,12 +60,12 @@ public class OnlineService : IOnlineService
         // Keys: base user online + role-specific online. Active tracking handled by ActiveUserService.
         var tasks = new List<Task>
         {
-            _cache.SetAsync(UserKey(userId), now, _onlineTtl)
+            _cache.SetAsync(UserKey(userId), now, _options.OnlineTtl)
         };
         // Add role-specific key if role provided (avoid enum default misuse by checking defined enum)
         if (Enum.IsDefined(typeof(UserRoles), role))
         {
-            tasks.Add(_cache.SetAsync(OnlineRoleUserKey(role, userId), now, _onlineTtl));
+            tasks.Add(_cache.SetAsync(OnlineRoleUserKey(role, userId), now, _options.OnlineTtl));
         }
         return Task.WhenAll(tasks);
     }
@@ -71,7 +73,7 @@ public class OnlineService : IOnlineService
     public async Task<bool> IsUserOnlineAsync(Ulid userId)
     {
         var last = await GetLastOnlineByUserAsync(userId);
-        return last.HasValue && DateTime.UtcNow - last.Value < _onlineTtl;
+        return last.HasValue && DateTime.UtcNow - last.Value < _options.OnlineTtl;
     }
 
     public Task<Dictionary<UserRoles, int>> GetOnlineCountByRolesAsync()

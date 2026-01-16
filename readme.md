@@ -65,6 +65,33 @@ The configuration is done in the `appsettings.json` file. An example (all possib
     "MinResponseDataRate": 100,
     "MinResponseDataRateGracePeriod": 10
   },
+  "Sessions": {
+    "OnlineTtlMinutes": 15,
+    "ActiveTtlDays": 14,
+    "DbUpdateThrottleMinutes": 5,
+    "CleanupIntervalHours": 12,
+    "SessionRetentionDays": 30
+  },
+  "RateLimiting": {
+    "Global": {
+      "PermitLimit": 100,
+      "WindowSeconds": 60,
+      "QueueLimit": 0,
+      "QueueProcessingOrder": "OldestFirst"
+    },
+    "Login": {
+      "PermitLimit": 50,
+      "WindowSeconds": 60,
+      "QueueLimit": 0,
+      "QueueProcessingOrder": "OldestFirst"
+    },
+    "Registration": {
+      "PermitLimit": 10,
+      "WindowSeconds": 3600,
+      "QueueLimit": 0,
+      "QueueProcessingOrder": "OldestFirst"
+    }
+  },
   "HttpClient": {
     "TimeoutSeconds": 30,
     "RetryCount": 3,
@@ -135,6 +162,10 @@ The configuration is done in the `appsettings.json` file. An example (all possib
 ```
 
 `Logs.Mode` accepts `Console` or `Telegram`, and `Logs.MinLevel` uses the standard `Microsoft.Extensions.Logging.LogLevel` names.
+
+`RateLimiting` controls the fixed-window limits for the global pipeline plus `LoginPolicy` and `RegistrationPolicy`. Adjust `PermitLimit`, `WindowSeconds`, and queue settings per environment as needed.
+
+`Sessions` config drives TTLs for online/active tracking and cleanup cadence; tune per environment to match expected activity and retention.
 
 ## Optional
 

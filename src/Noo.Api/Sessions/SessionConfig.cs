@@ -1,21 +1,30 @@
+using System.ComponentModel.DataAnnotations;
+using Noo.Api.Core.Config;
+
 namespace Noo.Api.Sessions;
 
-public static class SessionConfig
+[ModuleConfig]
+public class SessionConfig : IConfig
 {
-    // TTLs and thresholds
-    public const int OnlineTtlMinutes = 15;
-    public const int ActiveTtlDays = 14;
+    public static string SectionName => "Sessions";
 
-    // Middleware DB update throttle window
-    public const int DbUpdateThrottleMinutes = 5;
+    [Range(1, int.MaxValue)]
+    public int OnlineTtlMinutes { get; set; } = 15;
 
-    // Background cleanup worker cadence and retention
-    public const int CleanupIntervalHours = 12;
-    public const int SessionRetentionDays = 30;
+    [Range(1, int.MaxValue)]
+    public int ActiveTtlDays { get; set; } = 14;
 
-    // Derived TimeSpans for convenience
-    public static readonly TimeSpan OnlineTtl = TimeSpan.FromMinutes(OnlineTtlMinutes);
-    public static readonly TimeSpan ActiveTtl = TimeSpan.FromDays(ActiveTtlDays);
-    public static readonly TimeSpan DbUpdateThrottle = TimeSpan.FromMinutes(DbUpdateThrottleMinutes);
-    public static readonly TimeSpan CleanupInterval = TimeSpan.FromHours(CleanupIntervalHours);
+    [Range(1, int.MaxValue)]
+    public int DbUpdateThrottleMinutes { get; set; } = 5;
+
+    [Range(1, int.MaxValue)]
+    public int CleanupIntervalHours { get; set; } = 12;
+
+    [Range(1, int.MaxValue)]
+    public int SessionRetentionDays { get; set; } = 30;
+
+    public TimeSpan OnlineTtl => TimeSpan.FromMinutes(OnlineTtlMinutes);
+    public TimeSpan ActiveTtl => TimeSpan.FromDays(ActiveTtlDays);
+    public TimeSpan DbUpdateThrottle => TimeSpan.FromMinutes(DbUpdateThrottleMinutes);
+    public TimeSpan CleanupInterval => TimeSpan.FromHours(CleanupIntervalHours);
 }

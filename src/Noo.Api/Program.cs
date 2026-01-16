@@ -27,7 +27,7 @@ builder.Services.AddCorsPolicy(builder.Configuration);
 builder.Services.AddNooResponseCompression();
 builder.Services.AddHealthcheckServices();
 builder.Services.AddRouteConstraints();
-builder.Services.AddRequestRateLimiter();
+builder.Services.AddRequestRateLimiter(builder.Configuration);
 builder.Services.AddRouting();
 builder.Services.AddAutoMapperProfiles();
 builder.Services.AddCacheProvider(builder.Configuration);

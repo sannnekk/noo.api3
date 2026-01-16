@@ -1,6 +1,7 @@
 using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
+using Microsoft.Extensions.Options;
 
 namespace Noo.Api.Sessions.Services;
 
@@ -8,12 +9,12 @@ namespace Noo.Api.Sessions.Services;
 public class ActiveUserService : IActiveUserService
 {
     private readonly ICacheRepository _cache;
+    private readonly SessionConfig _options;
 
-    private static readonly TimeSpan _activeTtl = SessionConfig.ActiveTtl;
-
-    public ActiveUserService(ICacheRepository cache)
+    public ActiveUserService(ICacheRepository cache, IOptions<SessionConfig> options)
     {
         _cache = cache;
+        _options = options.Value;
     }
 
     private static string ActiveUserKey(Ulid userId) => $"active:user:{userId}";
@@ -35,11 +36,11 @@ public class ActiveUserService : IActiveUserService
         var now = DateTime.UtcNow;
         var tasks = new List<Task>
         {
-            _cache.SetAsync(ActiveUserKey(userId), now, _activeTtl)
+            _cache.SetAsync(ActiveUserKey(userId), now, _options.ActiveTtl)
         };
         if (Enum.IsDefined(role))
         {
-            tasks.Add(_cache.SetAsync(ActiveRoleUserKey(role, userId), now, _activeTtl));
+            tasks.Add(_cache.SetAsync(ActiveRoleUserKey(role, userId), now, _options.ActiveTtl));
         }
         return Task.WhenAll(tasks);
     }
@@ -47,7 +48,7 @@ public class ActiveUserService : IActiveUserService
     public async Task<bool> IsUserActiveAsync(Ulid userId)
     {
         var last = await GetLastActiveByUserAsync(userId);
-        return last.HasValue && DateTime.UtcNow - last.Value < _activeTtl;
+        return last.HasValue && DateTime.UtcNow - last.Value < _options.ActiveTtl;
     }
 
     public Task<DateTime?> GetLastActiveByUserAsync(Ulid userId)
