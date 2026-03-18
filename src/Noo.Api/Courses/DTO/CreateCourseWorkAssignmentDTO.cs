@@ -10,10 +10,6 @@ public record CreateCourseWorkAssignmentDTO
     public int Order { get; init; }
 
     [Required]
-    [JsonPropertyName("materialContentId")]
-    public Ulid MaterialContentId { get; init; }
-
-    [Required]
     [JsonPropertyName("workId")]
     public Ulid WorkId { get; init; }
 

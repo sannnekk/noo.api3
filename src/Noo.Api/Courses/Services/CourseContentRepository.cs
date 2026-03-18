@@ -19,6 +19,7 @@ public class CourseContentRepository : Repository<CourseMaterialContentModel>, I
             .Include(c => c.Poll)
             .Include(c => c.NooTubeVideos)
             .Include(c => c.WorkAssignments)
+            .ThenInclude(wa => wa.Work)
             .AsSplitQuery()
             .FirstOrDefaultAsync(c => c.Id == contentId);
     }

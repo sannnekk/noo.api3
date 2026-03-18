@@ -60,6 +60,7 @@ public class DeltaAttributes
             }
         }
     }
+
     private string? _parsedColorValue;
 
     [JsonPropertyName("comment")]

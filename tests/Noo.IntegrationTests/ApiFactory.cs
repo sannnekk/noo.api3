@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Caching.Distributed;
-using Noo.Api;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Users.Models;

@@ -61,6 +61,28 @@ public class WorkTests : IClassFixture<ApiFactory>
         };
     }
 
+    private static object BuildValidCreateWorkPayload(Ulid subjectId, string? title, string type)
+    {
+        title ??= $"Work-{Guid.NewGuid():N}";
+
+        return new
+        {
+            title,
+            type,
+            subjectId = subjectId.ToString(),
+            tasks = new[]
+            {
+                new
+                {
+                    type = WorkTaskType.Word.ToString(),
+                    order = 0,
+                    maxScore = 1,
+                    content = RichTextFactory.Create("Question 1")
+                }
+            }
+        };
+    }
+
     private async Task<Ulid> CreateWorkAsync(HttpClient client, Ulid subjectId, string? title = null, WorkType type = WorkType.Test)
     {
         var createPayload = BuildValidCreateWorkPayload(subjectId, title, type);
@@ -71,6 +93,45 @@ public class WorkTests : IClassFixture<ApiFactory>
         var result = await resp.Content.ReadFromJsonAsync<ApiResponseDTO<IdResponseDTO>>(JsonOptions);
         result.Should().NotBeNull();
         return result!.Data!.Id;
+    }
+
+    [Fact(DisplayName = "POST /work accepts kebab-case enum and GET returns kebab-case")]
+    public async Task Create_Work_KebabCaseEnum_Serializes_And_Deserializes()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+
+        var payload = BuildValidCreateWorkPayload(subjectId, "Kebab Work", "mini-test");
+        var createResp = await client.AsTeacher().PostAsJsonAsync("/work", payload, JsonOptions);
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createResult = await createResp.Content.ReadFromJsonAsync<ApiResponseDTO<IdResponseDTO>>(JsonOptions);
+        createResult.Should().NotBeNull();
+
+        var workId = createResult!.Data!.Id;
+        var getResp = await client.AsTeacher().GetAsync($"/work/{workId}");
+        getResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var doc = JsonDocument.Parse(await getResp.Content.ReadAsStringAsync());
+        doc.RootElement.GetProperty("data").GetProperty("type").GetString().Should().Be("mini-test");
+    }
+
+    [Fact(DisplayName = "GET /work accepts kebab-case enum filter")]
+    public async Task Search_Works_KebabCaseEnumFilter_Works()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+
+        await CreateWorkAsync(client, subjectId, title: "Type-A", type: WorkType.Test);
+        await CreateWorkAsync(client, subjectId, title: "Type-B", type: WorkType.MiniTest);
+
+        var resp = await client.AsTeacher().GetAsync("/work?type=mini-test");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+        var items = doc.RootElement.GetProperty("data").EnumerateArray().ToArray();
+        items.Should().NotBeEmpty();
+        items.Should().OnlyContain(item => item.GetProperty("type").GetString() == "mini-test");
     }
 
     [Fact(DisplayName = "GET /work as teacher returns 200 OK")]

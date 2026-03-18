@@ -32,16 +32,16 @@ public class CalendarController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CalendarPolicies.CanGetCalendarEvents)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<CalendarEventDTO>>), StatusCodes.Status200OK,
-        StatusCodes.Status400BadRequest,
-        StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden
-    )]
+    typeof(ApiResponseDTO<IEnumerable<CalendarEventDTO>>), StatusCodes.Status200OK,
+    StatusCodes.Status400BadRequest,
+    StatusCodes.Status401Unauthorized,
+    StatusCodes.Status403Forbidden
+        )]
     public async Task<IActionResult> GetCalendarEventsAsync(
-        [FromRoute] Ulid userId,
-        [FromRoute] int year,
-        [FromRoute] int month
-    )
+            [FromRoute] Ulid userId,
+            [FromRoute] int year,
+            [FromRoute] int month
+            )
     {
         var result = await _calendarService.GetCalendarEventsAsync(userId, year, month);
 
@@ -55,11 +55,11 @@ public class CalendarController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CalendarPolicies.CanCreateCalendarEvent)]
     [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status201Created,
-        StatusCodes.Status400BadRequest,
-        StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden
-    )]
+    typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status201Created,
+    StatusCodes.Status400BadRequest,
+    StatusCodes.Status401Unauthorized,
+    StatusCodes.Status403Forbidden
+        )]
     public async Task<IActionResult> CreateCalendarEventAsync([FromBody] CreateCalendarEventDTO dto)
     {
         var userId = User.GetId();
@@ -75,11 +75,11 @@ public class CalendarController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CalendarPolicies.CanDeleteCalendarEvent)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
-        StatusCodes.Status400BadRequest,
-        StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden
-    )]
+    null, StatusCodes.Status204NoContent,
+    StatusCodes.Status400BadRequest,
+    StatusCodes.Status401Unauthorized,
+    StatusCodes.Status403Forbidden
+        )]
     public async Task<IActionResult> DeleteCalendarEventAsync([FromRoute] Ulid id)
     {
         var userId = User.GetId();

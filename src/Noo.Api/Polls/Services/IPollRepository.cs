@@ -5,6 +5,6 @@ namespace Noo.Api.Polls.Services;
 
 public interface IPollRepository : IRepository<PollModel>
 {
-    public Task<PollModel?> GetWithQuestionsAsync(Ulid pollId);
+    public Task<PollModel?> GetWithQuestionsAsync(Ulid id);
 }
 

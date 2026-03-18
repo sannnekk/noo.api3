@@ -10,21 +10,21 @@ public class RateLimitingConfig : IConfig
     [Required]
     public FixedWindowRateLimitPolicyConfig Global { get; set; } = new()
     {
-        PermitLimit = 100,
+        PermitLimit = 300,
         WindowSeconds = 60
     };
 
     [Required]
     public FixedWindowRateLimitPolicyConfig Login { get; set; } = new()
     {
-        PermitLimit = 50,
+        PermitLimit = 150,
         WindowSeconds = 60
     };
 
     [Required]
     public FixedWindowRateLimitPolicyConfig Registration { get; set; } = new()
     {
-        PermitLimit = 10,
+        PermitLimit = 30,
         WindowSeconds = 3600
     };
 }

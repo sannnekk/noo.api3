@@ -30,5 +30,5 @@ public class DbConfig : IConfig
     [Required]
     public required string DefaultCollation { get; init; }
 
-    public string ConnectionString => $"server={Host};port={Port};user={User};password={Password};database={Database}";
+    public string ConnectionString => $"server={Host};port={Port};user={User};password={Password};database={Database};SslMode=Preferred;";
 }

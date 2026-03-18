@@ -36,9 +36,8 @@ public record CourseMaterialDTO
     [JsonPropertyName("chapterId")]
     public Ulid ChapterId { get; init; }
 
-    [Required]
     [JsonPropertyName("contentId")]
-    public Ulid ContentId { get; init; }
+    public Ulid? ContentId { get; init; }
 
     [Required]
     [JsonPropertyName("createdAt")]

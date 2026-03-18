@@ -5,6 +5,7 @@ using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Filters;
 using Noo.Api.Courses.Models;
 using Noo.Api.Courses.Services;
+using Noo.Api.Subjects.Models;
 using Noo.UnitTests.Common;
 using SystemTextJsonPatch;
 using Noo.Api.Core.Request.Patching;
@@ -37,22 +38,49 @@ public class CourseServiceTests
     [Fact]
     public async Task Create_And_GetById_Works()
     {
-        using var ctx = TestHelpers.CreateInMemoryDb();
-        var uow = TestHelpers.CreateUowMock(ctx).Object;
-        var courseRepo = new CourseRepository(ctx);
-        var courseContentRepo = new CourseContentRepository(ctx);
-        var currentUser = MakeUser(UserRoles.Admin);
-        var mapper = CreateMapper();
-        var jsonPatch = new JsonPatchUpdateService(mapper);
-        var service = new CourseService(uow, courseRepo, courseContentRepo, currentUser, mapper, jsonPatch);
+        var dbName = Guid.NewGuid().ToString();
+        Ulid id;
+        Ulid subjectId;
 
-        var id = await service.CreateAsync(MakeCreateCourseDto());
-        Assert.NotEqual(default, id);
+        using (var ctx = TestHelpers.CreateInMemoryDb(dbName))
+        {
+            var subject = new SubjectModel
+            {
+                Name = "Math",
+                Color = "#ffffff"
+            };
+            ctx.GetDbSet<SubjectModel>().Add(subject);
+            await ctx.SaveChangesAsync();
+            subjectId = subject.Id;
 
-        var fetched = await service.GetByIdAsync(id, includeInactive: true);
-        Assert.NotNull(fetched);
-        Assert.Equal("C# 101", fetched!.Name);
-        Assert.False(fetched.IsDeleted);
+            var uow = TestHelpers.CreateUowMock(ctx).Object;
+            var courseRepo = new CourseRepository(ctx);
+            var courseContentRepo = new CourseContentRepository(ctx);
+            var currentUser = MakeUser(UserRoles.Admin);
+            var mapper = CreateMapper();
+            var jsonPatch = new JsonPatchUpdateService(mapper);
+            var service = new CourseService(uow, courseRepo, courseContentRepo, currentUser, mapper, jsonPatch);
+
+            id = await service.CreateAsync(MakeCreateCourseDto() with { SubjectId = subjectId });
+            Assert.NotEqual(default, id);
+        }
+
+        using (var verifyCtx = TestHelpers.CreateInMemoryDb(dbName))
+        {
+            var verifyUow = TestHelpers.CreateUowMock(verifyCtx).Object;
+            var verifyRepo = new CourseRepository(verifyCtx);
+            var verifyContentRepo = new CourseContentRepository(verifyCtx);
+            var mapper = CreateMapper();
+            var jsonPatch = new JsonPatchUpdateService(mapper);
+            var verifyService = new CourseService(verifyUow, verifyRepo, verifyContentRepo, MakeUser(UserRoles.Admin), mapper, jsonPatch);
+
+            var fetched = await verifyService.GetByIdAsync(id, includeInactive: true);
+            Assert.NotNull(fetched);
+            Assert.Equal("C# 101", fetched!.Name);
+            Assert.False(fetched.IsDeleted);
+            Assert.NotNull(fetched.Subject);
+            Assert.Equal(subjectId, fetched.Subject!.Id);
+        }
     }
 
     [Fact]

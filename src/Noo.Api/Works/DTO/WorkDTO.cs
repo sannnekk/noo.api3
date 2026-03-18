@@ -40,6 +40,6 @@ public record WorkDTO
     public SubjectDTO? Subject { get; init; }
 
     [JsonPropertyName("tasks")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public ICollection<WorkTaskDTO> Tasks { get; init; } = [];
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public ICollection<WorkTaskDTO> Tasks { get; init; } = default!;
 }

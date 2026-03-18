@@ -58,7 +58,6 @@ public class CourseMapperProfile : Profile
             // TODO: remove
             .ForMember(dest => dest.MemberCount, opt => opt.Ignore())
             .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
-            .ForMember(dest => dest.Subject, opt => opt.Ignore())
             .MaxDepth(CourseConfig.MaxChapterTreeDepth);
 
         // Chapter
@@ -112,14 +111,14 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Reactions, opt => opt.Ignore());
 
         CreateMap<CreateCourseMaterialDTO, CourseMaterialModel>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.Chapter, opt => opt.Ignore())
-                .ForMember(dest => dest.ChapterId, opt => opt.Ignore())
-                .ForMember(dest => dest.Content, opt => opt.Ignore())
-                .ForMember(dest => dest.ContentId, opt => opt.Ignore())
-                .ForMember(dest => dest.Reactions, opt => opt.Ignore());
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.Chapter, opt => opt.Ignore())
+            .ForMember(dest => dest.ChapterId, opt => opt.Ignore())
+            .ForMember(dest => dest.Content, opt => opt.Ignore())
+            .ForMember(dest => dest.ContentId, opt => opt.Ignore())
+            .ForMember(dest => dest.Reactions, opt => opt.Ignore());
 
         CreateMap<CourseMaterialModel, CourseMaterialDTO>();
 
@@ -136,7 +135,8 @@ public class CourseMapperProfile : Profile
 
         CreateMap<CourseMaterialContentModel, UpdateCourseMaterialContentDTO>()
             .ForMember(dest => dest.NooTubeVideoIds, opt => opt.MapFrom(src => src.NooTubeVideos == null ? null : src.NooTubeVideos.Select(v => v.Id)))
-            .ForMember(dest => dest.MediaIds, opt => opt.MapFrom(src => src.Medias == null ? null : src.Medias.Select(m => m.Id)));
+            .ForMember(dest => dest.MediaIds, opt => opt.MapFrom(src => src.Medias == null ? null : src.Medias.Select(m => m.Id)))
+            .ForMember(dest => dest.WorkAssignments, opt => opt.MapFrom((src, _, _, context) => src.WorkAssignments.MapCollectionToDictionary<CourseWorkAssignmentModel, UpdateCourseWorkAssignmentDTO>(context)));
 
         CreateMap<UpdateCourseMaterialContentDTO, CourseMaterialContentModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -146,7 +146,8 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Medias, opt => opt.MapFrom(src => MapEntitiesFromIds<MediaModel>(src.MediaIds)))
             .ForMember(dest => dest.Poll, opt => opt.MapFrom(src => MapPollStub(src.PollId)))
             .ForMember(dest => dest.Reactions, opt => opt.Ignore())
-            .ForMember(dest => dest.Material, opt => opt.Ignore());
+            .ForMember(dest => dest.Material, opt => opt.Ignore())
+            .ForMember(dest => dest.WorkAssignments, opt => opt.MapFrom((src, _, _, context) => src.WorkAssignments.MapDictionaryToCollection<UpdateCourseWorkAssignmentDTO, CourseWorkAssignmentModel>(context.Mapper)));
 
         CreateMap<CourseMaterialContentModel, CourseMaterialContentDTO>();
 

@@ -23,11 +23,12 @@ say_fail() { echo -e "${RED}${ICON_FAIL}$*${RESET}"; }
 section()  { echo -e "\n${BOLD}${MAGENTA}==== $* ====${RESET}\n"; }
 
 usage() {
-	echo -e "${BOLD}Usage${RESET}: $0 ${CYAN}[test|run]${RESET} ${YELLOW}[integration|unit|dev|prod]${RESET}"
+	echo -e "${BOLD}Usage${RESET}: $0 ${CYAN}[test|run]${RESET} ${YELLOW}[integration|unit|dev|prod]${RESET} ${YELLOW}[watch]${RESET}"
 	echo -e "  ${ICON_DOT}${CYAN}test${RESET} ${YELLOW}integration${RESET}/${YELLOW}unit${RESET} ${DIM}- run tests by project path${RESET}"
 	echo -e "     ${DIM}• integration → tests/Noo.IntegrationTests${RESET}"
 	echo -e "     ${DIM}• unit        → tests/Noo.UnitTests${RESET}"
-	echo -e "  ${ICON_DOT}${CYAN}run${RESET}  ${YELLOW}dev${RESET}/${YELLOW}prod${RESET}        ${DIM}- start src/Noo.Api in specified mode${RESET}"
+	echo -e "  ${ICON_DOT}${CYAN}run${RESET}  ${YELLOW}dev${RESET}/${YELLOW}prod${RESET} ${YELLOW}[watch]${RESET} ${DIM}- start src/Noo.Api in specified mode${RESET}"
+	echo -e "     ${DIM}• watch supports only run dev (aliases: --watch, -w)${RESET}"
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -35,14 +36,27 @@ cd "$SCRIPT_DIR" || exit 1
 
 ACTION=$1
 TARGET=$2
+OPTION=$3
 
 run_app() {
 	local mode="$1"
+	local option="$2"
 	local project="src/Noo.Api/Noo.Api.csproj"
+	local useWatch=false
 	if [ ! -f "$project" ]; then
 		say_fail "Project not found: ${project}"
 		return 1
 	fi
+
+	case "$option" in
+		"") ;;
+		watch|--watch|-w) useWatch=true ;;
+		*)
+			say_fail "Unknown run option: ${option}"
+			usage
+			return 1
+			;;
+	esac
 
 	case "$mode" in
 		dev)  envName="Development" ;;
@@ -50,12 +64,26 @@ run_app() {
 		*)    say_fail "Unknown run target: ${mode:-<missing>}"; usage; return 1 ;;
 	esac
 
+	if [ "$useWatch" = true ] && [ "$mode" != "dev" ]; then
+		say_fail "Watch option is available only in dev mode"
+		usage
+		return 1
+	fi
+
 	section "${ICON_RUN} Starting Noo.Api (${envName})"
 	say_info "Project: ${project}"
 	say_info "Environment: ${envName}"
+	if [ "$useWatch" = true ]; then
+		say_info "Run mode: watch"
+	fi
 	say_warn "Press Ctrl+C to stop"
-	ASPNETCORE_ENVIRONMENT="$envName" DOTNET_ENVIRONMENT="$envName" \
-		dotnet run --project "$project"
+	if [ "$useWatch" = true ]; then
+		ASPNETCORE_ENVIRONMENT="$envName" DOTNET_ENVIRONMENT="$envName" \
+			dotnet watch --project "$project" run
+	else
+		ASPNETCORE_ENVIRONMENT="$envName" DOTNET_ENVIRONMENT="$envName" \
+			dotnet run --project "$project"
+	fi
 }
 
 rebuild_app() {
@@ -188,7 +216,7 @@ case "$ACTION" in
 			exit $?
 			;;
 	run)
-		run_app "$TARGET"
+		run_app "$TARGET" "$OPTION"
 		;;
 	*)
 		say_warn "Missing or unknown command: ${ACTION:-<missing>}"

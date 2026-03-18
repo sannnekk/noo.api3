@@ -18,5 +18,5 @@ public record UpdateCourseMaterialContentDTO
     public IEnumerable<Ulid>? MediaIds { get; init; }
 
     [JsonPropertyName("workAssignments")]
-    public IEnumerable<UpdateCourseWorkAssignmentDTO>? WorkAssignments { get; init; }
+    public IDictionary<string, UpdateCourseWorkAssignmentDTO>? WorkAssignments { get; init; }
 }

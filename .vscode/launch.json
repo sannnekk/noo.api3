@@ -1,41 +1,20 @@
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Launch Dev (Debug)",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build",
-      "program": "${workspaceFolder}/src/Noo.Api/bin/Debug/net9.0/Noo.Api.dll",
-      "args": [],
-      "cwd": "${workspaceFolder}/src/Noo.Api",
-      "stopAtEntry": false,
-      "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "sourceFileMap": {
-        "/Views": "${workspaceFolder}/src/Noo.Api/Views"
-      }
-    },
-    {
-      "name": "Launch Prod (Release)",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build",
-      "program": "${workspaceFolder}/src/Noo.Api/bin/Release/net9.0/Noo.Api.dll",
-      "args": [],
-      "cwd": "${workspaceFolder}/src/Noo.Api",
-      "stopAtEntry": false,
-      "serverReadyAction": {
-        "action": "openExternally",
-        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
-      },
-      "env": {
-        "ASPNETCORE_ENVIRONMENT": "Production"
-      },
-      "sourceFileMap": {
-        "/Views": "${workspaceFolder}/src/Noo.Api/Views"
-      }
-    }
-  ]
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch ASP.NET (Fedora)",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/Debug/net10.0/YourApp.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+            },
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal"
+        }
+    ]
 }

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Noo.Api.Works.DTO;
 
 namespace Noo.Api.Courses.DTO;
 
@@ -15,6 +16,10 @@ public record CourseWorkAssignmentDTO
 
     [JsonPropertyName("workId")]
     public Ulid? WorkId { get; init; }
+
+    [JsonPropertyName("work")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public WorkDTO? Work { get; init; }
 
     [JsonPropertyName("note")]
     public string? Note { get; init; }

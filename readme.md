@@ -32,10 +32,11 @@ Backend API for Noo project.
 
    Possible commands:
 
-   - `test integration`
-   - `test unit`
-   - `run dev`
-   - `run prod`
+    - `test integration`
+    - `test unit`
+    - `run dev`
+    - `run dev watch`
+    - `run prod`
 
    To debug, use options from your IDE (Typically `F5` in VS code)
 

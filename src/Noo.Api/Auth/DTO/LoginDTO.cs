@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using Noo.Api.Core.Validation.Attributes;
 
 namespace Noo.Api.Auth.DTO;
 
@@ -13,7 +12,8 @@ public record LoginDTO
     public string UsernameOrEmail { get; set; } = string.Empty;
 
     [Required]
-    [Password]
+    [MinLength(1)]
+    [MaxLength(256)]
     [JsonPropertyName("password")]
     public string Password { get; set; } = string.Empty;
 }

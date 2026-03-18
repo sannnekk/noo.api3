@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Noo.Api</RootNamespace>
@@ -9,7 +9,7 @@
 
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591</NoWarn> <!-- Optional: suppress missing XML comment warnings -->
+    <NoWarn>$(NoWarn);CS1591;IDE0032</NoWarn> <!-- Optional: suppress missing XML comment warnings -->
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +19,7 @@
     <PackageReference Include="AutoFilterer" Version="3.2.0" />
     <PackageReference Include="AutoFilterer.Swagger" Version="3.2.0" />
     <PackageReference Include="AutoMapper" Version="14.0.0" />
+    <PackageReference Include="AWSSDK.Core" Version="4.0.3.12" />
     <PackageReference Include="AWSSDK.S3" Version="4.0.6.7" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Google.Apis.Auth" Version="1.70.0" />
@@ -57,9 +58,13 @@
   <PropertyGroup>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-	<NoWarn>RCS1021;CS1591</NoWarn>
+	<NoWarn>RCS1021;CS1591;IDE0032</NoWarn>
     <WarningsAsErrors>IDE1006;$(WarningsAsErrors);RCS1098;RCS1163</WarningsAsErrors>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove=".*" />
+  </ItemGroup>
 
   <ItemGroup>
 	<InternalsVisibleTo Include="Noo.Api.IntegrationTests" />

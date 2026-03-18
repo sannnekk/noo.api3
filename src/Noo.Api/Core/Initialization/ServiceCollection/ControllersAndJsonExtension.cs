@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Noo.Api.Core.Exceptions.Http;
+using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
 using Noo.Api.Core.Utils.Json;
 
@@ -11,6 +12,10 @@ public static class ControllersAndJsonExtension
     {
         services
             .AddControllers()
+            .AddMvcOptions(options =>
+            {
+                options.ModelBinderProviders.Insert(0, new HyphenLowerCaseEnumModelBinderProvider());
+            })
             .AddJsonOptions(
                 options => options.JsonSerializerOptions.Converters.Add(new HyphenLowerCaseStringEnumConverterFactory())
             )

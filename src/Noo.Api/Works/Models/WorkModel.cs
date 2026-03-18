@@ -37,13 +37,13 @@ public class WorkModel : BaseModel
     #region Navigation Properties
 
     [InverseProperty(nameof(WorkTaskModel.Work))]
-    public ICollection<WorkTaskModel>? Tasks { get; set; }
+    public ICollection<WorkTaskModel>? Tasks { get; set; } = default;
 
     [DeleteBehavior(DeleteBehavior.SetNull)]
     [InverseProperty(nameof(SubjectModel.Works))]
     public SubjectModel? Subject { get; set; }
 
-    public ICollection<CourseWorkAssignmentModel> CourseWorkAssignments { get; set; } = [];
+    public ICollection<CourseWorkAssignmentModel>? CourseWorkAssignments { get; set; } = default;
 
     #endregion
 }

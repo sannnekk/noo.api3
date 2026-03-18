@@ -50,7 +50,7 @@ public class PollService : IPollService
 
     public Task<PollModel?> GetPollAsync(Ulid id)
     {
-        return _pollRepository.GetByIdAsync(id);
+        return _pollRepository.GetWithQuestionsAsync(id);
     }
 
     public Task<PollParticipationModel?> GetPollParticipationAsync(Ulid participationId)
