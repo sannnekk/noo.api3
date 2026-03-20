@@ -26,10 +26,10 @@ public class EmailService : IEmailService
         try
         {
             await _client.SendHtmlEmailAsync(
-                email.ToEmail,
-                email.ToName,
                 email.FromEmail,
                 email.FromName,
+                email.ToEmail,
+                email.ToName,
                 email.Subject,
                 renderedBody
             );

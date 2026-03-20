@@ -2,18 +2,17 @@ using Microsoft.AspNetCore.Components;
 
 namespace Noo.Api.Core.System.Email;
 
-public class Email<TData, TTemplateComponent> where TTemplateComponent : IComponent where TData : class
-
+public struct Email<TData, TTemplateComponent> where TTemplateComponent : IComponent where TData : class
 {
-    public string? ToEmail { get; set; }
+    public required string ToEmail { get; set; }
 
-    public string? ToName { get; set; }
+    public required string ToName { get; set; }
 
-    public string FromEmail { get; set; } = string.Empty;
+    public required string FromEmail { get; set; }
 
-    public string FromName { get; set; } = string.Empty;
+    public required string FromName { get; set; }
 
-    public string Subject { get; set; } = string.Empty;
+    public required string Subject { get; set; }
 
-    public TData Body { get; set; } = default!;
+    public TData Body { get; set; }
 }

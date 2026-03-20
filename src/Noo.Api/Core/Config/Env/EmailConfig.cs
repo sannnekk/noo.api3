@@ -17,10 +17,12 @@ public class EmailConfig : IConfig
     public int SmtpTimeout { get; set; } = 10000;
 
     [Required]
-    public string SmtpUsername { get; set; } = string.Empty;
+    public required string SmtpUsername { get; set; }
 
     [Required]
-    public string SmtpPassword { get; set; } = string.Empty;
+    public required string SmtpPassword { get; set; }
+
+    public bool UseSsl { get; set; } = true;
 
     [Required]
     [EmailAddress]

@@ -32,13 +32,10 @@ public class EmailRenderer : IEmailRenderer
 
     private static ParameterView ConvertToParameterView<TParams>(TParams parameters) where TParams : class
     {
-        var parameterDictionary = new Dictionary<string, object?>();
-
-        foreach (var property in typeof(TParams).GetProperties())
+        var parameterDictionary = new Dictionary<string, object?>
         {
-            var value = property.GetValue(parameters);
-            parameterDictionary.Add(property.Name, value);
-        }
+            { "Data", parameters }
+        };
 
         return ParameterView.FromDictionary(parameterDictionary);
     }

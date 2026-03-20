@@ -1,6 +1,8 @@
 using Noo.Api.Core.System.Email;
 using Noo.Api.Auth.EmailTemplates;
 using Noo.Api.Core.Utils.DI;
+using Noo.Api.Core.Config.Env;
+using Microsoft.Extensions.Options;
 
 namespace Noo.Api.Auth.Services;
 
@@ -9,9 +11,12 @@ public class AuthEmailService : IAuthEmailService
 {
     private readonly IEmailService _emailService;
 
-    public AuthEmailService(IEmailService emailService)
+    private readonly EmailConfig _emailConfig;
+
+    public AuthEmailService(IEmailService emailService, IOptions<EmailConfig> emailConfig)
     {
         _emailService = emailService;
+        _emailConfig = emailConfig.Value;
     }
 
     public async Task SendEmailVerificationEmailAsync(string toEmail, string name, string verificationLink)
@@ -20,6 +25,8 @@ public class AuthEmailService : IAuthEmailService
         {
             ToEmail = toEmail,
             ToName = name,
+            FromEmail = _emailConfig.FromEmail,
+            FromName = _emailConfig.FromName,
             Subject = "Подтверждение электронной почты",
             Body = new EmailVerificationData
             {
@@ -37,6 +44,8 @@ public class AuthEmailService : IAuthEmailService
         {
             ToEmail = toEmail,
             ToName = name,
+            FromEmail = _emailConfig.FromEmail,
+            FromName = _emailConfig.FromName,
             Subject = "Сброс пароля",
             Body = new RequestPasswordChangeData
             {
@@ -54,6 +63,8 @@ public class AuthEmailService : IAuthEmailService
         {
             ToEmail = toEmail,
             ToName = name,
+            FromEmail = _emailConfig.FromEmail,
+            FromName = _emailConfig.FromName,
             Subject = "Изменение электронной почты",
             Body = new ChangeEmailData
             {

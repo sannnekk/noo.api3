@@ -1,4 +1,5 @@
 using MailKit.Net.Smtp;
+using MailKit.Security;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using Noo.Api.Core.Config.Env;
@@ -82,7 +83,11 @@ public class EmailClient : IEmailClient
         if (_client.IsConnected)
             return Task.CompletedTask;
 
-        return _client.ConnectAsync(_config.SmtpHost, _config.SmtpPort, true);
+        var secureSocketOptions = _config.UseSsl
+            ? SecureSocketOptions.SslOnConnect
+            : SecureSocketOptions.None;
+
+        return _client.ConnectAsync(_config.SmtpHost, _config.SmtpPort, secureSocketOptions);
     }
 
     private Task DisconnectAsync()
@@ -98,6 +103,11 @@ public class EmailClient : IEmailClient
     private async Task AuthenticateAsync()
     {
         if (_client.IsAuthenticated)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_config.SmtpUsername) || string.IsNullOrEmpty(_config.SmtpPassword))
         {
             return;
         }
