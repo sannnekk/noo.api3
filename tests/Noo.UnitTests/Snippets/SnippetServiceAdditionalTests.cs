@@ -14,7 +14,7 @@ public class SnippetServiceAdditionalTests
 {
     private static IMapper CreateMapper()
     {
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<SnippetMapperProfile>());
+        var config = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<SnippetMapperProfile>());
         config.AssertConfigurationIsValid();
         return config.CreateMapper();
     }
@@ -28,17 +28,18 @@ public class SnippetServiceAdditionalTests
         var mapper = CreateMapper();
         var repository = new SnippetRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SnippetService(uow, repository, jsonPatchService, mapper);
+        var service = new SnippetService(repository, jsonPatchService, mapper);
         var userId = Ulid.NewUlid();
 
         for (int i = 0; i < SnippetConfig.MaxSnippetsPerUser + 5; i++)
         {
-            await service.CreateSnippetAsync(userId, new CreateSnippetDTO
+            service.CreateSnippet(userId, new CreateSnippetDTO
             {
                 Name = $"S{i}",
                 Content = DeltaRichText.FromString("abc")
             });
         }
+        await uow.CommitAsync();
 
         var list = await service.GetSnippetsAsync(userId);
         Assert.Equal(SnippetConfig.MaxSnippetsPerUser, list.Items.Count());
@@ -54,7 +55,7 @@ public class SnippetServiceAdditionalTests
         var mapper = CreateMapper();
         var repository = new SnippetRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SnippetService(uow, repository, jsonPatchService, mapper);
+        var service = new SnippetService(repository, jsonPatchService, mapper);
         var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateSnippetDTO>();
         patch.Replace(x => x.Name, "X");
         await Assert.ThrowsAsync<NotFoundException>(() =>
@@ -62,7 +63,7 @@ public class SnippetServiceAdditionalTests
     }
 
     [Fact]
-    public async Task Delete_NonExistent_Snippet_Should_Throw_NotFound()
+    public async Task Delete_NonExistent_Snippet_Is_NoOp()
     {
         var db = Guid.NewGuid().ToString();
         using var context = TestHelpers.CreateInMemoryDb(db);
@@ -70,9 +71,10 @@ public class SnippetServiceAdditionalTests
         var mapper = CreateMapper();
         var repository = new SnippetRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SnippetService(uow, repository, jsonPatchService, mapper);
-        await Assert.ThrowsAsync<NotFoundException>(() =>
-            service.DeleteSnippetAsync(Ulid.NewUlid(), Ulid.NewUlid()));
+        var service = new SnippetService(repository, jsonPatchService, mapper);
+
+        await service.DeleteSnippetAsync(Ulid.NewUlid(), Ulid.NewUlid());
+        await uow.CommitAsync();
     }
 
     [Fact]
@@ -84,20 +86,22 @@ public class SnippetServiceAdditionalTests
         var mapper = CreateMapper();
         var repository = new SnippetRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SnippetService(uow, repository, jsonPatchService, mapper);
+        var service = new SnippetService(repository, jsonPatchService, mapper);
         var userId = Ulid.NewUlid();
-        await service.CreateSnippetAsync(userId, new CreateSnippetDTO { Name = "Initial", Content = DeltaRichText.FromString("abc") });
+        service.CreateSnippet(userId, new CreateSnippetDTO { Name = "Initial", Content = DeltaRichText.FromString("abc") });
+        await uow.CommitAsync();
         var list = await service.GetSnippetsAsync(userId);
         var snippet = list.Items.First();
 
         var emptyPatch = new SystemTextJsonPatch.JsonPatchDocument<UpdateSnippetDTO>();
         await service.UpdateSnippetAsync(userId, snippet.Id, emptyPatch);
+        await uow.CommitAsync();
 
         using var verifyContext = TestHelpers.CreateInMemoryDb(db);
         var verifyUow = TestHelpers.CreateUowMock(verifyContext).Object;
         var verifyRepository = new SnippetRepository(verifyContext);
         var verifyJsonPatchService = new JsonPatchUpdateService(mapper);
-        var verifyService = new SnippetService(verifyUow, verifyRepository, verifyJsonPatchService, mapper);
+        var verifyService = new SnippetService(verifyRepository, verifyJsonPatchService, mapper);
         var after = await verifyService.GetSnippetsAsync(userId);
         var afterSnippet = after.Items.Single();
         Assert.Equal("Initial", afterSnippet.Name);
@@ -112,9 +116,10 @@ public class SnippetServiceAdditionalTests
         var mapper = CreateMapper();
         var repository = new SnippetRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SnippetService(uow, repository, jsonPatchService, mapper);
+        var service = new SnippetService(repository, jsonPatchService, mapper);
         var userId = Ulid.NewUlid();
-        await service.CreateSnippetAsync(userId, new CreateSnippetDTO { Name = "Initial", Content = DeltaRichText.FromString("abc") });
+        service.CreateSnippet(userId, new CreateSnippetDTO { Name = "Initial", Content = DeltaRichText.FromString("abc") });
+        await uow.CommitAsync();
         var list = await service.GetSnippetsAsync(userId);
         var snippet = list.Items.First();
 
@@ -122,12 +127,13 @@ public class SnippetServiceAdditionalTests
         var newContent = DeltaRichText.FromString("Updated content");
         patch.Replace(x => x.Content, newContent);
         await service.UpdateSnippetAsync(userId, snippet.Id, patch);
+        await uow.CommitAsync();
 
         using var verifyContext = TestHelpers.CreateInMemoryDb(db);
         var verifyUow = TestHelpers.CreateUowMock(verifyContext).Object;
         var verifyRepository = new SnippetRepository(verifyContext);
         var verifyJsonPatchService = new JsonPatchUpdateService(mapper);
-        var verifyService = new SnippetService(verifyUow, verifyRepository, verifyJsonPatchService, mapper);
+        var verifyService = new SnippetService(verifyRepository, verifyJsonPatchService, mapper);
         var after = await verifyService.GetSnippetsAsync(userId);
         var afterSnippet = after.Items.Single();
         Assert.Contains("Updated content", afterSnippet.Content?.ToString());

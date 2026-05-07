@@ -14,6 +14,7 @@ public class AssignedWorkRepositoryTests
         var uow = TestHelpers.CreateUowMock(ctx).Object;
         var repo = new AssignedWorkRepository(ctx);
         var studentId = Ulid.NewUlid();
+        var workAssignmentId = Ulid.NewUlid();
         var aw = new AssignedWorkModel
         {
             Title = "X",
@@ -21,15 +22,16 @@ public class AssignedWorkRepositoryTests
             Attempt = 2,
             StudentId = studentId,
             MainMentorId = Ulid.NewUlid(),
+            CourseWorkAssignmentId = workAssignmentId,
             SolveStatus = AssignedWorkSolveStatus.InProgress,
             CheckStatus = AssignedWorkCheckStatus.NotChecked,
             MaxScore = 50
         };
         ctx.GetDbSet<AssignedWorkModel>().Add(aw);
         await ctx.SaveChangesAsync();
-        var progress = await repo.GetProgressAsync(aw.Id, studentId);
+        var progress = await repo.GetProgressAsync(workAssignmentId, studentId);
         Assert.NotNull(progress);
-        Assert.Equal(aw.Attempt, progress!.Attempt);
+        Assert.Equal(aw.Attempt, progress!.Single().Attempt);
     }
 
     [Fact]

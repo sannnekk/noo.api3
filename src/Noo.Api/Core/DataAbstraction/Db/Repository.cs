@@ -12,7 +12,8 @@ using SystemTextJsonPatch;
 
 namespace Noo.Api.Core.DataAbstraction.Db;
 
-public class Repository<T> : IRepository<T> where T : BaseModel, new()
+public class Repository<T> : IRepository<T>
+    where T : BaseModel, new()
 {
     public NooDbContext Context { get; init; }
 
@@ -48,22 +49,30 @@ public class Repository<T> : IRepository<T> where T : BaseModel, new()
 
     public void DeleteById(Ulid id)
     {
+        DeleteEntity(new T { Id = id });
+    }
+
+    protected void DeleteEntity(T entity)
+    {
         var set = Context.GetDbSet<T>();
+
         // If an entity with the same key is already tracked, remove that instance to avoid tracking conflicts
-        var entity = set.Local.FirstOrDefault(e => e.Id == id);
-        if (entity != null)
+        var trackedEntity = set.Local.FirstOrDefault(e => e.Id == entity.Id);
+        if (trackedEntity != null)
         {
-            set.Remove(entity);
+            set.Remove(trackedEntity);
             return;
         }
 
-        // Otherwise, attach a stub entity and remove it
-        var stub = new T { Id = id };
-        set.Attach(stub);
-        set.Remove(stub);
+        // Otherwise, attach the entity and remove it
+        set.Attach(entity);
+        set.Remove(entity);
     }
 
-    public async Task<SearchResult<T>> SearchAsync(IPaginationFilter filter, IEnumerable<ISpecification<T>>? specifications = default)
+    public async Task<SearchResult<T>> SearchAsync(
+        IPaginationFilter filter,
+        IEnumerable<ISpecification<T>>? specifications = default
+    )
     {
         var query = Context.GetDbSet<T>().AsQueryable();
 
@@ -75,13 +84,9 @@ public class Repository<T> : IRepository<T> where T : BaseModel, new()
             }
         }
 
-        var total = await query
-            .ApplyFilterWithoutPagination(filter)
-            .CountAsync();
+        var total = await query.ApplyFilterWithoutPagination(filter).CountAsync();
 
-        var results = await query
-            .ApplyFilter(filter)
-            .ToListAsync();
+        var results = await query.ApplyFilter(filter).ToListAsync();
 
         return new SearchResult<T>(results, total);
     }
@@ -90,18 +95,20 @@ public class Repository<T> : IRepository<T> where T : BaseModel, new()
     {
         var query = Context.GetDbSet<T>().AsQueryable();
 
-        var total = await query
-            .ApplyFilterWithoutPagination(filter)
-            .CountAsync();
+        var total = await query.ApplyFilterWithoutPagination(filter).CountAsync();
 
-        var results = await query
-            .ApplyFilter(filter)
-            .ToListAsync();
+        var results = await query.ApplyFilter(filter).ToListAsync();
 
         return new SearchResult<T>(results, total);
     }
 
-    public async Task UpdateWithJsonPatchAsync<TDto>(Ulid id, JsonPatchDocument<TDto> updateDto, IMapper mapper, ModelStateDictionary? modelState = null) where TDto : class
+    public async Task UpdateWithJsonPatchAsync<TDto>(
+        Ulid id,
+        JsonPatchDocument<TDto> updateDto,
+        IMapper mapper,
+        ModelStateDictionary? modelState = null
+    )
+        where TDto : class
     {
         var model = await GetByIdAsync(id) ?? throw new NotFoundException();
 

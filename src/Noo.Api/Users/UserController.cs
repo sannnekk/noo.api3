@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
-using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.Versioning;
 using Noo.Api.Users.DTO;
 using Noo.Api.Users.Filters;
@@ -24,11 +23,8 @@ public class UserController : ApiController
 
     private readonly IMentorService _mentorService;
 
-    public UserController(
-        IUserService userService,
-        IMentorService mentorService,
-        IMapper mapper
-    ) : base(mapper)
+    public UserController(IUserService userService, IMentorService mentorService, IMapper mapper)
+        : base(mapper)
     {
         _userService = userService;
         _mentorService = mentorService;
@@ -41,7 +37,8 @@ public class UserController : ApiController
     [HttpGet]
     [Authorize(Policy = UserPolicies.CanSearchUsers)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<UserDTO>>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IEnumerable<UserDTO>>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
@@ -54,13 +51,14 @@ public class UserController : ApiController
     }
 
     /// <summary>
-    /// Retrieves a user by their unique username
+    /// Retrieves a user by their id
     /// </summary>
     [HttpGet("{userId}")]
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanGetUser)]
     [Produces(
-        typeof(ApiResponseDTO<UserDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<UserDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -80,18 +78,21 @@ public class UserController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanPatchUser)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> PatchUserAsync([FromRoute] Ulid userId, [FromBody] JsonPatchDocument<UpdateUserDTO> patchUser)
+    public async Task<IActionResult> PatchUserAsync(
+        [FromRoute] Ulid userId,
+        [FromBody] JsonPatchDocument<UpdateUserDTO> patchUser
+    )
     {
         await _userService.UpdateUserAsync(userId, patchUser);
 
         return SendResponse();
     }
-
 
     /// <summary>
     /// Changes the role of a user by their unique identifier.
@@ -104,16 +105,20 @@ public class UserController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanChangeRole)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound,
         StatusCodes.Status409Conflict
     )]
-    public async Task<IActionResult> ChangeRoleAsync([FromRoute] Ulid userId, [FromBody] UserRoles newRole)
+    public async Task<IActionResult> ChangeRoleAsync(
+        [FromRoute] Ulid userId,
+        [FromBody] ChangeRoleDTO changeRoleDto
+    )
     {
-        await _userService.ChangeRoleAsync(userId, newRole);
+        await _userService.ChangeRoleAsync(userId, changeRoleDto.NewRole);
 
         return SendResponse();
     }
@@ -125,7 +130,8 @@ public class UserController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanBlockUser)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -145,7 +151,8 @@ public class UserController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanBlockUser)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -165,7 +172,8 @@ public class UserController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanVerifyUser)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -185,12 +193,16 @@ public class UserController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanGetUser)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<MentorAssignmentDTO>>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IEnumerable<MentorAssignmentDTO>>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> GetMentorAssignmentsAsync([FromRoute] Ulid studentId, [FromQuery] MentorAssignmentFilter filter)
+    public async Task<IActionResult> GetMentorAssignmentsAsync(
+        [FromRoute] Ulid studentId,
+        [FromQuery] MentorAssignmentFilter filter
+    )
     {
         var result = await _mentorService.GetMentorAssignmentsAsync(studentId, filter);
 
@@ -203,17 +215,24 @@ public class UserController : ApiController
     [HttpGet("{mentorId}/student-assignment")]
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanGetUser)]
-    [ProducesResponseType(typeof(ApiResponseDTO<IEnumerable<MentorAssignmentDTO>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ApiResponseDTO<IEnumerable<MentorAssignmentDTO>>),
+        StatusCodes.Status200OK
+    )]
     [ProducesResponseType(typeof(SerializedNooException), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(SerializedNooException), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(SerializedNooException), StatusCodes.Status403Forbidden)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<MentorAssignmentDTO>>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IEnumerable<MentorAssignmentDTO>>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> GetStudentAssignmentsAsync([FromRoute] Ulid mentorId, [FromQuery] MentorAssignmentFilter filter)
+    public async Task<IActionResult> GetStudentAssignmentsAsync(
+        [FromRoute] Ulid mentorId,
+        [FromQuery] MentorAssignmentFilter filter
+    )
     {
         var result = await _mentorService.GetStudentAssignmentsAsync(mentorId, filter);
 
@@ -230,16 +249,24 @@ public class UserController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanAssignMentor)]
     [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound,
         StatusCodes.Status409Conflict
     )]
-    public async Task<IActionResult> AssignMentorAsync([FromRoute] Ulid studentId, [FromBody] CreateMentorAssignmentDTO assignment)
+    public async Task<IActionResult> AssignMentorAsync(
+        [FromRoute] Ulid studentId,
+        [FromBody] CreateMentorAssignmentDTO assignment
+    )
     {
-        var assignmentId = await _mentorService.AssignMentorAsync(studentId, assignment.MentorId, assignment.SubjectId);
+        var assignmentId = await _mentorService.AssignMentorAsync(
+            studentId,
+            assignment.MentorId,
+            assignment.SubjectId
+        );
 
         return SendResponse(assignmentId);
     }
@@ -251,15 +278,16 @@ public class UserController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanAssignMentor)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> UnassignMentorAsync([FromRoute] Ulid studentId)
+    public IActionResult UnassignMentor([FromRoute] Ulid studentId)
     {
-        await _mentorService.UnassignMentorAsync(studentId);
+        _mentorService.UnassignMentor(studentId);
 
         return SendResponse();
     }
@@ -275,14 +303,15 @@ public class UserController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanDeleteUser)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> DeleteUserAsync([FromRoute] Ulid userId)
+    public IActionResult DeleteUser([FromRoute] Ulid userId)
     {
-        await _userService.DeleteUserAsync(userId);
+        _userService.DeleteUser(userId);
         return SendResponse();
     }
 }

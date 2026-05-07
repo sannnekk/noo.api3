@@ -1,5 +1,4 @@
 using AutoMapper;
-using Moq;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Sessions.Models;
@@ -19,24 +18,24 @@ public class SessionServiceTests
     }
     private static IMapper CreateMapper()
     {
-        var cfg = new MapperConfiguration(c => c.AddMaps(typeof(SessionModel).Assembly));
+        var cfg = MapperTestUtils.CreateMapperConfig(c => c.AddMaps(typeof(SessionModel).Assembly));
         return cfg.CreateMapper();
     }
 
-    private static (SessionService svc, NooDbContext ctx, Mock<IUnitOfWork> uow) Create()
+    private static (SessionService svc, NooDbContext ctx, IUnitOfWork uow) Create()
     {
         var ctx = TestHelpers.CreateInMemoryDb();
-        var uow = TestHelpers.CreateUowMock(ctx);
+        var uow = TestHelpers.CreateUowMock(ctx).Object;
         var mapper = CreateMapper();
         var repository = new SessionRepository(ctx);
-        var svc = new SessionService(uow.Object, repository, mapper);
+        var svc = new SessionService(repository, mapper);
         return (svc, ctx, uow);
     }
 
     [Fact]
     public async Task CreateSessionIfNotExists_Creates_New_WhenNoneMatches()
     {
-        var (svc, ctx, _) = Create();
+        var (svc, ctx, uow) = Create();
         var userId = Ulid.NewUlid();
         var http = new DefaultHttpContext
         {
@@ -47,6 +46,7 @@ public class SessionServiceTests
         http.User = MakePrincipal(userId);
 
         var id = await svc.CreateSessionIfNotExistsAsync(http, userId);
+        await uow.CommitAsync();
 
         Assert.NotEqual(default, id);
         Assert.Equal(1, ctx.Set<SessionModel>().Count());
@@ -55,7 +55,7 @@ public class SessionServiceTests
     [Fact]
     public async Task CreateSessionIfNotExists_Updates_WhenDeviceIdMatches()
     {
-        var (svc, ctx, _) = Create();
+        var (svc, ctx, uow) = Create();
         var userId = Ulid.NewUlid();
         var http1 = new DefaultHttpContext
         {
@@ -66,6 +66,7 @@ public class SessionServiceTests
         http1.User = MakePrincipal(userId);
 
         var firstId = await svc.CreateSessionIfNotExistsAsync(http1, userId);
+        await uow.CommitAsync();
 
         var http2 = new DefaultHttpContext
         {
@@ -76,6 +77,7 @@ public class SessionServiceTests
         http2.User = http1.User;
 
         var secondId = await svc.CreateSessionIfNotExistsAsync(http2, userId);
+        await uow.CommitAsync();
 
         Assert.Equal(firstId, secondId); // updated existing
         Assert.Single(ctx.Set<SessionModel>());
@@ -86,7 +88,7 @@ public class SessionServiceTests
     [Fact]
     public async Task CreateSessionIfNotExists_UsesUserAgentWhenNoDeviceId()
     {
-        var (svc, ctx, _) = Create();
+        var (svc, ctx, uow) = Create();
         var userId = Ulid.NewUlid();
         var http1 = new DefaultHttpContext
         {
@@ -95,6 +97,7 @@ public class SessionServiceTests
         http1.Request.Headers.UserAgent = "AgentA";
         http1.User = MakePrincipal(userId);
         var id1 = await svc.CreateSessionIfNotExistsAsync(http1, userId);
+        await uow.CommitAsync();
 
         var http2 = new DefaultHttpContext
         {
@@ -103,6 +106,7 @@ public class SessionServiceTests
         http2.Request.Headers.UserAgent = "AgentA"; // same agent
         http2.User = http1.User;
         var id2 = await svc.CreateSessionIfNotExistsAsync(http2, userId);
+        await uow.CommitAsync();
 
         Assert.Equal(id1, id2);
         Assert.Single(ctx.Set<SessionModel>());
@@ -111,7 +115,7 @@ public class SessionServiceTests
     [Fact]
     public async Task DeleteSessionAsync_RemovesExisting()
     {
-        var (svc, ctx, _) = Create();
+        var (svc, ctx, uow) = Create();
         var userId = Ulid.NewUlid();
         var http = new DefaultHttpContext
         {
@@ -120,8 +124,10 @@ public class SessionServiceTests
         http.Request.Headers.UserAgent = "A";
         http.User = MakePrincipal(userId);
         var sessionId = await svc.CreateSessionIfNotExistsAsync(http, userId);
+        await uow.CommitAsync();
 
-        await svc.DeleteSessionAsync(sessionId, userId);
+        svc.DeleteSession(sessionId, userId);
+        await uow.CommitAsync();
 
         Assert.Empty(ctx.Set<SessionModel>());
     }
@@ -130,13 +136,13 @@ public class SessionServiceTests
     public async Task DeleteSessionAsync_ThrowsNotFound_WhenNotOwnedOrMissing()
     {
         var (svc, _, _) = Create();
-        await Assert.ThrowsAsync<NotFoundException>(() => svc.DeleteSessionAsync(Ulid.NewUlid(), Ulid.NewUlid()));
+        Assert.Throws<NotFoundException>(() => svc.DeleteSession(Ulid.NewUlid(), Ulid.NewUlid()));
     }
 
     [Fact]
     public async Task GetSessionsAsync_ReturnsSessions()
     {
-        var (svc, ctx, _) = Create();
+        var (svc, ctx, uow) = Create();
         var userId = Ulid.NewUlid();
         var http = new DefaultHttpContext
         {
@@ -146,6 +152,7 @@ public class SessionServiceTests
         http.User = MakePrincipal(userId);
 
         await svc.CreateSessionIfNotExistsAsync(http, userId);
+        await uow.CommitAsync();
 
         var sessions = await svc.GetSessionsAsync(userId);
         Assert.Single(sessions);

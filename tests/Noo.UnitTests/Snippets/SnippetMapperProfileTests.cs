@@ -2,6 +2,7 @@ using AutoMapper;
 using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Snippets.DTO;
 using Noo.Api.Snippets.Models;
+using Noo.UnitTests.Common;
 
 namespace Noo.UnitTests.Snippets;
 
@@ -11,7 +12,7 @@ public class SnippetMapperProfileTests
 
     public SnippetMapperProfileTests()
     {
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<SnippetMapperProfile>());
+        var config = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<SnippetMapperProfile>());
         config.AssertConfigurationIsValid();
         _mapper = config.CreateMapper();
     }

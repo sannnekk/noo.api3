@@ -5,7 +5,6 @@ using Noo.Api.Auth.DTO;
 using Noo.Api.Auth.Services;
 using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
-using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.Versioning;
 using ProducesAttribute = Noo.Api.Core.Documentation.ProducesAttribute;
 
@@ -37,7 +36,8 @@ public class AuthController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [AllowAnonymous]
     [Produces(
-        typeof(ApiResponseDTO<LoginResponseDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<LoginResponseDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
@@ -57,7 +57,8 @@ public class AuthController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [AllowAnonymous]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status409Conflict
     )]
@@ -75,14 +76,10 @@ public class AuthController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpGet("username-check/{username}")]
     [AllowAnonymous]
-    [Produces(
-        typeof(ApiResponseDTO<bool>), StatusCodes.Status200OK
-    )]
-    public async Task<IActionResult> CheckUsernameAsync(
-        [FromRoute] string username
-    )
+    [Produces(typeof(ApiResponseDTO<bool>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> CheckUsernameAsync([FromRoute] string username)
     {
-        bool isUsernameFree = await _authService.CheckUsernameAsync(username);
+        bool isUsernameFree = await _authService.IsUsernameFreeAsync(username);
 
         return SendResponse<bool>(isUsernameFree);
     }
@@ -94,11 +91,14 @@ public class AuthController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [AllowAnonymous]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized
     )]
-    public async Task<IActionResult> RequestPasswordChangeAsync([FromBody] RequestPasswordChangeDTO request)
+    public async Task<IActionResult> RequestPasswordChangeAsync(
+        [FromBody] RequestPasswordChangeDTO request
+    )
     {
         await _authService.RequestPasswordResetAsync(request.Email);
 
@@ -112,11 +112,14 @@ public class AuthController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [AllowAnonymous]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized
     )]
-    public async Task<IActionResult> ConfirmPasswordChangeAsync([FromBody] ConfirmPasswordChangeDTO request)
+    public async Task<IActionResult> ConfirmPasswordChangeAsync(
+        [FromBody] ConfirmPasswordChangeDTO request
+    )
     {
         await _authService.ConfirmPasswordResetAsync(request.Token, request.NewPassword);
 
@@ -127,18 +130,21 @@ public class AuthController : ApiController
     /// Confirms an email change by validating the confirmation token.
     /// This endpoint is used to finalize the email change process after the user has requested it.
     /// </summary>
-    [HttpPatch("confirm-email-change")]
+    [HttpPatch("confirm-email")]
     [MapToApiVersion(NooApiVersions.Current)]
     [AllowAnonymous]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status409Conflict
     )]
-    public async Task<IActionResult> ConfirmEmailChangeAsync([FromBody] ConfirmEmailChangeDTO request)
+    public async Task<IActionResult> ConfirmEmailChangeAsync(
+        [FromBody] ConfirmEmailChangeDTO request
+    )
     {
-        await _authService.ConfirmEmailChangeAsync(User.GetId(), request.Token);
+        await _authService.ConfirmEmailAsync(request.Token);
 
         return SendResponse();
     }

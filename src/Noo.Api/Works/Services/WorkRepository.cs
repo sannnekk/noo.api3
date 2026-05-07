@@ -8,17 +8,15 @@ namespace Noo.Api.Works.Services;
 [RegisterScoped(typeof(IWorkRepository))]
 public class WorkRepository : Repository<WorkModel>, IWorkRepository
 {
-    public WorkRepository(NooDbContext context) : base(context)
-    {
-    }
+    public WorkRepository(NooDbContext context)
+        : base(context) { }
 
     public Task<WorkModel?> GetWithTasksAsync(Ulid id)
     {
         var repository = Context.GetDbSet<WorkModel>();
 
         return repository
-            .Include(x => x.Tasks!
-                .OrderBy(task => task.Order))
+            .Include(x => x.Tasks!.OrderBy(task => task.Order))
             .FirstOrDefaultAsync(x => x.Id == id);
     }
 }

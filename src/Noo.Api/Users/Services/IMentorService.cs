@@ -6,11 +6,17 @@ namespace Noo.Api.Users.Services;
 
 public interface IMentorService
 {
-    public Task<SearchResult<MentorAssignmentModel>> GetMentorAssignmentsAsync(Ulid studentId, MentorAssignmentFilter filter);
+    public Task<SearchResult<MentorAssignmentModel>> GetMentorAssignmentsAsync(
+        Ulid studentId,
+        MentorAssignmentFilter filter
+    );
 
-    public Task<SearchResult<MentorAssignmentModel>> GetStudentAssignmentsAsync(Ulid mntorId, MentorAssignmentFilter filter);
+    public Task<SearchResult<MentorAssignmentModel>> GetStudentAssignmentsAsync(
+        Ulid mntorId,
+        MentorAssignmentFilter filter
+    );
 
     public Task<Ulid> AssignMentorAsync(Ulid studentId, Ulid mentorId, Ulid subjectId);
 
-    public Task UnassignMentorAsync(Ulid assignmentId);
+    public void UnassignMentor(Ulid assignmentId);
 }

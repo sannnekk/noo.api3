@@ -14,7 +14,7 @@ public interface IAuthService
 
     public Task RequestEmailChangeAsync(Ulid userId, string newEmail);
 
-    public Task ConfirmEmailChangeAsync(Ulid userId, string token);
+    public Task ConfirmEmailAsync(string token);
 
-    public Task<bool> CheckUsernameAsync(string username);
+    public Task<bool> IsUsernameFreeAsync(string username);
 }

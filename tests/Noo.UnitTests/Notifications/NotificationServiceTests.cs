@@ -23,7 +23,7 @@ public class NotificationServiceTests
             .Setup(p => p.PublishAsync(It.IsAny<NotificationCreatedEvent>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var svc = new NotificationService(uow, new NotificationRepository(ctx), publisher.Object);
+        var svc = new NotificationService(new NotificationRepository(ctx), publisher.Object);
 
         var user1 = Ulid.NewUlid();
         var user2 = Ulid.NewUlid();
@@ -40,6 +40,7 @@ public class NotificationServiceTests
         };
 
         await svc.BulkCreateNotificationsAsync(create);
+        await uow.CommitAsync();
 
         // Verify persisted
         var all = ctx.Set<NotificationModel>().ToList();
@@ -62,7 +63,7 @@ public class NotificationServiceTests
         using var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx).Object;
         var publisher = new Mock<IEventPublisher>();
-        var svc = new NotificationService(uow, new NotificationRepository(ctx), publisher.Object);
+        var svc = new NotificationService(new NotificationRepository(ctx), publisher.Object);
 
         var user = Ulid.NewUlid();
         await svc.BulkCreateNotificationsAsync(new BulkCreateNotificationsDTO
@@ -91,12 +92,13 @@ public class NotificationServiceTests
     {
         using var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx).Object;
-        var svc = new NotificationService(uow, new NotificationRepository(ctx), new Mock<IEventPublisher>().Object);
+        var svc = new NotificationService(new NotificationRepository(ctx), new Mock<IEventPublisher>().Object);
 
         var u1 = Ulid.NewUlid();
         var u2 = Ulid.NewUlid();
 
         await svc.BulkCreateNotificationsAsync(new BulkCreateNotificationsDTO { UserIds = [u1, u1, u2], Type = "t", Title = "x", Message = "y", IsBanner = false });
+        await uow.CommitAsync();
 
         var res1 = await svc.GetNotificationsAsync(u1, new NotificationFilter { Page = 1, PerPage = 10 });
         Assert.Equal(2, res1.Total);

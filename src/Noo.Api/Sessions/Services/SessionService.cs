@@ -1,6 +1,5 @@
 using AutoMapper;
-using Noo.Api.Core.DataAbstraction.Db;
-using Noo.Api.Core.Exceptions;
+using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Sessions.Models;
 using Noo.Api.Sessions.Utils;
@@ -10,13 +9,11 @@ namespace Noo.Api.Sessions.Services;
 [RegisterScoped(typeof(ISessionService))]
 public class SessionService : ISessionService
 {
-    private readonly IUnitOfWork _unitOfWork;
     private readonly ISessionRepository _sessionRepository;
     private readonly IMapper _mapper;
 
-    public SessionService(IUnitOfWork unitOfWork, ISessionRepository sessionRepository, IMapper mapper)
+    public SessionService(ISessionRepository sessionRepository, IMapper mapper)
     {
-        _unitOfWork = unitOfWork;
         _mapper = mapper;
         _sessionRepository = sessionRepository;
     }
@@ -45,7 +42,6 @@ public class SessionService : ISessionService
         if (existing is null)
         {
             _sessionRepository.Add(incoming);
-            await _unitOfWork.CommitAsync();
             return incoming.Id;
         }
 
@@ -61,24 +57,25 @@ public class SessionService : ISessionService
         existing.DeviceId = incoming.DeviceId ?? existing.DeviceId;
 
         _sessionRepository.Update(existing);
-        await _unitOfWork.CommitAsync();
         return existing.Id;
     }
 
-    public Task DeleteAllSessionsAsync(Ulid userId)
+    public void DeleteAllSessions(Ulid userId)
     {
         _sessionRepository.DeleteAllSessions(userId);
-        return _unitOfWork.CommitAsync();
     }
 
-    public async Task DeleteSessionAsync(Ulid sessionId, Ulid userId)
+    public void DeleteSession(Ulid sessionId, Ulid userId)
     {
-        var model = await _sessionRepository.GetAsync(sessionId, userId);
+        if (!_sessionRepository.DeleteSession(sessionId, userId))
+        {
+            throw new NotFoundException();
+        }
+    }
 
-        model.ThrowNotFoundIfNull();
-
-        _sessionRepository.Delete(model);
-        await _unitOfWork.CommitAsync();
+    public void DeleteCurrentSession(Ulid sessionId, Ulid userId)
+    {
+        _sessionRepository.DeleteSession(sessionId, userId);
     }
 
     public Task<IEnumerable<SessionModel>> GetSessionsAsync(Ulid userId)

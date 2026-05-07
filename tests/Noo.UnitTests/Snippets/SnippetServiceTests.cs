@@ -13,7 +13,7 @@ public class SnippetServiceTests
 {
     private static IMapper CreateMapper()
     {
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<SnippetMapperProfile>());
+        var config = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<SnippetMapperProfile>());
         config.AssertConfigurationIsValid();
         return config.CreateMapper();
     }
@@ -27,7 +27,7 @@ public class SnippetServiceTests
         var mapper = CreateMapper();
         var repository = new SnippetRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SnippetService(uow, repository, jsonPatchService, mapper);
+        var service = new SnippetService(repository, jsonPatchService, mapper);
 
         var userId = Ulid.NewUlid();
 
@@ -37,7 +37,8 @@ public class SnippetServiceTests
             Name = "My first snippet",
             Content = DeltaRichText.FromString("abc")
         };
-        await service.CreateSnippetAsync(userId, create);
+        service.CreateSnippet(userId, create);
+        await uow.CommitAsync();
 
         // List
         var list = await service.GetSnippetsAsync(userId);
@@ -51,12 +52,13 @@ public class SnippetServiceTests
         var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateSnippetDTO>();
         patch.Replace(x => x.Name, "Updated name");
         await service.UpdateSnippetAsync(userId, created.Id, patch);
+        await uow.CommitAsync();
 
         using var verifyContext = TestHelpers.CreateInMemoryDb(dbName);
         var verifyUow = TestHelpers.CreateUowMock(verifyContext).Object;
         var verifyRepository = new SnippetRepository(verifyContext);
         var verifyJsonPatchService = new JsonPatchUpdateService(mapper);
-        var verifyService = new SnippetService(verifyUow, verifyRepository, verifyJsonPatchService, mapper);
+        var verifyService = new SnippetService(verifyRepository, verifyJsonPatchService, mapper);
         var afterUpdate = await verifyService.GetSnippetsAsync(userId);
         var updated = afterUpdate.Items.FirstOrDefault(x => x.Id == created.Id);
         Assert.NotNull(updated);
@@ -64,12 +66,13 @@ public class SnippetServiceTests
 
         // Delete
         await verifyService.DeleteSnippetAsync(userId, created.Id);
+        await verifyUow.CommitAsync();
 
         using var finalContext = TestHelpers.CreateInMemoryDb(dbName);
         var finalUow = TestHelpers.CreateUowMock(finalContext).Object;
         var finalRepository = new SnippetRepository(finalContext);
         var finalJsonPatchService = new JsonPatchUpdateService(mapper);
-        var finalService = new SnippetService(finalUow, finalRepository, finalJsonPatchService, mapper);
+        var finalService = new SnippetService(finalRepository, finalJsonPatchService, mapper);
         var finalList = await finalService.GetSnippetsAsync(userId);
         Assert.Equal(0, finalList.Total);
         Assert.Empty(finalList.Items);
@@ -84,16 +87,17 @@ public class SnippetServiceTests
         var mapper = CreateMapper();
         var repository = new SnippetRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SnippetService(uow, repository, jsonPatchService, mapper);
+        var service = new SnippetService(repository, jsonPatchService, mapper);
 
         var ownerId = Ulid.NewUlid();
         var otherUser = Ulid.NewUlid();
 
-        await service.CreateSnippetAsync(ownerId, new CreateSnippetDTO
+        service.CreateSnippet(ownerId, new CreateSnippetDTO
         {
             Name = "Owner's snippet",
             Content = DeltaRichText.FromString("abc")
         });
+        await uow.CommitAsync();
 
         var list = await service.GetSnippetsAsync(ownerId);
         var snippetId = list.Items.First().Id;
@@ -114,14 +118,15 @@ public class SnippetServiceTests
         var mapper = CreateMapper();
         var repository = new SnippetRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SnippetService(uow, repository, jsonPatchService, mapper);
+        var service = new SnippetService(repository, jsonPatchService, mapper);
 
         var userId = Ulid.NewUlid();
-        await service.CreateSnippetAsync(userId, new CreateSnippetDTO
+        service.CreateSnippet(userId, new CreateSnippetDTO
         {
             Name = "Valid name",
             Content = DeltaRichText.FromString("abc")
         });
+        await uow.CommitAsync();
 
         var list = await service.GetSnippetsAsync(userId);
         var snippetId = list.Items.First().Id;
@@ -144,16 +149,17 @@ public class SnippetServiceTests
         var mapper = CreateMapper();
         var repository = new SnippetRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SnippetService(uow, repository, jsonPatchService, mapper);
+        var service = new SnippetService(repository, jsonPatchService, mapper);
 
         var ownerId = Ulid.NewUlid();
         var otherUser = Ulid.NewUlid();
 
-        await service.CreateSnippetAsync(ownerId, new CreateSnippetDTO
+        service.CreateSnippet(ownerId, new CreateSnippetDTO
         {
             Name = "To delete",
             Content = DeltaRichText.FromString("abc")
         });
+        await uow.CommitAsync();
 
         var list = await service.GetSnippetsAsync(ownerId);
         var snippetId = list.Items.First().Id;
@@ -170,13 +176,14 @@ public class SnippetServiceTests
         var mapper = CreateMapper();
         var repository = new SnippetRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SnippetService(uow, repository, jsonPatchService, mapper);
+        var service = new SnippetService(repository, jsonPatchService, mapper);
 
         var userA = Ulid.NewUlid();
         var userB = Ulid.NewUlid();
 
-        await service.CreateSnippetAsync(userA, new CreateSnippetDTO { Name = "A1", Content = DeltaRichText.FromString("abc") });
-        await service.CreateSnippetAsync(userB, new CreateSnippetDTO { Name = "B1", Content = DeltaRichText.FromString("abc") });
+        service.CreateSnippet(userA, new CreateSnippetDTO { Name = "A1", Content = DeltaRichText.FromString("abc") });
+        service.CreateSnippet(userB, new CreateSnippetDTO { Name = "B1", Content = DeltaRichText.FromString("abc") });
+        await uow.CommitAsync();
 
         var listA = await service.GetSnippetsAsync(userA);
         var listB = await service.GetSnippetsAsync(userB);

@@ -220,6 +220,10 @@ namespace Noo.Api.Migrations
                         .HasColumnType("DATETIME(0)")
                         .HasColumnName("checked_at");
 
+                    b.Property<byte[]>("CourseWorkAssignmentId")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("course_work_assignment_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TIMESTAMP(6)")
@@ -263,7 +267,6 @@ namespace Noo.Api.Migrations
                         .HasColumnName("main_mentor_comment_id");
 
                     b.Property<byte[]>("MainMentorId")
-                        .IsRequired()
                         .HasColumnType("BINARY(16)")
                         .HasColumnName("main_mentor_id");
 
@@ -319,6 +322,8 @@ namespace Noo.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CheckStatus");
+
+                    b.HasIndex("CourseWorkAssignmentId");
 
                     b.HasIndex("HelperMentorCommentId")
                         .IsUnique();
@@ -391,6 +396,56 @@ namespace Noo.Api.Migrations
                     b.HasIndex("ChangedById");
 
                     b.ToTable("assigned_work_status_history");
+                });
+
+            modelBuilder.Entity("Noo.Api.Auth.Models.TokenModel", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TIMESTAMP(6)")
+                        .HasColumnName("created_at");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("DATETIME(0)")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Payload")
+                        .HasMaxLength(127)
+                        .HasColumnType("VARCHAR(127)")
+                        .HasColumnName("payload");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("VARCHAR(63)")
+                        .HasColumnName("token");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("ENUM('EmailVerification','EmailChange','PasswordReset')")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("TIMESTAMP(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<byte[]>("UserId")
+                        .IsRequired()
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("token");
                 });
 
             modelBuilder.Entity("Noo.Api.Calendar.Models.CalendarEventModel", b =>
@@ -909,6 +964,11 @@ namespace Noo.Api.Migrations
                         .HasColumnType("VARCHAR(255)")
                         .HasColumnName("actual_name");
 
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("ENUM('UserAvatar','VideoCover','VideoRichText','CourseCover','CourseAttachment','CourseRichText','WorkRichText','ProfileBackground','AssignedWorkStudentRichText','AssignedWorkMentorRichText','AssignedWorkStudentCommentRichText','AssignedWorkMentorCommentRichText','HelpRichText')")
+                        .HasColumnName("category");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TIMESTAMP(6)")
@@ -943,6 +1003,7 @@ namespace Noo.Api.Migrations
                         .HasColumnName("order");
 
                     b.Property<byte[]>("OwnerId")
+                        .IsRequired()
                         .HasColumnType("BINARY(16)")
                         .HasColumnName("owner_id");
 
@@ -952,14 +1013,14 @@ namespace Noo.Api.Migrations
                         .HasColumnType("VARCHAR(255)")
                         .HasColumnName("path");
 
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasColumnType("varchar(63)")
-                        .HasColumnName("reason");
-
                     b.Property<int>("Size")
                         .HasColumnType("INT(11)")
                         .HasColumnName("size");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("ENUM('Pending','Completed')")
+                        .HasColumnName("status");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .ValueGeneratedOnUpdate()
@@ -968,7 +1029,11 @@ namespace Noo.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Category");
+
                     b.HasIndex("Hash");
+
+                    b.HasIndex("OwnerId");
 
                     b.ToTable("media");
                 });
@@ -2069,6 +2134,11 @@ namespace Noo.Api.Migrations
 
             modelBuilder.Entity("Noo.Api.AssignedWorks.Models.AssignedWorkModel", b =>
                 {
+                    b.HasOne("Noo.Api.Courses.Models.CourseWorkAssignmentModel", "CourseWorkAssignment")
+                        .WithMany("AssignedWorks")
+                        .HasForeignKey("CourseWorkAssignmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Noo.Api.AssignedWorks.Models.AssignedWorkCommentModel", "HelperMentorComment")
                         .WithOne("AssignedWorkAsHelperMentor")
                         .HasForeignKey("Noo.Api.AssignedWorks.Models.AssignedWorkModel", "HelperMentorCommentId")
@@ -2087,8 +2157,7 @@ namespace Noo.Api.Migrations
                     b.HasOne("Noo.Api.Users.Models.UserModel", "MainMentor")
                         .WithMany()
                         .HasForeignKey("MainMentorId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("Noo.Api.AssignedWorks.Models.AssignedWorkCommentModel", "StudentComment")
                         .WithOne("AssignedWorkAsStudent")
@@ -2105,6 +2174,8 @@ namespace Noo.Api.Migrations
                         .WithMany()
                         .HasForeignKey("WorkId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CourseWorkAssignment");
 
                     b.Navigation("HelperMentor");
 
@@ -2137,6 +2208,17 @@ namespace Noo.Api.Migrations
                     b.Navigation("AssignedWork");
 
                     b.Navigation("ChangedBy");
+                });
+
+            modelBuilder.Entity("Noo.Api.Auth.Models.TokenModel", b =>
+                {
+                    b.HasOne("Noo.Api.Users.Models.UserModel", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Noo.Api.Calendar.Models.CalendarEventModel", b =>
@@ -2560,6 +2642,11 @@ namespace Noo.Api.Migrations
                     b.Navigation("Chapters");
 
                     b.Navigation("Memberships");
+                });
+
+            modelBuilder.Entity("Noo.Api.Courses.Models.CourseWorkAssignmentModel", b =>
+                {
+                    b.Navigation("AssignedWorks");
                 });
 
             modelBuilder.Entity("Noo.Api.Media.Models.MediaModel", b =>

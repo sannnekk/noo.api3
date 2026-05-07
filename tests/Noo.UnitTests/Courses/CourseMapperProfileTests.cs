@@ -7,13 +7,14 @@ using Noo.Api.Polls.Models;
 using Noo.Api.Subjects.Models;
 using Noo.Api.Users.Models;
 using Noo.Api.Works.Models;
+using Noo.UnitTests.Common;
 
 namespace Noo.UnitTests.Courses;
 
 public class CourseMapperProfileTests
 {
     private static MapperConfiguration CreateConfiguration()
-        => new(cfg =>
+        => MapperTestUtils.CreateMapperConfig(cfg =>
         {
             cfg.AddProfile(new CourseMapperProfile());
             cfg.AddProfile(new NooTubeMapperProfile());

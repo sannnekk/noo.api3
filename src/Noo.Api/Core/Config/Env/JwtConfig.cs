@@ -19,8 +19,8 @@ public class JwtConfig : IConfig
     [Required]
     public required int ExpireDays { get; init; }
 
-    public SymmetricSecurityKey GetSymmetricSecurityKey()
-    {
-        return new SymmetricSecurityKey(Convert.FromBase64String(Secret));
-    }
+    public TimeSpan ExpireTimeSpan => TimeSpan.FromDays(ExpireDays);
+
+    public SymmetricSecurityKey SymmetricSecurityKey =>
+        new SymmetricSecurityKey(Convert.FromBase64String(Secret));
 }

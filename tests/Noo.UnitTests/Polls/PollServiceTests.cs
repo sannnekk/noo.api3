@@ -29,7 +29,7 @@ public class PollServiceTests
     }
     private static IMapper CreateMapper()
     {
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<Noo.Api.Polls.Models.PollMapperProfile>());
+        var config = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<Noo.Api.Polls.Models.PollMapperProfile>());
         // config.AssertConfigurationIsValid(); // Commented out for tests
         return config.CreateMapper();
     }
@@ -46,7 +46,7 @@ public class PollServiceTests
         var pollAnswerRepo = new PollAnswerRepository(context);
         var currentUser = new TestCurrentUser(null, UserRoles.Admin);
         var jsonPatch = new JsonPatchUpdateService(mapper);
-        var service = new PollService(mapper, uow, pollRepo, pollParticipationRepo, pollAnswerRepo, currentUser, jsonPatch);
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, currentUser, jsonPatch);
 
         // Create poll with one question
         var create = new CreatePollDTO
@@ -68,7 +68,8 @@ public class PollServiceTests
             }
         };
 
-        var pollId = await service.CreatePollAsync(create);
+        var pollId = service.CreatePoll(create);
+        await uow.CommitAsync();
         Assert.NotEqual(default, pollId);
 
         // Get
@@ -86,6 +87,7 @@ public class PollServiceTests
         var patch = new JsonPatchDocument<UpdatePollDTO>();
         patch.Replace(x => x.Title, "Updated Title");
         await service.UpdatePollAsync(pollId, patch);
+        await uow.CommitAsync();
 
         var updated = await service.GetPollAsync(pollId);
         Assert.Equal("Updated Title", updated!.Title);
@@ -98,8 +100,9 @@ public class PollServiceTests
         var deletePollAnswerRepo = new PollAnswerRepository(deleteContext);
         var deleteCurrentUser = new TestCurrentUser(null, UserRoles.Admin);
         var deleteJsonPatch = new JsonPatchUpdateService(mapper);
-        var deleteService = new PollService(mapper, deleteUow, deletePollRepo, deletePollParticipationRepo, deletePollAnswerRepo, deleteCurrentUser, deleteJsonPatch);
-        await deleteService.DeletePollAsync(pollId);
+        var deleteService = new PollService(mapper, deletePollRepo, deletePollParticipationRepo, deletePollAnswerRepo, deleteCurrentUser, deleteJsonPatch);
+        deleteService.DeletePoll(pollId);
+        await deleteUow.CommitAsync();
 
         using var verifyContext = TestHelpers.CreateInMemoryDb(dbName);
         var verifyUow = TestHelpers.CreateUowMock(verifyContext).Object;
@@ -108,7 +111,7 @@ public class PollServiceTests
         var verifyPollAnswerRepo = new PollAnswerRepository(verifyContext);
         var verifyCurrentUser = new TestCurrentUser(null, UserRoles.Admin);
         var verifyJsonPatch = new JsonPatchUpdateService(mapper);
-        var verifyService = new PollService(mapper, verifyUow, verifyPollRepo, verifyPollParticipationRepo, verifyPollAnswerRepo, verifyCurrentUser, verifyJsonPatch);
+        var verifyService = new PollService(mapper, verifyPollRepo, verifyPollParticipationRepo, verifyPollAnswerRepo, verifyCurrentUser, verifyJsonPatch);
         var afterDelete = await verifyService.GetPollAsync(pollId);
         Assert.Null(afterDelete);
     }
@@ -125,7 +128,7 @@ public class PollServiceTests
         var pollAnswerRepo = new PollAnswerRepository(context);
         var currentUser = new TestCurrentUser(null, UserRoles.Admin);
         var jsonPatch = new JsonPatchUpdateService(mapper);
-        var service = new PollService(mapper, uow, pollRepo, pollParticipationRepo, pollAnswerRepo, currentUser, jsonPatch);
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, currentUser, jsonPatch);
 
         // Seed poll
         var poll = new PollModel { Title = "P", IsActive = true, IsAuthRequired = false };
@@ -136,12 +139,13 @@ public class PollServiceTests
         const string extId = "ext-42";
 
         // 1) By userId: create with a current user, then attempt duplicate with the same user
-        var withUser = new PollService(mapper, uow, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId), jsonPatch);
+        var withUser = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId), jsonPatch);
         await withUser.ParticipateAsync(poll.Id, new CreatePollParticipationDTO
         {
             UserType = ParticipatingUserType.AuthenticatedUser,
             UserExternalIdentifier = null
         });
+        await uow.CommitAsync();
         await Assert.ThrowsAsync<Noo.Api.Polls.Exceptions.UserAlreadyVotedException>(async () =>
         {
             await withUser.ParticipateAsync(poll.Id, new CreatePollParticipationDTO
@@ -157,6 +161,7 @@ public class PollServiceTests
             UserType = ParticipatingUserType.TelegramUser,
             UserExternalIdentifier = extId
         });
+        await uow.CommitAsync();
         await Assert.ThrowsAsync<Noo.Api.Polls.Exceptions.UserAlreadyVotedException>(async () =>
         {
             await service.ParticipateAsync(poll.Id, new CreatePollParticipationDTO
@@ -179,7 +184,7 @@ public class PollServiceTests
         var pollAnswerRepo = new PollAnswerRepository(context);
         var currentUser = new TestCurrentUser(null, UserRoles.Admin);
         var jsonPatch = new JsonPatchUpdateService(mapper);
-        var service = new PollService(mapper, uow, pollRepo, pollParticipationRepo, pollAnswerRepo, currentUser, jsonPatch);
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, currentUser, jsonPatch);
 
         // Seed question + answer
         var poll = new PollModel { Title = "P", IsActive = true, IsAuthRequired = false };

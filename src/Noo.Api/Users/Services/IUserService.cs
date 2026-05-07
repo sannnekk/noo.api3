@@ -11,7 +11,7 @@ namespace Noo.Api.Users.Services;
 public interface IUserService
 {
     public Task<bool> UserExistsAsync(string? username, string? email);
-    public Task<Ulid> CreateUserAsync(UserCreationPayload payload);
+    public Ulid CreateUser(UserCreationPayload payload);
     public Task<UserModel?> GetUserByIdAsync(Ulid id);
     public Task<UserModel?> GetUserByUsernameOrEmailAsync(string usernameOrEmail);
     public Task<SearchResult<UserModel>> GetUsersAsync(UserFilter filter);
@@ -22,6 +22,6 @@ public interface IUserService
     public Task VerifyUserAsync(Ulid id);
     public Task BlockUserAsync(Ulid id);
     public Task UnblockUserAsync(Ulid id);
-    public Task DeleteUserAsync(Ulid id);
+    public void DeleteUser(Ulid id);
     public Task UpdateUserAsync(Ulid id, JsonPatchDocument<UpdateUserDTO> patchUserDto);
 }

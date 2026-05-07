@@ -19,7 +19,10 @@ public class GoogleSheetsIntegrationController : ApiController
 {
     private readonly IGoogleSheetsIntegrationService _googleSheetsIntegrationService;
 
-    public GoogleSheetsIntegrationController(IGoogleSheetsIntegrationService googleSheetsIntegrationService, IMapper mapper)
+    public GoogleSheetsIntegrationController(
+        IGoogleSheetsIntegrationService googleSheetsIntegrationService,
+        IMapper mapper
+    )
         : base(mapper)
     {
         _googleSheetsIntegrationService = googleSheetsIntegrationService;
@@ -32,7 +35,8 @@ public class GoogleSheetsIntegrationController : ApiController
     [HttpGet]
     [Authorize(Policy = GoogleSheetsIntegrationPolicies.CanGetGoogleSheetsIntegrations)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<GoogleSheetsIntegrationDTO>>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IEnumerable<GoogleSheetsIntegrationDTO>>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
@@ -53,12 +57,15 @@ public class GoogleSheetsIntegrationController : ApiController
     [HttpPost]
     [Authorize(Policy = GoogleSheetsIntegrationPolicies.CanCreateGoogleSheetsIntegration)]
     [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status201Created,
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status201Created,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> CreateIntegrationAsync([FromBody] CreateGoogleSheetsIntegrationDTO request)
+    public async Task<IActionResult> CreateIntegrationAsync(
+        [FromBody] CreateGoogleSheetsIntegrationDTO request
+    )
     {
         var integrationId = await _googleSheetsIntegrationService.CreateIntegrationAsync(request);
 
@@ -72,7 +79,8 @@ public class GoogleSheetsIntegrationController : ApiController
     [HttpPost("{integrationId}/run")]
     [Authorize(Policy = GoogleSheetsIntegrationPolicies.CanRunGoogleSheetsIntegration)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -92,14 +100,15 @@ public class GoogleSheetsIntegrationController : ApiController
     [HttpDelete("{integrationId}")]
     [Authorize(Policy = GoogleSheetsIntegrationPolicies.CanDeleteGoogleSheetsIntegration)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> DeleteIntegrationAsync([FromRoute] Ulid integrationId)
+    public IActionResult DeleteIntegration([FromRoute] Ulid integrationId)
     {
-        await _googleSheetsIntegrationService.DeleteIntegrationAsync(integrationId);
+        _googleSheetsIntegrationService.DeleteIntegration(integrationId);
 
         return SendResponse();
     }

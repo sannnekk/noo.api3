@@ -6,22 +6,40 @@ using Noo.Api.Users.Models;
 namespace Noo.Api.Users.Services;
 
 [RegisterScoped(typeof(IMentorAssignmentRepository))]
-public class MentorAssignmentRepository : Repository<MentorAssignmentModel>, IMentorAssignmentRepository
+public class MentorAssignmentRepository
+    : Repository<MentorAssignmentModel>,
+        IMentorAssignmentRepository
 {
-    public MentorAssignmentRepository(NooDbContext context) : base(context)
-    {
-    }
+    public MentorAssignmentRepository(NooDbContext context)
+        : base(context) { }
+
     /// <summary>
-	/// Gets mentor assignment by student, mentor and optional subject
+    /// Gets mentor assignment by student, mentor and optional subject
     /// If subjectId is null, gets assignment regardless of subject
-	/// </summary>
-    public Task<MentorAssignmentModel?> GetAsync(Ulid studentId, Ulid mentorId, Ulid? subjectId = null)
+    /// </summary>
+    public Task<MentorAssignmentModel?> GetAsync(
+        Ulid studentId,
+        Ulid mentorId,
+        Ulid? subjectId = null
+    )
     {
-        return Context.GetDbSet<MentorAssignmentModel>()
+        return Context
+            .GetDbSet<MentorAssignmentModel>()
             .FirstOrDefaultAsync(x =>
-                x.StudentId == studentId &&
-                x.MentorId == mentorId &&
-                (subjectId == null || x.SubjectId == subjectId)
+                x.StudentId == studentId
+                && x.MentorId == mentorId
+                && (subjectId == null || x.SubjectId == subjectId)
             );
+    }
+
+    public async Task<UserModel?> GetMentorAsync(Ulid studentId, Ulid subjectId)
+    {
+        var assignment = await Context
+            .GetDbSet<MentorAssignmentModel>()
+            .Where(x => x.StudentId == studentId && x.SubjectId == subjectId)
+            .Include(x => x.Mentor)
+            .FirstOrDefaultAsync();
+
+        return assignment?.Mentor;
     }
 }

@@ -18,15 +18,20 @@ public class PollService : IPollService
     private readonly IMapper _mapper;
     private readonly IPollRepository _pollRepository;
     private readonly IPollParticipationRepository _pollParticipationRepository;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly IPollAnswerRepository _pollAnswerRepository;
     private readonly ICurrentUser _currentUser;
     private readonly IJsonPatchUpdateService _jsonPatchUpdateService;
 
-    public PollService(IMapper mapper, IUnitOfWork unitOfWork, IPollRepository pollRepository, IPollParticipationRepository pollParticipationRepository, IPollAnswerRepository pollAnswerRepository, ICurrentUser currentUser, IJsonPatchUpdateService jsonPatchUpdateService)
+    public PollService(
+        IMapper mapper,
+        IPollRepository pollRepository,
+        IPollParticipationRepository pollParticipationRepository,
+        IPollAnswerRepository pollAnswerRepository,
+        ICurrentUser currentUser,
+        IJsonPatchUpdateService jsonPatchUpdateService
+    )
     {
         _mapper = mapper;
-        _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _pollRepository = pollRepository;
         _pollParticipationRepository = pollParticipationRepository;
@@ -34,18 +39,17 @@ public class PollService : IPollService
         _jsonPatchUpdateService = jsonPatchUpdateService;
     }
 
-    public Task<Ulid> CreatePollAsync(CreatePollDTO createPollDto)
+    public Ulid CreatePoll(CreatePollDTO createPollDto)
     {
         var pollModel = _mapper.Map<PollModel>(createPollDto);
         _pollRepository.Add(pollModel);
 
-        return _unitOfWork.CommitAsync().ContinueWith(_ => pollModel.Id);
+        return pollModel.Id;
     }
 
-    public Task DeletePollAsync(Ulid id)
+    public void DeletePoll(Ulid id)
     {
         _pollRepository.DeleteById(id);
-        return _unitOfWork.CommitAsync();
     }
 
     public Task<PollModel?> GetPollAsync(Ulid id)
@@ -58,7 +62,10 @@ public class PollService : IPollService
         return _pollParticipationRepository.GetByIdAsync(participationId);
     }
 
-    public Task<SearchResult<PollParticipationModel>> GetPollParticipationsAsync(Ulid pollId, PollParticipationFilter filter)
+    public Task<SearchResult<PollParticipationModel>> GetPollParticipationsAsync(
+        Ulid pollId,
+        PollParticipationFilter filter
+    )
     {
         filter.PollId = pollId;
         return _pollParticipationRepository.SearchAsync(filter);
@@ -78,8 +85,14 @@ public class PollService : IPollService
         var hasUserId = currentUserId.HasValue;
         var hasExternal = !string.IsNullOrWhiteSpace(participationDto.UserExternalIdentifier);
 
-        if ((hasUserId || hasExternal) &&
-            await UserAlreadyParticipatedAsync(pollId, currentUserId, participationDto.UserExternalIdentifier))
+        if (
+            (hasUserId || hasExternal)
+            && await UserAlreadyParticipatedAsync(
+                pollId,
+                currentUserId,
+                participationDto.UserExternalIdentifier
+            )
+        )
         {
             throw new UserAlreadyVotedException();
         }
@@ -92,19 +105,18 @@ public class PollService : IPollService
             participationModel.UserId = currentUserId.Value;
         }
         _pollParticipationRepository.Add(participationModel);
-
-        await _unitOfWork.CommitAsync();
     }
 
-    public async Task UpdatePollAnswerAsync(Ulid answerId, JsonPatchDocument<UpdatePollAnswerDTO> updateAnswerDto)
+    public async Task UpdatePollAnswerAsync(
+        Ulid answerId,
+        JsonPatchDocument<UpdatePollAnswerDTO> updateAnswerDto
+    )
     {
         var model = await _pollAnswerRepository.GetByIdAsync(answerId);
 
         model.ThrowNotFoundIfNull();
 
         _jsonPatchUpdateService.ApplyPatch(model, updateAnswerDto);
-
-        await _unitOfWork.CommitAsync();
     }
 
     public async Task UpdatePollAsync(Ulid id, JsonPatchDocument<UpdatePollDTO> updatePollDto)
@@ -114,13 +126,18 @@ public class PollService : IPollService
         model.ThrowNotFoundIfNull();
 
         _jsonPatchUpdateService.ApplyPatch(model, updatePollDto);
-
-        await _unitOfWork.CommitAsync();
     }
 
-    private Task<bool> UserAlreadyParticipatedAsync(Ulid pollId, Ulid? userId, string? userExternalIdentifier)
+    private Task<bool> UserAlreadyParticipatedAsync(
+        Ulid pollId,
+        Ulid? userId,
+        string? userExternalIdentifier
+    )
     {
-        return _pollParticipationRepository
-            .ParticipationExistsAsync(pollId, userId, userExternalIdentifier);
+        return _pollParticipationRepository.ParticipationExistsAsync(
+            pollId,
+            userId,
+            userExternalIdentifier
+        );
     }
 }

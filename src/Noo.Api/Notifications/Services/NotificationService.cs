@@ -11,13 +11,14 @@ namespace Noo.Api.Notifications.Services;
 [RegisterScoped(typeof(INotificationService))]
 public class NotificationService : INotificationService
 {
-    private readonly IUnitOfWork _unitOfWork;
     private readonly INotificationRepository _repository;
     private readonly IEventPublisher _events;
 
-    public NotificationService(IUnitOfWork unitOfWork, INotificationRepository notificationRepository, IEventPublisher events)
+    public NotificationService(
+        INotificationRepository notificationRepository,
+        IEventPublisher events
+    )
     {
-        _unitOfWork = unitOfWork;
         _repository = notificationRepository;
         _events = events;
     }
@@ -35,7 +36,7 @@ public class NotificationService : INotificationService
                 IsBanner = options.IsBanner,
                 IsRead = false,
                 Link = options.Link,
-                LinkText = options.LinkText
+                LinkText = options.LinkText,
             };
 
             _repository.Add(model);
@@ -43,8 +44,6 @@ public class NotificationService : INotificationService
             // Publish event for delivery handlers
             await _events.PublishAsync(new NotificationCreatedEvent(model, options.Channels));
         }
-
-        await _unitOfWork.CommitAsync();
     }
 
     public async Task CreateNotificationAsync(CreateNotificationDTO options)
@@ -58,22 +57,23 @@ public class NotificationService : INotificationService
             IsBanner = options.IsBanner,
             IsRead = false,
             Link = options.Link,
-            LinkText = options.LinkText
+            LinkText = options.LinkText,
         };
 
         _repository.Add(model);
 
-        await _unitOfWork.CommitAsync();
         await _events.PublishAsync(new NotificationCreatedEvent(model));
     }
 
     public async Task DeleteNotificationAsync(Ulid notificationId, Ulid userId)
     {
         await _repository.DeleteForUserAsync(userId, notificationId);
-        await _unitOfWork.CommitAsync();
     }
 
-    public Task<SearchResult<NotificationModel>> GetNotificationsAsync(Ulid userId, NotificationFilter filter)
+    public Task<SearchResult<NotificationModel>> GetNotificationsAsync(
+        Ulid userId,
+        NotificationFilter filter
+    )
     {
         return _repository.GetForUserAsync(userId, filter);
     }
@@ -81,8 +81,10 @@ public class NotificationService : INotificationService
     public async Task MarkAsReadAsync(Ulid userId, Ulid notificationId)
     {
         await _repository.MarkAsReadAsync(userId, notificationId);
-        await _unitOfWork.CommitAsync();
     }
 }
 
-public record NotificationCreatedEvent(NotificationModel Model, IEnumerable<NotificationChannelType>? Channels = null) : IDomainEvent;
+public record NotificationCreatedEvent(
+    NotificationModel Model,
+    IEnumerable<NotificationChannelType>? Channels = null
+) : IDomainEvent;

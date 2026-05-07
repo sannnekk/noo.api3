@@ -1,6 +1,5 @@
 using Moq;
 using MediatR;
-using AutoMapper;
 using Noo.Api.AssignedWorks.DTO;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Services;
@@ -11,6 +10,8 @@ using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Users.Models;
 using Noo.Api.Users.Services;
+using Noo.Api.Courses.Services;
+using Noo.Api.Works.Services;
 using Noo.UnitTests.Common;
 using Noo.Api.Works.Models;
 using Noo.Api.Works.Types;
@@ -32,13 +33,15 @@ public class AssignedWorkServiceTests
         currentUser.SetupGet(c => c.IsAuthenticated).Returns(true);
         currentUser.Setup(c => c.IsInRole(It.IsAny<UserRoles[]>())).Returns<UserRoles[]>(r => r.Contains(role));
         var mediator = new Mock<IMediator>();
-        var mapperCfg = new MapperConfiguration(cfg => cfg.AddProfile(new AssignedWorkMapperProfile()));
+        var mapperCfg = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile(new AssignedWorkMapperProfile()));
         var mapper = mapperCfg.CreateMapper();
-        var userRepo = new UserRepository(ctx);
         var assignedWorkRepo = new AssignedWorkRepository(ctx);
         var assignedWorkAnswerRepo = new AssignedWorkAnswerRepository(ctx);
         var assignedWorkCommentRepo = new AssignedWorkCommentRepository(ctx);
-        var svc = new AssignedWorkService(uowMock.Object, userRepo, assignedWorkRepo, assignedWorkAnswerRepo, assignedWorkCommentRepo, currentUser.Object, mediator.Object, mapper);
+        var courseWorkAssignmentRepo = new Mock<ICourseWorkAssignmentRepository>();
+        var mentorAssignmentRepo = new Mock<IMentorAssignmentRepository>();
+        var workTaskRepo = new WorkTaskRepository(ctx);
+        var svc = new AssignedWorkService(assignedWorkRepo, assignedWorkAnswerRepo, assignedWorkCommentRepo, courseWorkAssignmentRepo.Object, mentorAssignmentRepo.Object, currentUser.Object, workTaskRepo, mediator.Object, mapper);
         return (svc, ctx, uowMock, currentUser, mediator);
     }
 
@@ -228,6 +231,7 @@ public class AssignedWorkServiceTests
         ctx.SaveChanges();
 
         var newId = await svc.RemakeAsync(aw.Id, new RemakeAssignedWorkOptionsDTO { IncludeOnlyWrongTasks = true });
+        ctx.SaveChanges();
         Assert.NotEqual(default, newId);
         var all = ctx.GetDbSet<AssignedWorkModel>().ToList();
         Assert.Equal(2, all.Count); // original + new attempt
@@ -289,6 +293,7 @@ public class AssignedWorkServiceTests
         currentUser.SetupGet(c => c.UserId).Returns(student.Id);
         var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid(), solveStatus: AssignedWorkSolveStatus.NotSolved);
         await svc.DeleteAsync(aw.Id);
+        await ctx.SaveChangesAsync();
         var exists = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
         Assert.Null(exists);
     }
@@ -302,7 +307,7 @@ public class AssignedWorkServiceTests
         currentUser.SetupGet(c => c.UserId).Returns(student.Id);
         var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
         var answerDto = new UpsertAssignedWorkAnswerDTO { TaskId = Ulid.NewUlid(), Status = AssignedWorkAnswerStatus.Submitted, MaxScore = 10, Score = 5 };
-        var id = await svc.SaveAnswerAsync(aw.Id, answerDto);
+        var id = svc.SaveAnswer(aw.Id, answerDto);
         Assert.NotEqual(default, id);
     }
 
@@ -314,7 +319,7 @@ public class AssignedWorkServiceTests
         currentUser.SetupGet(c => c.UserId).Returns(student.Id);
         var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
         var commentDto = new UpsertAssignedWorkCommentDTO();
-        var id = await svc.SaveCommentAsync(aw.Id, commentDto);
+        var id = svc.SaveComment(aw.Id, commentDto);
         Assert.NotEqual(default, id);
     }
 }

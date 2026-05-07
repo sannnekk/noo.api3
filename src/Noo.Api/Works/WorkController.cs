@@ -1,15 +1,15 @@
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
 using Noo.Api.Core.Utils.Versioning;
 using Noo.Api.Works.DTO;
-using Noo.Api.Works.Services;
-using ProducesAttribute = Noo.Api.Core.Documentation.ProducesAttribute;
-using SystemTextJsonPatch;
 using Noo.Api.Works.Filters;
-using AutoMapper;
 using Noo.Api.Works.Models;
+using Noo.Api.Works.Services;
+using SystemTextJsonPatch;
+using ProducesAttribute = Noo.Api.Core.Documentation.ProducesAttribute;
 
 namespace Noo.Api.Works;
 
@@ -20,7 +20,8 @@ public class WorkController : ApiController
 {
     private readonly IWorkService _workService;
 
-    public WorkController(IWorkService workService, IMapper mapper) : base(mapper)
+    public WorkController(IWorkService workService, IMapper mapper)
+        : base(mapper)
     {
         _workService = workService;
     }
@@ -32,7 +33,8 @@ public class WorkController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = WorkPolicies.CanSearchWorks)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<WorkDTO>>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IEnumerable<WorkDTO>>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
@@ -52,7 +54,8 @@ public class WorkController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = WorkPolicies.CanGetWork)]
     [Produces(
-        typeof(ApiResponseDTO<WorkDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<WorkDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -72,14 +75,15 @@ public class WorkController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = WorkPolicies.CanCreateWorks)]
     [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status201Created,
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status201Created,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> CreateWorkAsync([FromBody] CreateWorkDTO work)
+    public IActionResult CreateWork([FromBody] CreateWorkDTO work)
     {
-        var id = await _workService.CreateWorkAsync(work);
+        var id = _workService.CreateWork(work);
         return SendResponse(id);
     }
 
@@ -90,13 +94,17 @@ public class WorkController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = WorkPolicies.CanEditWorks)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> UpdateWorkAsync([FromRoute] Ulid id, [FromBody] JsonPatchDocument<UpdateWorkDTO> work)
+    public async Task<IActionResult> UpdateWorkAsync(
+        [FromRoute] Ulid id,
+        [FromBody] JsonPatchDocument<UpdateWorkDTO> work
+    )
     {
         await _workService.UpdateWorkAsync(id, work);
 
@@ -110,15 +118,16 @@ public class WorkController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = WorkPolicies.CanDeleteWorks)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> DeleteWorkAsync([FromRoute] Ulid id)
+    public IActionResult DeleteWork([FromRoute] Ulid id)
     {
-        await _workService.DeleteWorkAsync(id);
+        _workService.DeleteWork(id);
         return SendResponse();
     }
 }

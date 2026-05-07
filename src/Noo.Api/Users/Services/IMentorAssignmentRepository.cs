@@ -5,5 +5,11 @@ namespace Noo.Api.Users.Services;
 
 public interface IMentorAssignmentRepository : IRepository<MentorAssignmentModel>
 {
-    public Task<MentorAssignmentModel?> GetAsync(Ulid studentId, Ulid mentorId, Ulid? subjectId = null);
+    public Task<MentorAssignmentModel?> GetAsync(
+        Ulid studentId,
+        Ulid mentorId,
+        Ulid? subjectId = null
+    );
+
+    public Task<UserModel?> GetMentorAsync(Ulid studentId, Ulid subjectId);
 }

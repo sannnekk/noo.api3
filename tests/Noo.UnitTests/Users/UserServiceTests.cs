@@ -16,7 +16,7 @@ public class UserServiceTests
 {
     private static IMapper CreateMapper()
     {
-        var config = new MapperConfiguration(cfg =>
+        var config = MapperTestUtils.CreateMapperConfig(cfg =>
         {
             // Explicit mapping for creation to avoid requiring all navigations
             cfg.CreateMap<UserCreationPayload, UserModel>()
@@ -78,9 +78,10 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
+        var service = new UserService(userRepo, patchUpdateService, mapper);
 
-        var id = await service.CreateUserAsync(MakePayload());
+        var id = service.CreateUser(MakePayload());
+        await uow.CommitAsync();
         Assert.NotEqual(default, id);
 
         var fetched = await service.GetUserByIdAsync(id);
@@ -95,6 +96,7 @@ public class UserServiceTests
         var patch = new JsonPatchDocument<UpdateUserDTO>();
         patch.Replace(x => x.Name, "John Updated");
         await service.UpdateUserAsync(id, patch);
+        await uow.CommitAsync();
 
         var updated = await service.GetUserByIdAsync(id);
         Assert.Equal("John Updated", updated!.Name);
@@ -105,8 +107,9 @@ public class UserServiceTests
             var deleteUow = TestHelpers.CreateUowMock(deleteContext).Object;
             var deleteUserRepo = new UserRepository(deleteContext);
             var deletePatchUpdateService = new JsonPatchUpdateService(mapper);
-            var deleteService = new UserService(deleteUow, deleteUserRepo, deletePatchUpdateService, mapper);
-            await deleteService.DeleteUserAsync(id);
+            var deleteService = new UserService(deleteUserRepo, deletePatchUpdateService, mapper);
+            deleteService.DeleteUser(id);
+            await deleteUow.CommitAsync();
         }
 
         using (var verifyContext = TestHelpers.CreateInMemoryDb(dbName))
@@ -114,7 +117,7 @@ public class UserServiceTests
             var verifyUow = TestHelpers.CreateUowMock(verifyContext).Object;
             var verifyUserRepo = new UserRepository(verifyContext);
             var verifyPatchUpdateService = new JsonPatchUpdateService(mapper);
-            var verifyService = new UserService(verifyUow, verifyUserRepo, verifyPatchUpdateService, mapper);
+            var verifyService = new UserService(verifyUserRepo, verifyPatchUpdateService, mapper);
             var afterDelete = await verifyService.GetUserByIdAsync(id);
             Assert.Null(afterDelete);
         }
@@ -129,16 +132,19 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
+        var service = new UserService(userRepo, patchUpdateService, mapper);
 
-        var studentId = await service.CreateUserAsync(MakePayload("stud", "stud@example.com", role: UserRoles.Student));
+        var studentId = service.CreateUser(MakePayload("stud", "stud@example.com", role: UserRoles.Student));
+        await uow.CommitAsync();
         await service.ChangeRoleAsync(studentId, UserRoles.Mentor);
+        await uow.CommitAsync();
 
         var changed = await service.GetUserByIdAsync(studentId);
         Assert.Equal(UserRoles.Mentor, changed!.Role);
 
         // Make a mentor and try to change role -> should conflict
-        var mentorId = await service.CreateUserAsync(MakePayload("mentor", "mentor@example.com", role: UserRoles.Mentor));
+        var mentorId = service.CreateUser(MakePayload("mentor", "mentor@example.com", role: UserRoles.Mentor));
+        await uow.CommitAsync();
         await Assert.ThrowsAsync<CantChangeRoleException>(() => service.ChangeRoleAsync(mentorId, UserRoles.Admin));
     }
 
@@ -151,13 +157,14 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
+        var service = new UserService(userRepo, patchUpdateService, mapper);
 
         // Not found
         await Assert.ThrowsAsync<NotFoundException>(() => service.ChangeRoleAsync(Ulid.NewUlid(), UserRoles.Mentor));
 
         // Blocked
-        var id = await service.CreateUserAsync(MakePayload("blocked", "blocked@example.com"));
+        var id = service.CreateUser(MakePayload("blocked", "blocked@example.com"));
+        await uow.CommitAsync();
 
         // Mark as blocked directly and persist
         var user = await service.GetUserByIdAsync(id);
@@ -178,12 +185,14 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
+        var service = new UserService(userRepo, patchUpdateService, mapper);
 
-        var id = await service.CreateUserAsync(MakePayload("u1", "u1@example.com"));
+        var id = service.CreateUser(MakePayload("u1", "u1@example.com"));
+        await uow.CommitAsync();
 
         await service.UpdateUserEmailAsync(id, "new@example.com");
         await service.UpdateUserPasswordAsync(id, "new-hash");
+        await uow.CommitAsync();
 
         var updated = await service.GetUserByIdAsync(id);
         Assert.Equal("new@example.com", updated!.Email);
@@ -199,9 +208,9 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
+        var service = new UserService(userRepo, patchUpdateService, mapper);
 
-        var id = await service.CreateUserAsync(MakePayload("u2", "u2@example.com"));
+        var id = service.CreateUser(MakePayload("u2", "u2@example.com"));
 
         await service.BlockUserAsync(id);
         using (var verifyCtx = TestHelpers.CreateInMemoryDb(dbName))
@@ -209,7 +218,7 @@ public class UserServiceTests
             var verifyUow = TestHelpers.CreateUowMock(verifyCtx).Object;
             var verifyUserRepo = new UserRepository(verifyCtx);
             var verifyPatchUpdateService = new JsonPatchUpdateService(mapper);
-            var verifyService = new UserService(verifyUow, verifyUserRepo, verifyPatchUpdateService, mapper);
+            var verifyService = new UserService(verifyUserRepo, verifyPatchUpdateService, mapper);
             Assert.True(await verifyService.IsBlockedAsync(id));
         }
 
@@ -219,7 +228,7 @@ public class UserServiceTests
             var verifyUow2 = TestHelpers.CreateUowMock(verifyCtx2).Object;
             var verifyUserRepo2 = new UserRepository(verifyCtx2);
             var verifyPatchUpdateService2 = new JsonPatchUpdateService(mapper);
-            var verifyService2 = new UserService(verifyUow2, verifyUserRepo2, verifyPatchUpdateService2, mapper);
+            var verifyService2 = new UserService(verifyUserRepo2, verifyPatchUpdateService2, mapper);
             Assert.False(await verifyService2.IsBlockedAsync(id));
         }
     }
@@ -232,11 +241,12 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
+        var service = new UserService(userRepo, patchUpdateService, mapper);
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.UserExistsAsync(null, null));
 
-        var id = await service.CreateUserAsync(MakePayload("exists-user", "exists@example.com"));
+        var id = service.CreateUser(MakePayload("exists-user", "exists@example.com"));
+        await uow.CommitAsync();
 
         Assert.True(await service.UserExistsAsync("exists-user", null));
         Assert.True(await service.UserExistsAsync(null, "exists@example.com"));
@@ -260,10 +270,12 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
+        var service = new UserService(userRepo, patchUpdateService, mapper);
 
-        var id = await service.CreateUserAsync(MakePayload("verify", "verify@example.com"));
+        var id = service.CreateUser(MakePayload("verify", "verify@example.com"));
+        await uow.CommitAsync();
         await service.VerifyUserAsync(id);
+        await uow.CommitAsync();
         var user = await service.GetUserByIdAsync(id);
         Assert.True(user!.IsVerified);
     }
@@ -276,7 +288,7 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(uow, userRepo, patchUpdateService, mapper);
+        var service = new UserService(userRepo, patchUpdateService, mapper);
 
         var patch = new JsonPatchDocument<UpdateUserDTO>().Replace(x => x.Name, "N");
         await Assert.ThrowsAsync<NotFoundException>(() => service.UpdateUserAsync(Ulid.NewUlid(), patch));

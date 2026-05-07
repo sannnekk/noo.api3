@@ -103,6 +103,7 @@ The configuration is done in the `appsettings.json` file. An example (all possib
   "Logs": {
     "Mode": "Console",
     "MinLevel": "Information",
+    "ConsoleDecorations": "Color, Emoji",
     "TelegramLogToken": "...",
     "TelegramChatIds": ["...", "..."]
   },
@@ -136,7 +137,9 @@ The configuration is done in the `appsettings.json` file. An example (all possib
     "BucketName": "...",
     "Region": "...",
     "AccessKey": "...",
-    "SecretKey": "..."
+    "SecretKey": "...",
+    "ServiceUrl": "http://localhost:9000",
+    "ForcePathStyle": true
   },
   "Swagger": {
     "Title": "API v1",
@@ -162,7 +165,7 @@ The configuration is done in the `appsettings.json` file. An example (all possib
 }
 ```
 
-`Logs.Mode` accepts `Console` or `Telegram`, and `Logs.MinLevel` uses the standard `Microsoft.Extensions.Logging.LogLevel` names.
+`Logs.Mode` accepts `Console`, `Telegram`, or both combined as `Console, Telegram` (flags-based). When using `Telegram` mode, `TelegramLogToken` and `TelegramChatIds` must be configured. `Logs.MinLevel` uses the standard `Microsoft.Extensions.Logging.LogLevel` names. `Logs.ConsoleDecorations` controls console log readability and accepts `None`, `Color`, `Emoji`, or `Color, Emoji` (flags-based). If omitted, it defaults to `Color`.
 
 `RateLimiting` controls the fixed-window limits for the global pipeline plus `LoginPolicy` and `RegistrationPolicy`. Adjust `PermitLimit`, `WindowSeconds`, and queue settings per environment as needed.
 

@@ -1,6 +1,7 @@
-using Microsoft.Extensions.Logging.Console;
+using Noo.Api.Core.Config;
 using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.Initialization.Configuration;
+using Noo.Api.Core.Logging;
 
 namespace Noo.Api.Core.Initialization.ServiceCollection;
 
@@ -12,18 +13,34 @@ public static class LoggingExtension
 
         services.AddLogging(loggingBuilder =>
         {
-            switch (logConfig.Mode)
+            loggingBuilder.ClearProviders();
+            loggingBuilder.SetMinimumLevel(logConfig.MinLevel);
+
+            if (logConfig.Mode.HasFlag(LogMode.Console))
             {
-                case Config.LogMode.Console:
-                    loggingBuilder.AddConsole(options =>
-                    {
-                        options.FormatterName = ConsoleFormatterNames.Systemd;
-                        options.LogToStandardErrorThreshold = logConfig.MinLevel;
-                    });
-                    break;
-                case Config.LogMode.Telegram:
-                default:
-                    throw new NotSupportedException($"Log mode {logConfig.Mode} is not supported.");
+                loggingBuilder.AddProvider(new ConsoleLoggerProvider(logConfig));
+            }
+
+            if (logConfig.Mode.HasFlag(LogMode.Telegram))
+            {
+                if (string.IsNullOrWhiteSpace(logConfig.TelegramLogToken))
+                {
+                    throw new InvalidOperationException(
+                        "Telegram logging is enabled but TelegramLogToken is not configured.");
+                }
+
+                if (logConfig.TelegramChatIds.Length == 0)
+                {
+                    throw new InvalidOperationException(
+                        "Telegram logging is enabled but TelegramChatIds is empty.");
+                }
+
+                loggingBuilder.AddProvider(new TelegramLoggerProvider(logConfig));
+            }
+
+            if (logConfig.Mode == LogMode.None)
+            {
+                throw new InvalidOperationException("At least one logging mode must be enabled.");
             }
         });
     }

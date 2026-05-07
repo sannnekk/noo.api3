@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
+using Noo.Api.AssignedWorks.Models;
 using Noo.Api.Core.DataAbstraction;
 using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
@@ -49,6 +50,9 @@ public class CourseWorkAssignmentModel : OrderedModel
     [DeleteBehavior(DeleteBehavior.Cascade)]
     [InverseProperty(nameof(WorkModel.CourseWorkAssignments))]
     public WorkModel Work { get; set; } = default!;
+
+    [InverseProperty(nameof(AssignedWorkModel.CourseWorkAssignment))]
+    public AssignedWorkModel[] AssignedWorks { get; set; } = default!;
 
     #endregion
 }

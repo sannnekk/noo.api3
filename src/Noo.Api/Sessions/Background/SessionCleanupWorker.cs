@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Sessions.Models;
-using Microsoft.Extensions.Options;
 
 namespace Noo.Api.Sessions.Background;
 
@@ -20,6 +20,8 @@ public class SessionCleanupWorker : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
+            // TODO: refactor
+
             try
             {
                 using var scope = _services.CreateScope();

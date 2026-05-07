@@ -1,11 +1,15 @@
 using System.Reflection;
 using AutoMapper;
+using Microsoft.Extensions.Logging.Abstractions;
 using Noo.Api.Core.Utils.AutoMapper;
 
 namespace Noo.UnitTests.Common;
 
 public static class MapperTestUtils
 {
+    public static MapperConfiguration CreateMapperConfig(Action<IMapperConfigurationExpression> configure)
+        => new(configure, NullLoggerFactory.Instance);
+
     public static IMapper CreateAppMapper()
     {
         var profiles = AppDomain.CurrentDomain.GetAssemblies()
@@ -13,7 +17,7 @@ public static class MapperTestUtils
             .Where(t => t.IsClass && !t.IsAbstract && t.GetCustomAttributes(typeof(AutoMapperProfileAttribute), false).Length != 0)
             .ToList();
 
-        var config = new MapperConfiguration(cfg =>
+        var config = CreateMapperConfig(cfg =>
         {
             foreach (var profile in profiles)
             {

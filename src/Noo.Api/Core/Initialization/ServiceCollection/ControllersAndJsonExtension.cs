@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Noo.Api.Core.DataAbstraction.Filters;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
@@ -11,28 +12,34 @@ public static class ControllersAndJsonExtension
     public static void AddNooControllersAndConfigureJson(this IServiceCollection services)
     {
         services
-            .AddControllers()
+            .AddControllers(options => options.Filters.Add<UnitOfWorkFilter>())
             .AddMvcOptions(options =>
             {
-                options.ModelBinderProviders.Insert(0, new HyphenLowerCaseEnumModelBinderProvider());
+                options.ModelBinderProviders.Insert(
+                    0,
+                    new HyphenLowerCaseEnumModelBinderProvider()
+                );
             })
-            .AddJsonOptions(
-                options => options.JsonSerializerOptions.Converters.Add(new HyphenLowerCaseStringEnumConverterFactory())
+            .AddJsonOptions(options =>
+                options.JsonSerializerOptions.Converters.Add(
+                    new HyphenLowerCaseStringEnumConverterFactory()
+                )
             )
-            .ConfigureApiBehaviorOptions(
-                options => options.InvalidModelStateResponseFactory = context =>
+            .ConfigureApiBehaviorOptions(options =>
+                options.InvalidModelStateResponseFactory = context =>
                 {
-                    var errors = context.ModelState
-                        .Where(entry => entry.Value?.Errors.Count > 0)
+                    var errors = context
+                        .ModelState.Where(entry => entry.Value?.Errors.Count > 0)
                         .ToDictionary(
                             kvp => kvp.Key,
-                            kvp => kvp.Value!.Errors.Select(error => error.Exception?.Message ?? error.ErrorMessage).ToArray()
+                            kvp =>
+                                kvp.Value!.Errors.Select(error =>
+                                        error.Exception?.Message ?? error.ErrorMessage
+                                    )
+                                    .ToArray()
                         );
 
-                    var error = new BadRequestException
-                    {
-                        Payload = errors
-                    };
+                    var error = new BadRequestException { Payload = errors };
 
                     var response = new ErrorApiResponseDTO(error.Serialize());
                     return new BadRequestObjectResult(response);

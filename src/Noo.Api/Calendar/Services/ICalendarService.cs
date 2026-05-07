@@ -6,7 +6,11 @@ namespace Noo.Api.Calendar.Services;
 
 public interface ICalendarService
 {
-    public Task<SearchResult<CalendarEventModel>> GetCalendarEventsAsync(Ulid userId, int year, int month);
-    public Task<Ulid> CreateCalendarEventAsync(Ulid userId, CreateCalendarEventDTO dto);
-    public Task DeleteCalendarEventAsync(Ulid userId, Ulid eventId);
+    public Task<SearchResult<CalendarEventModel>> GetCalendarEventsAsync(
+        Ulid userId,
+        int year,
+        int month
+    );
+    public Ulid CreateCalendarEvent(Ulid userId, CreateCalendarEventDTO dto);
+    public void DeleteCalendarEvent(Ulid userId, Ulid eventId);
 }

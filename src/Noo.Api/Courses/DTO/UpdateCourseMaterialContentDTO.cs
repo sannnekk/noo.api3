@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Noo.Api.Core.Request;
 using Noo.Api.Core.Utils.Richtext;
 
 namespace Noo.Api.Courses.DTO;
@@ -11,11 +12,11 @@ public record UpdateCourseMaterialContentDTO
     [JsonPropertyName("pollId")]
     public Ulid? PollId { get; init; }
 
-    [JsonPropertyName("nootubeVideoIds")]
-    public IEnumerable<Ulid>? NooTubeVideoIds { get; init; }
+    [JsonPropertyName("nootubeVideos")]
+    public IDictionary<string, IdReferenceDTO>? NooTubeVideos { get; init; }
 
-    [JsonPropertyName("mediaIds")]
-    public IEnumerable<Ulid>? MediaIds { get; init; }
+    [JsonPropertyName("medias")]
+    public IDictionary<string, IdReferenceDTO>? Medias { get; init; }
 
     [JsonPropertyName("workAssignments")]
     public IDictionary<string, UpdateCourseWorkAssignmentDTO>? WorkAssignments { get; init; }

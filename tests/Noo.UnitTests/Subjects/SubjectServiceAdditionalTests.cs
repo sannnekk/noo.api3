@@ -13,7 +13,7 @@ public class SubjectServiceAdditionalTests
 {
     private static IMapper CreateMapper()
     {
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<SubjectMapperProfile>());
+        var config = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<SubjectMapperProfile>());
         config.AssertConfigurationIsValid();
         return config.CreateMapper();
     }
@@ -27,7 +27,7 @@ public class SubjectServiceAdditionalTests
         var mapper = CreateMapper();
         var repository = new SubjectRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
+        var service = new SubjectService(repository, jsonPatchService, mapper);
         var result = await service.GetSubjectByIdAsync(Ulid.NewUlid());
         Assert.Null(result);
     }
@@ -41,7 +41,7 @@ public class SubjectServiceAdditionalTests
         var mapper = CreateMapper();
         var repository = new SubjectRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
+        var service = new SubjectService(repository, jsonPatchService, mapper);
         var patch = new SystemTextJsonPatch.JsonPatchDocument<SubjectUpdateDTO>();
         patch.Replace(x => x.Name, "New");
         await Assert.ThrowsAsync<NotFoundException>(() => service.UpdateSubjectAsync(Ulid.NewUlid(), patch));
@@ -56,9 +56,10 @@ public class SubjectServiceAdditionalTests
         var mapper = CreateMapper();
         var repository = new SubjectRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
+        var service = new SubjectService(repository, jsonPatchService, mapper);
 
-        var id = await service.CreateSubjectAsync(new SubjectCreationDTO { Name = "Math", Color = "#123456" });
+        var id = service.CreateSubject(new SubjectCreationDTO { Name = "Math", Color = "#123456" });
+        await uow.CommitAsync();
 
         var patch = new SystemTextJsonPatch.JsonPatchDocument<SubjectUpdateDTO>();
         patch.Replace(x => x.Color, "not-a-color"); // invalid regex
@@ -66,17 +67,16 @@ public class SubjectServiceAdditionalTests
     }
 
     [Fact]
-    public async Task Delete_NonExistent_Subject_Throws_Concurrency_In_InMemoryProvider()
+    public void Delete_NonExistent_Subject_Does_Not_Throw()
     {
         var db = Guid.NewGuid().ToString();
         using var context = TestHelpers.CreateInMemoryDb(db);
-        var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
         var repository = new SubjectRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
-        // In EF InMemory provider DeleteById + Commit on non-existent throws DbUpdateConcurrencyException
-        await Assert.ThrowsAsync<Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException>(() => service.DeleteSubjectAsync(Ulid.NewUlid()));
+        var service = new SubjectService(repository, jsonPatchService, mapper);
+        // Without a commit, deleting a non-existent entity is a no-op
+        service.DeleteSubject(Ulid.NewUlid());
     }
 
     [Fact]
@@ -88,12 +88,13 @@ public class SubjectServiceAdditionalTests
         var mapper = CreateMapper();
         var repository = new SubjectRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
+        var service = new SubjectService(repository, jsonPatchService, mapper);
 
         for (int i = 0; i < 15; i++)
         {
-            await service.CreateSubjectAsync(new SubjectCreationDTO { Name = $"Sub{i}", Color = "#123456" });
+            service.CreateSubject(new SubjectCreationDTO { Name = $"Sub{i}", Color = "#123456" });
         }
+        await uow.CommitAsync();
 
         var page1 = await service.GetSubjectsAsync(new SubjectFilter { Page = 1, PerPage = 10 });
         var page2 = await service.GetSubjectsAsync(new SubjectFilter { Page = 2, PerPage = 10 });
@@ -116,11 +117,13 @@ public class SubjectServiceAdditionalTests
         var mapper = CreateMapper();
         var repository = new SubjectRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
-        var id = await service.CreateSubjectAsync(new SubjectCreationDTO { Name = "Physics", Color = "#abcdef" });
+        var service = new SubjectService(repository, jsonPatchService, mapper);
+        var id = service.CreateSubject(new SubjectCreationDTO { Name = "Physics", Color = "#abcdef" });
+        await uow.CommitAsync();
         var before = await service.GetSubjectByIdAsync(id);
         var emptyPatch = new SystemTextJsonPatch.JsonPatchDocument<SubjectUpdateDTO>();
         await service.UpdateSubjectAsync(id, emptyPatch);
+        await uow.CommitAsync();
         var after = await service.GetSubjectByIdAsync(id);
         Assert.Equal(before!.Name, after!.Name);
         Assert.Equal(before.Color, after.Color);

@@ -1,9 +1,10 @@
 using AutoMapper;
+using Noo.Api.Core.Utils.Richtext.Delta;
+using Noo.Api.Subjects.Models;
 using Noo.Api.Works.DTO;
 using Noo.Api.Works.Models;
 using Noo.Api.Works.Types;
-using Noo.Api.Subjects.Models;
-using Noo.Api.Core.Utils.Richtext.Delta;
+using Noo.UnitTests.Common;
 
 namespace Noo.UnitTests.Works;
 
@@ -13,7 +14,7 @@ public class WorkMapperProfileTests
 
     public WorkMapperProfileTests()
     {
-        var config = new MapperConfiguration(cfg =>
+        var config = MapperTestUtils.CreateMapperConfig(cfg =>
         {
             cfg.AddProfile<WorkMapperProfile>();
             cfg.AddProfile<SubjectMapperProfile>();

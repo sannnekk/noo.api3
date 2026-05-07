@@ -1,13 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.Exceptions.Http;
 
 namespace Noo.Api.Core.Exceptions;
 
 public static class ExceptionHelpers
 {
-    public static void ThrowNotFoundIfNull([NotNull] this BaseModel? obj)
+    public static void ThrowNotFoundIfNull([NotNull] this object? obj)
     {
         if (obj == null)
         {
@@ -21,15 +20,17 @@ public static class ExceptionHelpers
             .Where(entry => entry.Value?.Errors.Count > 0)
             .ToDictionary(
                 entry => entry.Key,
-                entry => entry.Value!.Errors.Select(error => error.Exception?.Message ?? error.ErrorMessage).ToArray()
+                entry =>
+                    entry
+                        .Value!.Errors.Select(error =>
+                            error.Exception?.Message ?? error.ErrorMessage
+                        )
+                        .ToArray()
             );
 
         if (errors.Count > 0)
         {
-            throw new BadRequestException()
-            {
-                Payload = errors
-            };
+            throw new BadRequestException() { Payload = errors };
         }
     }
 }

@@ -16,8 +16,6 @@ namespace Noo.Api.Users.Services;
 [RegisterScoped(typeof(IUserService))]
 public class UserService : IUserService
 {
-    private readonly IUnitOfWork _unitOfWork;
-
     private readonly IUserRepository _userRepository;
 
     private readonly IMapper _mapper;
@@ -25,13 +23,11 @@ public class UserService : IUserService
     private readonly IJsonPatchUpdateService _patchUpdateService;
 
     public UserService(
-        IUnitOfWork unitOfWork,
         IUserRepository userRepository,
         IJsonPatchUpdateService patchUpdateService,
         IMapper mapper
     )
     {
-        _unitOfWork = unitOfWork;
         _userRepository = userRepository;
         _patchUpdateService = patchUpdateService;
         _mapper = mapper;
@@ -64,24 +60,21 @@ public class UserService : IUserService
         user.Role = newRole;
 
         _userRepository.Update(user);
-        await _unitOfWork.CommitAsync();
     }
 
-    public async Task<Ulid> CreateUserAsync(UserCreationPayload payload)
+    public Ulid CreateUser(UserCreationPayload payload)
     {
         var model = _mapper.Map<UserModel>(payload);
 
         _userRepository.Add(model);
-        await _unitOfWork.CommitAsync();
 
         return model.Id;
     }
 
-    public async Task DeleteUserAsync(Ulid id)
+    public void DeleteUser(Ulid id)
     {
         // TODO: soft delete instead
         _userRepository.DeleteById(id);
-        await _unitOfWork.CommitAsync();
     }
 
     public Task<UserModel?> GetUserByIdAsync(Ulid id)
@@ -116,8 +109,6 @@ public class UserService : IUserService
         model.ThrowNotFoundIfNull();
 
         _patchUpdateService.ApplyPatch(model, patchUserDto);
-
-        await _unitOfWork.CommitAsync();
     }
 
     public async Task UpdateUserEmailAsync(Ulid id, string newEmail)
@@ -132,7 +123,6 @@ public class UserService : IUserService
         user.Email = newEmail;
 
         _userRepository.Update(user);
-        await _unitOfWork.CommitAsync();
     }
 
     public async Task UpdateUserPasswordAsync(Ulid id, string newPasswordHash)
@@ -147,7 +137,6 @@ public class UserService : IUserService
         user.PasswordHash = newPasswordHash;
 
         _userRepository.Update(user);
-        await _unitOfWork.CommitAsync();
     }
 
     public Task<bool> UserExistsAsync(string? username, string? email)
@@ -177,6 +166,5 @@ public class UserService : IUserService
         user.IsVerified = true;
 
         _userRepository.Update(user);
-        await _unitOfWork.CommitAsync();
     }
 }

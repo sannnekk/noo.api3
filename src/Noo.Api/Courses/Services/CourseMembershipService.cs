@@ -1,4 +1,3 @@
-
 using AutoMapper;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
@@ -14,31 +13,26 @@ namespace Noo.Api.Courses.Services;
 public class CourseMembershipService : ICourseMembershipService
 {
     private readonly ICourseMembershipRepository _courseMembershipRepository;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly ICurrentUser _currentUser;
 
     public CourseMembershipService(
-        IUnitOfWork unitOfWork,
         ICourseMembershipRepository courseMembershipRepository,
         IMapper mapper,
         ICurrentUser currentUser
     )
     {
-        _unitOfWork = unitOfWork;
         _courseMembershipRepository = courseMembershipRepository;
         _mapper = mapper;
         _currentUser = currentUser;
     }
 
-    public async Task<Ulid> CreateMembershipAsync(CreateCourseMembershipDTO dto)
+    public Ulid CreateMembership(CreateCourseMembershipDTO dto)
     {
         var model = _mapper.Map<CourseMembershipModel>(dto);
 
         model.AssignerId = _currentUser.UserId;
         _courseMembershipRepository.Add(model);
-
-        await _unitOfWork.CommitAsync();
 
         return model.Id;
     }
@@ -53,11 +47,14 @@ public class CourseMembershipService : ICourseMembershipService
         return _courseMembershipRepository.GetByIdAsync(membershipId);
     }
 
-    public Task<SearchResult<CourseMembershipModel>> GetMembershipsAsync(CourseMembershipFilter filter)
+    public Task<SearchResult<CourseMembershipModel>> GetMembershipsAsync(
+        CourseMembershipFilter filter
+    )
     {
-        return _courseMembershipRepository.SearchAsync(filter, [
-            new CourseMembershipSpecification(_currentUser.UserRole, _currentUser.UserId)
-        ]);
+        return _courseMembershipRepository.SearchAsync(
+            filter,
+            [new CourseMembershipSpecification(_currentUser.UserRole, _currentUser.UserId)]
+        );
     }
 
     public async Task<bool> HasAccessAsync(Ulid courseId, Ulid userId)
@@ -71,11 +68,11 @@ public class CourseMembershipService : ICourseMembershipService
     {
         var membership = await _courseMembershipRepository.GetByIdAsync(membershipId);
 
-        if (membership == null) return;
+        if (membership == null)
+            return;
 
         membership.IsActive = false;
 
         _courseMembershipRepository.Update(membership);
-        await _unitOfWork.CommitAsync();
     }
 }

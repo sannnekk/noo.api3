@@ -15,7 +15,7 @@ public class WorkServiceTests
 
     private static IMapper CreateMapper()
     {
-        var config = new MapperConfiguration(cfg =>
+        var config = MapperTestUtils.CreateMapperConfig(cfg =>
         {
             cfg.AddProfile<WorkMapperProfile>();
             cfg.AddProfile<Noo.Api.Subjects.Models.SubjectMapperProfile>();
@@ -33,7 +33,7 @@ public class WorkServiceTests
         var mapper = CreateMapper();
         var patchUpdater = new JsonPatchUpdateService(mapper);
         var repository = new WorkRepository(context);
-        var service = new WorkService(uow, repository, mapper, patchUpdater);
+        var service = new WorkService(repository, mapper, patchUpdater);
 
         // Create
         var create = new CreateWorkDTO
@@ -48,7 +48,8 @@ public class WorkServiceTests
             ]
         };
 
-        var id = await service.CreateWorkAsync(create);
+        var id = service.CreateWork(create);
+        await uow.CommitAsync();
         Assert.NotEqual(default, id);
 
         // Get
@@ -66,6 +67,7 @@ public class WorkServiceTests
         var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateWorkDTO>();
         patch.Replace(x => x.Title, "Updated Title");
         await service.UpdateWorkAsync(id, patch);
+        await uow.CommitAsync();
 
         var updated = await service.GetWorkAsync(id);
         Assert.Equal("Updated Title", updated!.Title);
@@ -74,12 +76,13 @@ public class WorkServiceTests
         using var deleteContext = TestHelpers.CreateInMemoryDb(dbName);
         var deleteUow = TestHelpers.CreateUowMock(deleteContext).Object;
         var deleteRepository = new WorkRepository(deleteContext);
-        var deleteService = new WorkService(deleteUow, deleteRepository, mapper, patchUpdater);
-        await deleteService.DeleteWorkAsync(id);
+        var deleteService = new WorkService(deleteRepository, mapper, patchUpdater);
+        deleteService.DeleteWork(id);
+        await deleteUow.CommitAsync();
         using var verifyContext = TestHelpers.CreateInMemoryDb(dbName);
         var verifyUow = TestHelpers.CreateUowMock(verifyContext).Object;
         var verifyRepository = new WorkRepository(verifyContext);
-        var verifyService = new WorkService(verifyUow, verifyRepository, mapper, patchUpdater);
+        var verifyService = new WorkService(verifyRepository, mapper, patchUpdater);
         var afterDelete = await verifyService.GetWorkAsync(id);
         Assert.Null(afterDelete);
     }
@@ -91,7 +94,7 @@ public class WorkServiceTests
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
         var repository = new WorkRepository(context);
-        var service = new WorkService(uow, repository, mapper, new JsonPatchUpdateService(mapper));
+        var service = new WorkService(repository, mapper, new JsonPatchUpdateService(mapper));
 
         var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateWorkDTO>();
         patch.Replace(x => x.Title, "Doesn't matter");
@@ -108,10 +111,10 @@ public class WorkServiceTests
         var mapper = CreateMapper();
         var patchService = new JsonPatchUpdateService(mapper);
         var repository = new WorkRepository(context);
-        var service = new WorkService(uow, repository, mapper, patchService);
+        var service = new WorkService(repository, mapper, patchService);
 
         // Seed a work
-        var id = await service.CreateWorkAsync(new CreateWorkDTO
+        var id = service.CreateWork(new CreateWorkDTO
         {
             Title = "Work",
             Type = WorkType.Test,
@@ -121,6 +124,7 @@ public class WorkServiceTests
                 new CreateWorkTaskDTO { Type = WorkTaskType.Word, Order = 0, MaxScore = 1, Content = DeltaRichText.FromString("abc") }
             ]
         });
+        await uow.CommitAsync();
 
         // Invalid because title length 0 (MinLength(1))
         var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateWorkDTO>();
@@ -137,9 +141,9 @@ public class WorkServiceTests
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
         var repository = new WorkRepository(context);
-        var service = new WorkService(uow, repository, mapper, new JsonPatchUpdateService(mapper));
+        var service = new WorkService(repository, mapper, new JsonPatchUpdateService(mapper));
 
         // Should not throw
-        await service.DeleteWorkAsync(Ulid.NewUlid());
+        service.DeleteWork(Ulid.NewUlid());
     }
 }

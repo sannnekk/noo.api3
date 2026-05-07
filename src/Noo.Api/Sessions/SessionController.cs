@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
 using Noo.Api.Core.Security.Authorization;
-using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Utils.Versioning;
 using Noo.Api.Sessions.DTO;
 using Noo.Api.Sessions.Models;
@@ -33,7 +32,8 @@ public class SessionController : ApiController
     [HttpGet]
     [Authorize(Policy = SessionPolicies.CanGetOwnSessions)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<SessionDTO>>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IEnumerable<SessionDTO>>),
+        StatusCodes.Status200OK,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
@@ -53,23 +53,17 @@ public class SessionController : ApiController
     [HttpDelete]
     [Authorize(Policy = SessionPolicies.CanDeleteOwnSessions)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> DeleteSessionAsync()
+    public IActionResult DeleteSession()
     {
         var userId = User.GetId();
         var sessionId = User.GetSessionId();
 
-        try
-        {
-            await _sessionService.DeleteSessionAsync(sessionId, userId);
-        }
-        catch (NotFoundException)
-        {
-            // If the current session isn't persisted, treat as successful logout.
-        }
+        _sessionService.DeleteCurrentSession(sessionId, userId);
 
         return SendResponse();
     }
@@ -81,15 +75,16 @@ public class SessionController : ApiController
     [HttpDelete("{sessionId}")]
     [Authorize(Policy = SessionPolicies.CanDeleteOwnSessions)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> DeleteSessionAsync([FromRoute] Ulid sessionId)
+    public IActionResult DeleteSession([FromRoute] Ulid sessionId)
     {
         var userId = User.GetId();
-        await _sessionService.DeleteSessionAsync(sessionId, userId);
+        _sessionService.DeleteSession(sessionId, userId);
 
         return SendResponse();
     }

@@ -39,5 +39,6 @@ public class CourseSpecification : Specification<CourseModel>
 
         // Add subject to the query to include related data
         Query.Include(course => course.Subject);
+        Query.Include(course => course.Thumbnail);
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Noo.Api.Auth;
 using Noo.Api.Auth.DTO;
+using Noo.Api.Auth.Models;
 using Noo.Api.Auth.Services;
 using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.Exceptions.Http;
@@ -19,7 +20,7 @@ public class AuthServiceTests
 {
     private sealed class Harness
     {
-        public Mock<IAuthTokenService> Token { get; } = new();
+        public Mock<ITokenService> Token { get; } = new();
         public Mock<IAuthEmailService> Email { get; } = new();
         public Mock<IAuthUrlGenerator> Url { get; } = new();
         public Mock<IUserService> Users { get; } = new();
@@ -34,15 +35,8 @@ public class AuthServiceTests
         }));
         public Mock<ISessionService> Sessions { get; } = new();
         public IHttpContextAccessor Ctx { get; } = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
-        public IOptions<JwtConfig> Jwt { get; } = Options.Create(new JwtConfig
-        {
-            Secret = Convert.ToBase64String(new byte[32]),
-            Issuer = "t",
-            Audience = "t",
-            ExpireDays = 1
-        });
 
-        public AuthService Build() => new(Token.Object, Email.Object, Url.Object, Users.Object, Hash, Jwt, Sessions.Object, Ctx);
+        public AuthService Build() => new(Token.Object, Email.Object, Url.Object, Users.Object, Hash, Sessions.Object, Ctx);
     }
 
     [Fact]
@@ -73,7 +67,7 @@ public class AuthServiceTests
         var h = new Harness();
         h.Users.Setup(s => s.GetUserByUsernameOrEmailAsync(user.Username)).ReturnsAsync(user);
         h.Sessions.Setup(s => s.CreateSessionIfNotExistsAsync(It.IsAny<HttpContext>(), user.Id)).ReturnsAsync(Ulid.NewUlid());
-        h.Token.Setup(t => t.GenerateAccessToken(It.IsAny<AccessTokenPayload>())).Returns("token");
+        h.Token.Setup(t => t.GenerateAccessToken(It.IsAny<AccessTokenPayload>())).Returns(("token", DateTime.UtcNow.AddDays(1)));
         var svc = h.Build();
 
         var resp = await svc.LoginAsync(new LoginDTO
@@ -199,10 +193,12 @@ public class AuthServiceTests
     [Fact]
     public async Task Register_Sends_EmailVerification()
     {
+        var newUserId = Ulid.NewUlid();
         var h = new Harness();
         h.Users.Setup(s => s.UserExistsAsync("jane", "jane@example.com")).ReturnsAsync(false);
-        h.Users.Setup(s => s.CreateUserAsync(It.IsAny<UserCreationPayload>())).ReturnsAsync(Ulid.NewUlid());
-        h.Token.Setup(t => t.GenerateEmailVerificationToken(It.IsAny<Ulid>())).Returns("vtoken");
+        h.Users.Setup(s => s.CreateUser(It.IsAny<UserCreationPayload>())).Returns(newUserId);
+        h.Token.Setup(t => t.CreateToken(It.IsAny<Ulid>(), TokenType.EmailVerification))
+            .Returns(new TokenModel { Token = "vtoken", UserId = newUserId, Type = TokenType.EmailVerification, ExpiresAt = DateTime.UtcNow.AddDays(1) });
         h.Url.Setup(u => u.GenerateEmailVerificationUrl("vtoken")).Returns("/verify/vtoken");
         var sent = 0;
         h.Email.Setup(e => e.SendEmailVerificationEmailAsync("jane@example.com", "Jane", "/verify/vtoken")).Callback(() => sent++).Returns(Task.CompletedTask);
@@ -246,7 +242,8 @@ public class AuthServiceTests
 
         var h = new Harness();
         h.Users.Setup(s => s.GetUserByUsernameOrEmailAsync(user.Email)).ReturnsAsync(user);
-        h.Token.Setup(t => t.GeneratePasswordResetToken(user.Id)).Returns("prtoken");
+        h.Token.Setup(t => t.CreateToken(user.Id, TokenType.PasswordReset))
+            .Returns(new TokenModel { Token = "prtoken", UserId = user.Id, Type = TokenType.PasswordReset, ExpiresAt = DateTime.UtcNow.AddDays(1) });
         h.Url.Setup(u => u.GeneratePasswordResetUrl("prtoken")).Returns("/reset/prtoken");
         var sent = 0;
         h.Email.Setup(e => e.SendForgotPasswordEmailAsync(user.Email, user.Name, "/reset/prtoken")).Callback(() => sent++).Returns(Task.CompletedTask);
@@ -281,9 +278,9 @@ public class AuthServiceTests
         };
 
         var h = new Harness();
-        h.Token.Setup(t => t.ValidatePasswordResetToken("tok")).Returns(user.Id);
+        h.Token.Setup(t => t.ValidateTokenAsync("tok")).ReturnsAsync(((Ulid?)user.Id, (TokenType?)TokenType.PasswordReset, (string?)null));
         h.Users.Setup(s => s.GetUserByIdAsync(user.Id)).ReturnsAsync(user);
-        h.Sessions.Setup(s => s.DeleteAllSessionsAsync(user.Id)).Returns(Task.CompletedTask).Verifiable();
+        h.Sessions.Setup(s => s.DeleteAllSessions(user.Id)).Verifiable();
         h.Users.Setup(s => s.UpdateUserPasswordAsync(user.Id, It.IsAny<string>())).Returns(Task.CompletedTask).Verifiable();
         var svc = h.Build();
 
@@ -319,7 +316,8 @@ public class AuthServiceTests
         var h = new Harness();
         h.Users.Setup(s => s.UserExistsAsync(null, "new@example.com")).ReturnsAsync(false);
         h.Users.Setup(s => s.GetUserByIdAsync(user.Id)).ReturnsAsync(user);
-        h.Token.Setup(t => t.GenerateEmailChangeToken(user.Id, "new@example.com")).Returns("ectoken");
+        h.Token.Setup(t => t.CreateToken(user.Id, TokenType.EmailChange))
+            .Returns(new TokenModel { Token = "ectoken", UserId = user.Id, Type = TokenType.EmailChange, ExpiresAt = DateTime.UtcNow.AddDays(1) });
         h.Url.Setup(u => u.GenerateEmailChangeUrl("ectoken")).Returns("/email-change/ectoken");
         var sent = 0;
         h.Email.Setup(e => e.SendEmailChangeEmailAsync("new@example.com", user.Name, "/email-change/ectoken")).Callback(() => sent++).Returns(Task.CompletedTask);
@@ -355,11 +353,11 @@ public class AuthServiceTests
 
         var h = new Harness();
         h.Users.Setup(s => s.GetUserByIdAsync(user.Id)).ReturnsAsync(user);
-        h.Token.Setup(t => t.ValidateEmailChangeToken("ectok")).Returns("new@example.com");
+        h.Token.Setup(t => t.ValidateTokenAsync("ectok")).ReturnsAsync(((Ulid?)user.Id, (TokenType?)TokenType.EmailChange, (string?)"new@example.com"));
         h.Users.Setup(s => s.UpdateUserEmailAsync(user.Id, "new@example.com")).Returns(Task.CompletedTask).Verifiable();
         var svc = h.Build();
 
-        await svc.ConfirmEmailChangeAsync(user.Id, "ectok");
+        await svc.ConfirmEmailAsync("ectok");
         h.Users.Verify();
     }
 
@@ -369,7 +367,7 @@ public class AuthServiceTests
         var h = new Harness();
         h.Users.Setup(s => s.UserExistsAsync("john", null)).ReturnsAsync(true);
         var svc = h.Build();
-        var free = await svc.CheckUsernameAsync("john");
+        var free = await svc.IsUsernameFreeAsync("john");
         Assert.False(free);
     }
 

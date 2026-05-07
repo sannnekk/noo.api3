@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Noo.Api.Media.Types;
 
 namespace Noo.Api.Media.DTO;
 
@@ -36,14 +37,20 @@ public record MediaDTO
     [JsonPropertyName("order")]
     public int Order { get; set; }
 
-    [JsonPropertyName("reason")]
-    public string? Reason { get; set; }
+    [Required]
+    [JsonPropertyName("category")]
+    public MediaCategory Category { get; set; }
+
+    [Required]
+    [JsonPropertyName("status")]
+    public MediaStatus Status { get; set; }
 
     [JsonPropertyName("entityId")]
     public Ulid? EntityId { get; set; }
 
+    [Required]
     [JsonPropertyName("ownerId")]
-    public Ulid? OwnerId { get; set; }
+    public Ulid OwnerId { get; set; }
 
     [Required]
     [JsonPropertyName("createdAt")]
@@ -51,4 +58,8 @@ public record MediaDTO
 
     [JsonPropertyName("updatedAt")]
     public DateTime? UpdatedAt { get; set; }
+
+    [Required]
+    [JsonPropertyName("url")]
+    public string Url { get; set; } = string.Empty;
 }

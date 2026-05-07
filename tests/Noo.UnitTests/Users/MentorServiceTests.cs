@@ -14,17 +14,19 @@ public class MentorServiceTests
         using var context = TestHelpers.CreateInMemoryDb(dbName);
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mentorAssignmentRepo = new MentorAssignmentRepository(context);
-        var mentorService = new MentorService(uow, mentorAssignmentRepo);
+        var mentorService = new MentorService(mentorAssignmentRepo);
 
         var studentId = Ulid.NewUlid();
         var mentorId = Ulid.NewUlid();
         var subjectId = Ulid.NewUlid();
 
         var assignmentId = await mentorService.AssignMentorAsync(studentId, mentorId, subjectId);
+        await uow.CommitAsync();
         Assert.NotEqual(default, assignmentId);
 
         // Assign again with same triple -> should not create duplicates
         var assignmentId2 = await mentorService.AssignMentorAsync(studentId, mentorId, subjectId);
+        await uow.CommitAsync();
         Assert.Equal(assignmentId, assignmentId2);
 
         var listForStudent = await mentorService.GetMentorAssignmentsAsync(studentId, new MentorAssignmentFilter { Page = 1, PerPage = 10 });
@@ -38,15 +40,16 @@ public class MentorServiceTests
         {
             var unassignUow = TestHelpers.CreateUowMock(unassignCtx).Object;
             var unassignMentorAssignmentRepo = new MentorAssignmentRepository(unassignCtx);
-            var unassignService = new MentorService(unassignUow, unassignMentorAssignmentRepo);
-            await unassignService.UnassignMentorAsync(assignmentId);
+            var unassignService = new MentorService(unassignMentorAssignmentRepo);
+            unassignService.UnassignMentor(assignmentId);
+            await unassignUow.CommitAsync();
         }
 
         using (var verifyCtx = TestHelpers.CreateInMemoryDb(dbName))
         {
             var verifyUow = TestHelpers.CreateUowMock(verifyCtx).Object;
             var verifyMentorAssignmentRepo = new MentorAssignmentRepository(verifyCtx);
-            var verifyService = new MentorService(verifyUow, verifyMentorAssignmentRepo);
+            var verifyService = new MentorService(verifyMentorAssignmentRepo);
             var afterDelete = await verifyService.GetMentorAssignmentsAsync(studentId, new MentorAssignmentFilter { Page = 1, PerPage = 10 });
             Assert.Equal(0, afterDelete.Total);
         }

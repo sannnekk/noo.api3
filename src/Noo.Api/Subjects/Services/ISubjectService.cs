@@ -10,7 +10,7 @@ public interface ISubjectService
 {
     public Task<SubjectModel?> GetSubjectByIdAsync(Ulid id);
     public Task<SearchResult<SubjectModel>> GetSubjectsAsync(SubjectFilter filter);
-    public Task<Ulid> CreateSubjectAsync(SubjectCreationDTO subject);
+    public Ulid CreateSubject(SubjectCreationDTO subject);
     public Task UpdateSubjectAsync(Ulid id, JsonPatchDocument<SubjectUpdateDTO> subject);
-    public Task DeleteSubjectAsync(Ulid id);
+    public void DeleteSubject(Ulid id);
 }

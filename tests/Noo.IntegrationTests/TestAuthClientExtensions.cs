@@ -1,9 +1,9 @@
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
-using Noo.Api.Auth;
-using Noo.Api.Auth.Services;
 using Noo.Api.Core.Config.Env;
+using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
 
 namespace Noo.IntegrationTests;
@@ -49,16 +49,16 @@ public static class TestAuthClientExtensions
     private static string BuildAccessToken(UserRoles role, Ulid? userId)
     {
         var jwtConfig = Jwt.Value;
-        var svc = new AuthTokenService(Options.Create(jwtConfig));
-        var payload = new AccessTokenPayload
-        {
-            UserId = userId ?? Ulid.NewUlid(),
-            UserRole = role,
-            SessionId = Ulid.NewUlid(),
-            ExpiresAt = DateTime.UtcNow.AddDays(jwtConfig.ExpireDays)
-        };
+        var jwtService = new JwtService(Options.Create(jwtConfig));
+        IEnumerable<Claim> claims =
+        [
+            new Claim(ClaimTypes.NameIdentifier, (userId ?? Ulid.NewUlid()).ToString()),
+            new Claim(ClaimTypes.Sid, Ulid.NewUlid().ToString()),
+            new Claim(ClaimTypes.Role, role.ToString()),
+        ];
 
-        return svc.GenerateAccessToken(payload);
+        var (token, _) = jwtService.GenerateToken(claims);
+        return token;
     }
 
     private static JwtConfig LoadJwtConfig()

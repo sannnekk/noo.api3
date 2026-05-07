@@ -19,10 +19,10 @@ public class JsonPatchUpdateService : IJsonPatchUpdateService
     }
 
     /// <summary>
-	/// Applies a JSON Patch document to an entity.
-	/// </summary>
-	/// <exception cref="BadRequestException"></exception>
-    public void ApplyPatch<TEntity, TUpdateDto>(
+    /// Applies a JSON Patch document to an entity and returns the patched DTO.
+    /// </summary>
+    /// <exception cref="BadRequestException"></exception>
+    public TUpdateDto ApplyPatch<TEntity, TUpdateDto>(
         TEntity entity,
         JsonPatchDocument<TUpdateDto> patchDocument
     ) where TEntity : class where TUpdateDto : class
@@ -38,5 +38,7 @@ public class JsonPatchUpdateService : IJsonPatchUpdateService
         modelState.ThrowValidationExceptionIfInvalid();
 
         _mapper.Map(dto, entity);
+
+        return dto;
     }
 }

@@ -20,7 +20,8 @@ public class SubjectController : ApiController
 {
     private readonly ISubjectService _subjectService;
 
-    public SubjectController(ISubjectService subjectService, IMapper mapper) : base(mapper)
+    public SubjectController(ISubjectService subjectService, IMapper mapper)
+        : base(mapper)
     {
         _subjectService = subjectService;
     }
@@ -32,7 +33,8 @@ public class SubjectController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = SubjectPolicies.CanGetSubjects)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<SubjectDTO>>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IEnumerable<SubjectDTO>>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized
     )]
@@ -50,7 +52,8 @@ public class SubjectController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = SubjectPolicies.CanGetSubject)]
     [Produces(
-        typeof(ApiResponseDTO<SubjectDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<SubjectDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -70,14 +73,15 @@ public class SubjectController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = SubjectPolicies.CanCreateSubject)]
     [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status201Created,
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status201Created,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> CreateSubjectAsync([FromBody] SubjectCreationDTO subject)
+    public IActionResult CreateSubject([FromBody] SubjectCreationDTO subject)
     {
-        var id = await _subjectService.CreateSubjectAsync(subject);
+        var id = _subjectService.CreateSubject(subject);
 
         return SendResponse(id);
     }
@@ -89,13 +93,17 @@ public class SubjectController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = SubjectPolicies.CanPatchSubject)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> UpdateSubjectAsync([FromRoute] Ulid subjectId, [FromBody] JsonPatchDocument<SubjectUpdateDTO> subject)
+    public async Task<IActionResult> UpdateSubjectAsync(
+        [FromRoute] Ulid subjectId,
+        [FromBody] JsonPatchDocument<SubjectUpdateDTO> subject
+    )
     {
         await _subjectService.UpdateSubjectAsync(subjectId, subject);
 
@@ -109,15 +117,16 @@ public class SubjectController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = SubjectPolicies.CanDeleteSubject)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> DeleteSubjectAsync([FromRoute] Ulid subjectId)
+    public IActionResult DeleteSubject([FromRoute] Ulid subjectId)
     {
-        await _subjectService.DeleteSubjectAsync(subjectId);
+        _subjectService.DeleteSubject(subjectId);
 
         return SendResponse();
     }

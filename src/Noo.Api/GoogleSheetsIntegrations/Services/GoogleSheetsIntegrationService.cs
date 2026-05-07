@@ -53,6 +53,7 @@ public class GoogleSheetsIntegrationService : IGoogleSheetsIntegrationService
 
     public async Task<Ulid> CreateIntegrationAsync(CreateGoogleSheetsIntegrationDTO request)
     {
+        // TODO: refactor!!!
         var model = _mapper.Map<GoogleSheetsIntegrationModel>(request);
 
         // Build GoogleAuthData. Preference: explicit service-account json string if provided.
@@ -67,34 +68,41 @@ public class GoogleSheetsIntegrationService : IGoogleSheetsIntegrationService
                 throw new BadRequestException("Invalid googleAuthData JSON");
             }
         }
-        else if (request.GoogleCredentials is not null && !string.IsNullOrWhiteSpace(request.GoogleCredentials.Code))
+        else if (
+            request.GoogleCredentials is not null
+            && !string.IsNullOrWhiteSpace(request.GoogleCredentials.Code)
+        )
         {
             // Exchange auth code for tokens
-            var (accessToken, refreshToken) = await _oauthExchange.ExchangeCodeAsync(request.GoogleCredentials.Code);
+            var (accessToken, refreshToken) = await _oauthExchange.ExchangeCodeAsync(
+                request.GoogleCredentials.Code
+            );
             model.GoogleAuthData = new GoogleAuthData
             {
                 AccessToken = accessToken,
-                RefreshToken = refreshToken
+                RefreshToken = refreshToken,
             };
         }
         else
         {
-            throw new BadRequestException("Provide either service account googleAuthData or googleCredentials.code");
+            throw new BadRequestException(
+                "Provide either service account googleAuthData or googleCredentials.code"
+            );
         }
 
         _integrationRepository.Add(model);
-        await _unitOfWork.CommitAsync();
 
         return model.Id;
     }
 
-    public Task DeleteIntegrationAsync(Ulid integrationId)
+    public void DeleteIntegration(Ulid integrationId)
     {
         _integrationRepository.DeleteById(integrationId);
-        return _unitOfWork.CommitAsync();
     }
 
-    public Task<SearchResult<GoogleSheetsIntegrationModel>> GetIntegrationsAsync(GoogleSheetsIntegrationFilter filter)
+    public Task<SearchResult<GoogleSheetsIntegrationModel>> GetIntegrationsAsync(
+        GoogleSheetsIntegrationFilter filter
+    )
     {
         return _integrationRepository.SearchAsync(filter);
     }
@@ -132,12 +140,10 @@ public class GoogleSheetsIntegrationService : IGoogleSheetsIntegrationService
             }
 
             integration.LastRunAt = DateTime.UtcNow;
-            await _unitOfWork.CommitAsync();
         }
         catch (Exception exception)
         {
             integration.LastErrorText = exception.Message ?? "Unknown error";
-            await _unitOfWork.CommitAsync();
 
             throw new GoogleServiceException();
         }

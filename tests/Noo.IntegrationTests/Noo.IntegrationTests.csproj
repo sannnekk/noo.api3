@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-	<None Include="..\..\src\Noo.Api\appsettings.testing.json" CopyToOutputDirectory="Always" />
+	<None Include="..\..\src\Noo.Api\appsettings.Testing.json" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
 </Project>

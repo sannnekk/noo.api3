@@ -1,11 +1,9 @@
 using AutoMapper;
 using Noo.Api.Core.DataAbstraction.Model;
+using Noo.Api.Core.Request;
 using Noo.Api.Core.Utils.AutoMapper;
 using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Types;
-using Noo.Api.Media.Models;
-using Noo.Api.NooTube.Models;
-using Noo.Api.Polls.Models;
 
 namespace Noo.Api.Courses.Models;
 
@@ -28,8 +26,17 @@ public class CourseMapperProfile : Profile
             .AfterMap((_, dest) => ApplyCourseHierarchy(dest));
 
         CreateMap<CourseModel, UpdateCourseDTO>()
-            .ForMember(dest => dest.Chapters, opt => opt.MapFrom((src, _, _, context) =>
-                src.Chapters.MapCollectionToDictionary<CourseChapterModel, UpdateCourseChapterDTO>(context)));
+            .ForMember(
+                dest => dest.Chapters,
+                opt =>
+                    opt.MapFrom(
+                        (src, _, _, context) =>
+                            src.Chapters.MapCollectionToDictionary<
+                                CourseChapterModel,
+                                UpdateCourseChapterDTO
+                            >(context)
+                    )
+            );
 
         CreateMap<UpdateCourseDTO, CourseModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -42,22 +49,31 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Memberships, opt => opt.Ignore())
             .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
             .ForMember(dest => dest.Subject, opt => opt.Ignore())
-            .ForMember(dest => dest.Chapters, opt =>
-            {
-                opt.Condition(src => src.Chapters != null); opt.MapFrom((src, _, _, context) =>
-                src.Chapters.MapDictionaryToCollection<UpdateCourseChapterDTO, CourseChapterModel>(context.Mapper));
-            })
+            .ForMember(
+                dest => dest.Chapters,
+                opt =>
+                {
+                    opt.Condition(src => src.Chapters != null);
+                    opt.MapFrom(
+                        (src, _, _, context) =>
+                            src.Chapters.MapDictionaryToCollection<
+                                UpdateCourseChapterDTO,
+                                CourseChapterModel
+                            >(context.Mapper)
+                    );
+                }
+            )
             .AfterMap((_, dest) => ApplyCourseHierarchy(dest));
 
         CreateMap<CourseModel, CourseDTO>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
             .ForMember(dest => dest.ThumbnailId, opt => opt.MapFrom(src => src.ThumbnailId))
+            .ForMember(dest => dest.Thumbnail, opt => opt.MapFrom(src => src.Thumbnail))
             // TODO: implement
             //.ForMember(dest => dest.MemberCount, opt => opt.MapFrom<CourseMemberCountValueResolver>())
             // TODO: remove
             .ForMember(dest => dest.MemberCount, opt => opt.Ignore())
-            .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
             .MaxDepth(CourseConfig.MaxChapterTreeDepth);
 
         // Chapter
@@ -71,10 +87,28 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.ParentChapterId, opt => opt.Ignore());
 
         CreateMap<CourseChapterModel, UpdateCourseChapterDTO>()
-            .ForMember(dest => dest.SubChapters, opt => opt.MapFrom((src, _, _, context) =>
-                src.SubChapters.MapCollectionToDictionary<CourseChapterModel, UpdateCourseChapterDTO>(context)))
-            .ForMember(dest => dest.Materials, opt => opt.MapFrom((src, _, _, context) =>
-                src.Materials.MapCollectionToDictionary<CourseMaterialModel, UpdateCourseMaterialDTO>(context)));
+            .ForMember(
+                dest => dest.SubChapters,
+                opt =>
+                    opt.MapFrom(
+                        (src, _, _, context) =>
+                            src.SubChapters.MapCollectionToDictionary<
+                                CourseChapterModel,
+                                UpdateCourseChapterDTO
+                            >(context)
+                    )
+            )
+            .ForMember(
+                dest => dest.Materials,
+                opt =>
+                    opt.MapFrom(
+                        (src, _, _, context) =>
+                            src.Materials.MapCollectionToDictionary<
+                                CourseMaterialModel,
+                                UpdateCourseMaterialDTO
+                            >(context)
+                    )
+            );
 
         CreateMap<UpdateCourseChapterDTO, CourseChapterModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -83,18 +117,34 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Course, opt => opt.Ignore())
             .ForMember(dest => dest.CourseId, opt => opt.Ignore())
             .ForMember(dest => dest.ParentChapter, opt => opt.Ignore())
-            .ForMember(dest => dest.SubChapters, opt =>
-            {
-                opt.Condition(src => src.SubChapters != null);
-                opt.MapFrom((src, _, _, context) => src.SubChapters
-                    .MapDictionaryToCollection<UpdateCourseChapterDTO, CourseChapterModel>(context.Mapper));
-            })
-            .ForMember(dest => dest.Materials, opt =>
-            {
-                opt.Condition(src => src.Materials != null);
-                opt.MapFrom((src, _, _, context) => src.Materials
-                    .MapDictionaryToCollection<UpdateCourseMaterialDTO, CourseMaterialModel>(context.Mapper));
-            });
+            .ForMember(
+                dest => dest.SubChapters,
+                opt =>
+                {
+                    opt.Condition(src => src.SubChapters != null);
+                    opt.MapFrom(
+                        (src, _, _, context) =>
+                            src.SubChapters.MapDictionaryToCollection<
+                                UpdateCourseChapterDTO,
+                                CourseChapterModel
+                            >(context.Mapper)
+                    );
+                }
+            )
+            .ForMember(
+                dest => dest.Materials,
+                opt =>
+                {
+                    opt.Condition(src => src.Materials != null);
+                    opt.MapFrom(
+                        (src, _, _, context) =>
+                            src.Materials.MapDictionaryToCollection<
+                                UpdateCourseMaterialDTO,
+                                CourseMaterialModel
+                            >(context.Mapper)
+                    );
+                }
+            );
 
         CreateMap<CourseChapterModel, CourseChapterDTO>()
             .MaxDepth(CourseConfig.MaxChapterTreeDepth);
@@ -123,51 +173,87 @@ public class CourseMapperProfile : Profile
         CreateMap<CourseMaterialModel, CourseMaterialDTO>();
 
         // Course material content
+        // Navigation collections (Medias, NooTubeVideos) and the Poll nav are
+        // resolved in CourseService via IEntityReferenceFactory so EF tracks
+        // them as Unchanged references rather than as new entities. PollId is a
+        // plain FK column and maps automatically.
         CreateMap<CreateCourseMaterialContentDTO, CourseMaterialContentModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Material, opt => opt.Ignore())
-            .ForMember(dest => dest.Poll, opt => opt.MapFrom(src => MapPollStub(src.PollId)))
-            .ForMember(dest => dest.NooTubeVideos, opt => opt.MapFrom(src => MapEntitiesFromIds<NooTubeVideoModel>(src.NooTubeVideoIds)))
-            .ForMember(dest => dest.Medias, opt => opt.MapFrom(src => MapEntitiesFromIds<MediaModel>(src.MediaIds)))
+            .ForMember(dest => dest.Poll, opt => opt.Ignore())
+            .ForMember(dest => dest.NooTubeVideos, opt => opt.Ignore())
+            .ForMember(dest => dest.Medias, opt => opt.Ignore())
             .ForMember(dest => dest.Reactions, opt => opt.Ignore());
 
         CreateMap<CourseMaterialContentModel, UpdateCourseMaterialContentDTO>()
-            .ForMember(dest => dest.NooTubeVideoIds, opt => opt.MapFrom(src => src.NooTubeVideos == null ? null : src.NooTubeVideos.Select(v => v.Id)))
-            .ForMember(dest => dest.MediaIds, opt => opt.MapFrom(src => src.Medias == null ? null : src.Medias.Select(m => m.Id)))
-            .ForMember(dest => dest.WorkAssignments, opt => opt.MapFrom((src, _, _, context) => src.WorkAssignments.MapCollectionToDictionary<CourseWorkAssignmentModel, UpdateCourseWorkAssignmentDTO>(context)));
+            .ForMember(
+                dest => dest.NooTubeVideos,
+                opt => opt.MapFrom(src => MapEntitiesToIdReferenceDictionary(src.NooTubeVideos))
+            )
+            .ForMember(
+                dest => dest.Medias,
+                opt => opt.MapFrom(src => MapEntitiesToIdReferenceDictionary(src.Medias))
+            )
+            .ForMember(
+                dest => dest.WorkAssignments,
+                opt =>
+                    opt.MapFrom(
+                        (src, _, _, context) =>
+                            src.WorkAssignments.MapCollectionToDictionary<
+                                CourseWorkAssignmentModel,
+                                UpdateCourseWorkAssignmentDTO
+                            >(context)
+                    )
+            );
 
         CreateMap<UpdateCourseMaterialContentDTO, CourseMaterialContentModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-            .ForMember(dest => dest.NooTubeVideos, opt => opt.MapFrom(src => MapEntitiesFromIds<NooTubeVideoModel>(src.NooTubeVideoIds)))
-            .ForMember(dest => dest.Medias, opt => opt.MapFrom(src => MapEntitiesFromIds<MediaModel>(src.MediaIds)))
-            .ForMember(dest => dest.Poll, opt => opt.MapFrom(src => MapPollStub(src.PollId)))
+            .ForMember(dest => dest.NooTubeVideos, opt => opt.Ignore())
+            .ForMember(dest => dest.Medias, opt => opt.Ignore())
+            .ForMember(dest => dest.Poll, opt => opt.Ignore())
             .ForMember(dest => dest.Reactions, opt => opt.Ignore())
             .ForMember(dest => dest.Material, opt => opt.Ignore())
-            .ForMember(dest => dest.WorkAssignments, opt => opt.MapFrom((src, _, _, context) => src.WorkAssignments.MapDictionaryToCollection<UpdateCourseWorkAssignmentDTO, CourseWorkAssignmentModel>(context.Mapper)));
+            .ForMember(
+                dest => dest.WorkAssignments,
+                opt =>
+                {
+                    opt.Condition(src => src.WorkAssignments != null);
+                    opt.MapFrom(
+                        (src, _, _, context) =>
+                            src.WorkAssignments.MapDictionaryToCollection<
+                                UpdateCourseWorkAssignmentDTO,
+                                CourseWorkAssignmentModel
+                            >(context.Mapper)
+                    );
+                }
+            );
 
         CreateMap<CourseMaterialContentModel, CourseMaterialContentDTO>();
 
         // Course membership
         CreateMap<CourseMembershipModel, CourseMembershipDTO>()
-                .ForMember(dest => dest.Course, opt => opt.Ignore())
-                .ForMember(dest => dest.Student, opt => opt.Ignore())
-                .ForMember(dest => dest.Assigner, opt => opt.Ignore());
+            .ForMember(dest => dest.Course, opt => opt.Ignore())
+            .ForMember(dest => dest.Student, opt => opt.Ignore())
+            .ForMember(dest => dest.Assigner, opt => opt.Ignore());
 
         CreateMap<CreateCourseMembershipDTO, CourseMembershipModel>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.Assigner, opt => opt.Ignore())
-                .ForMember(dest => dest.Course, opt => opt.Ignore())
-                .ForMember(dest => dest.Student, opt => opt.Ignore())
-                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
-                .ForMember(dest => dest.IsArchived, opt => opt.MapFrom(_ => false))
-                .ForMember(dest => dest.Type, opt => opt.MapFrom(_ => CourseMembershipType.ManualAssigned))
-                .ForMember(dest => dest.AssignerId, opt => opt.Ignore());
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.Assigner, opt => opt.Ignore())
+            .ForMember(dest => dest.Course, opt => opt.Ignore())
+            .ForMember(dest => dest.Student, opt => opt.Ignore())
+            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
+            .ForMember(dest => dest.IsArchived, opt => opt.MapFrom(_ => false))
+            .ForMember(
+                dest => dest.Type,
+                opt => opt.MapFrom(_ => CourseMembershipType.ManualAssigned)
+            )
+            .ForMember(dest => dest.AssignerId, opt => opt.Ignore());
 
         // Course work assignment
         CreateMap<CreateCourseWorkAssignmentDTO, CourseWorkAssignmentModel>()
@@ -176,6 +262,7 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.CourseMaterialContentId, opt => opt.Ignore())
             .ForMember(dest => dest.CourseMaterialContent, opt => opt.Ignore())
+            .ForMember(dest => dest.AssignedWorks, opt => opt.Ignore())
             .ForMember(dest => dest.Work, opt => opt.Ignore());
 
         CreateMap<CourseWorkAssignmentModel, CourseWorkAssignmentDTO>();
@@ -186,6 +273,7 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.CourseMaterialContentId, opt => opt.Ignore())
             .ForMember(dest => dest.CourseMaterialContent, opt => opt.Ignore())
+            .ForMember(dest => dest.AssignedWorks, opt => opt.Ignore())
             .ForMember(dest => dest.Work, opt => opt.Ignore());
 
         CreateMap<CourseWorkAssignmentModel, UpdateCourseWorkAssignmentDTO>();
@@ -200,7 +288,11 @@ public class CourseMapperProfile : Profile
             ApplyChapterHierarchy(course, chapter, null);
     }
 
-    private static void ApplyChapterHierarchy(CourseModel course, CourseChapterModel chapter, CourseChapterModel? parentChapter)
+    private static void ApplyChapterHierarchy(
+        CourseModel course,
+        CourseChapterModel chapter,
+        CourseChapterModel? parentChapter
+    )
     {
         chapter.CourseId = course.Id;
         chapter.ParentChapterId = parentChapter?.Id;
@@ -220,25 +312,18 @@ public class CourseMapperProfile : Profile
             ApplyChapterHierarchy(course, subChapter, chapter);
     }
 
-    private static PollModel? MapPollStub(Ulid? pollId)
+    private static IDictionary<string, IdReferenceDTO>? MapEntitiesToIdReferenceDictionary<TModel>(
+        IEnumerable<TModel>? entities
+    )
+        where TModel : BaseModel
     {
-        if (!pollId.HasValue)
+        if (entities == null)
             return null;
 
-        return new PollModel { Id = pollId.Value };
-    }
-
-    private static ICollection<TModel>? MapEntitiesFromIds<TModel>(IEnumerable<Ulid>? ids)
-        where TModel : BaseModel, new()
-    {
-        if (ids == null)
-            return null;
-
-        var idList = ids as IList<Ulid> ?? ids.ToList();
-
-        if (idList.Count == 0)
-            return [];
-
-        return idList.Select(id => new TModel { Id = id }).ToList();
+        return entities.ToDictionary(
+            entity => entity.Id.ToString(),
+            entity => new IdReferenceDTO { Id = entity.Id },
+            StringComparer.OrdinalIgnoreCase
+        );
     }
 }

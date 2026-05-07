@@ -1,20 +1,18 @@
 using Noo.Api.Auth.DTO;
-using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
-using Noo.Api.Users.Types;
-using Noo.Api.Users.Services;
-using Microsoft.Extensions.Options;
 using Noo.Api.Sessions.Services;
+using Noo.Api.Users.Services;
+using Noo.Api.Users.Types;
 
 namespace Noo.Api.Auth.Services;
 
 [RegisterScoped(typeof(IAuthService))]
 public class AuthService : IAuthService
 {
-    private readonly IAuthTokenService _tokenService;
+    private readonly ITokenService _tokenService;
 
     private readonly IUserService _userService;
 
@@ -26,17 +24,14 @@ public class AuthService : IAuthService
 
     private readonly IHashService _hashService;
 
-    private readonly JwtConfig _jwtConfig;
-
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public AuthService(
-        IAuthTokenService tokenService,
+        ITokenService tokenService,
         IAuthEmailService emailService,
         IAuthUrlGenerator urlGenerator,
         IUserService userService,
         IHashService hashService,
-        IOptions<JwtConfig> jwtConfig,
         ISessionService sessionService,
         IHttpContextAccessor httpContextAccessor
     )
@@ -45,7 +40,6 @@ public class AuthService : IAuthService
         _userService = userService;
         _emailService = emailService;
         _hashService = hashService;
-        _jwtConfig = jwtConfig.Value;
         _urlGenerator = urlGenerator;
         _sessionService = sessionService;
         _httpContextAccessor = httpContextAccessor;
@@ -82,33 +76,29 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("HttpContext is not available.");
         }
 
-        var sessionId = await _sessionService.CreateSessionIfNotExistsAsync(
-            context,
-            user.Id
+        var sessionId = await _sessionService.CreateSessionIfNotExistsAsync(context, user.Id);
+
+        var (token, expiresAt) = _tokenService.GenerateAccessToken(
+            new AccessTokenPayload()
+            {
+                UserId = user.Id,
+                UserRole = user.Role,
+                SessionId = sessionId,
+            }
         );
-
-        var ExpiresAt = DateTime.UtcNow.AddDays(_jwtConfig.ExpireDays);
-
-        var token = _tokenService.GenerateAccessToken(new AccessTokenPayload()
-        {
-            UserId = user.Id,
-            UserRole = user.Role,
-            SessionId = sessionId,
-            ExpiresAt = ExpiresAt
-        });
 
         return new LoginResponseDTO
         {
             AccessToken = token,
-            ExpiresAt = ExpiresAt,
+            ExpiresAt = expiresAt,
             UserInfo = new UserInfoDTO
             {
                 Id = user.Id,
                 Email = user.Email,
                 Name = user.Name,
                 Username = user.Username,
-                Role = user.Role
-            }
+                Role = user.Role,
+            },
         };
     }
 
@@ -123,17 +113,19 @@ public class AuthService : IAuthService
 
         var passwordHash = _hashService.Hash(request.Password);
 
-        var userId = await _userService.CreateUserAsync(new UserCreationPayload
-        {
-            Username = request.Username,
-            Email = request.Email,
-            Name = request.Name,
-            PasswordHash = passwordHash,
-            Role = UserRoles.Student
-        });
+        var userId = _userService.CreateUser(
+            new UserCreationPayload
+            {
+                Username = request.Username,
+                Email = request.Email,
+                Name = request.Name,
+                PasswordHash = passwordHash,
+                Role = UserRoles.Student,
+            }
+        );
 
-        var verificationToken = _tokenService.GenerateEmailVerificationToken(userId);
-        var verificationLink = _urlGenerator.GenerateEmailVerificationUrl(verificationToken);
+        var verificationToken = _tokenService.CreateToken(userId, TokenType.EmailVerification);
+        var verificationLink = _urlGenerator.GenerateEmailVerificationUrl(verificationToken.Token);
 
         await _emailService.SendEmailVerificationEmailAsync(
             request.Email,
@@ -151,17 +143,17 @@ public class AuthService : IAuthService
             throw new NotFoundException();
         }
 
-        var token = _tokenService.GeneratePasswordResetToken(user.Id);
-        var link = _urlGenerator.GeneratePasswordResetUrl(token);
+        var token = _tokenService.CreateToken(user.Id, TokenType.PasswordReset);
+        var link = _urlGenerator.GeneratePasswordResetUrl(token.Token);
 
         await _emailService.SendForgotPasswordEmailAsync(email, user.Name, link);
     }
 
     public async Task ConfirmPasswordResetAsync(string token, string newPassword)
     {
-        var userId = _tokenService.ValidatePasswordResetToken(token);
+        var (userId, tokenType, _) = await _tokenService.ValidateTokenAsync(token);
 
-        if (userId is null)
+        if (userId is null || tokenType != TokenType.PasswordReset)
         {
             throw new UnauthorizedException();
         }
@@ -174,7 +166,8 @@ public class AuthService : IAuthService
         }
 
         await _userService.UpdateUserPasswordAsync(user.Id, _hashService.Hash(newPassword));
-        await _sessionService.DeleteAllSessionsAsync(user.Id);
+        _sessionService.DeleteAllSessions(user.Id);
+        _tokenService.DeleteTokens(user.Id, TokenType.PasswordReset);
     }
 
     public async Task RequestEmailChangeAsync(Ulid userId, string newEmail)
@@ -193,32 +186,47 @@ public class AuthService : IAuthService
             throw new UnauthorizedException();
         }
 
-        var token = _tokenService.GenerateEmailChangeToken(user.Id, newEmail);
-        var link = _urlGenerator.GenerateEmailChangeUrl(token);
+        var token = _tokenService.CreateToken(user.Id, TokenType.EmailChange);
+        var link = _urlGenerator.GenerateEmailChangeUrl(token.Token);
 
         await _emailService.SendEmailChangeEmailAsync(newEmail, user.Name, link);
     }
 
-    public async Task ConfirmEmailChangeAsync(Ulid userId, string token)
+    public async Task ConfirmEmailAsync(string token)
     {
-        var user = await _userService.GetUserByIdAsync(userId);
+        var (userId, tokenType, newEmail) = await _tokenService.ValidateTokenAsync(token);
+
+        if (userId == null || tokenType == null)
+        {
+            throw new UnauthorizedException();
+        }
+
+        var user = await _userService.GetUserByIdAsync(userId.Value);
 
         if (user == null)
         {
             throw new UnauthorizedException();
         }
 
-        var newEmail = _tokenService.ValidateEmailChangeToken(token);
+        if (string.IsNullOrEmpty(newEmail) && tokenType == TokenType.EmailVerification)
+        {
+            // In case of just verification of the email
+            user.IsVerified = true;
+            _tokenService.DeleteTokens(user.Id, TokenType.EmailVerification);
+            return;
+        }
 
-        if (newEmail == null)
+        // in case of email change
+        if (tokenType != TokenType.EmailChange || string.IsNullOrEmpty(newEmail))
         {
             throw new UnauthorizedException();
         }
 
         await _userService.UpdateUserEmailAsync(user.Id, newEmail);
+        _tokenService.DeleteTokens(user.Id, TokenType.EmailChange);
     }
 
-    public async Task<bool> CheckUsernameAsync(string username)
+    public async Task<bool> IsUsernameFreeAsync(string username)
     {
         var usernameIsTaken = await _userService.UserExistsAsync(username, null);
         return !usernameIsTaken;

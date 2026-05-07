@@ -20,7 +20,8 @@ public class SnippetController : ApiController
 {
     private readonly ISnippetService _snippetService;
 
-    public SnippetController(ISnippetService snippetService, IMapper mapper) : base(mapper)
+    public SnippetController(ISnippetService snippetService, IMapper mapper)
+        : base(mapper)
     {
         _snippetService = snippetService;
     }
@@ -32,7 +33,8 @@ public class SnippetController : ApiController
     [HttpGet]
     [Authorize(Policy = SnippetPolicies.CanGetOwnSnippets)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<SnippetDTO>>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IEnumerable<SnippetDTO>>),
+        StatusCodes.Status200OK,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
@@ -51,16 +53,17 @@ public class SnippetController : ApiController
     [HttpPost]
     [Authorize(Policy = SnippetPolicies.CanCreateSnippet)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status409Conflict
     )]
-    public async Task<IActionResult> CreateSnippetAsync([FromBody] CreateSnippetDTO createSnippetDto)
+    public IActionResult CreateSnippet([FromBody] CreateSnippetDTO createSnippetDto)
     {
         var userId = User.GetId();
-        await _snippetService.CreateSnippetAsync(userId, createSnippetDto);
+        _snippetService.CreateSnippet(userId, createSnippetDto);
 
         return SendResponse();
     }
@@ -72,7 +75,8 @@ public class SnippetController : ApiController
     [HttpPatch("{snippetId}")]
     [Authorize(Policy = SnippetPolicies.CanEditSnippet)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -96,7 +100,8 @@ public class SnippetController : ApiController
     [HttpDelete("{snippetId}")]
     [Authorize(Policy = SnippetPolicies.CanDeleteSnippet)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,

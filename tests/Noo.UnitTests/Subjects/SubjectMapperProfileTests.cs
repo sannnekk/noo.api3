@@ -1,6 +1,7 @@
 using AutoMapper;
 using Noo.Api.Subjects.DTO;
 using Noo.Api.Subjects.Models;
+using Noo.UnitTests.Common;
 
 namespace Noo.UnitTests.Subjects;
 
@@ -10,7 +11,7 @@ public class SubjectMapperProfileTests
 
     public SubjectMapperProfileTests()
     {
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<SubjectMapperProfile>());
+        var config = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<SubjectMapperProfile>());
         config.AssertConfigurationIsValid();
         _mapper = config.CreateMapper();
     }

@@ -5,6 +5,7 @@ namespace Noo.Api.AssignedWorks;
 
 public class AssignedWorkPolicies : IPolicyRegistrar
 {
+    public const string CanCreateAssignedWork = nameof(CanCreateAssignedWork);
     public const string CanGetAssignedWorks = nameof(CanGetAssignedWorks);
     public const string CanGetAssignedWork = nameof(CanGetAssignedWork);
     public const string CanGetAssignedWorkProgress = nameof(CanGetAssignedWorkProgress);
@@ -16,7 +17,9 @@ public class AssignedWorkPolicies : IPolicyRegistrar
     public const string CanArchiveAssignedWork = nameof(CanArchiveAssignedWork);
     public const string CanUnarchiveAssignedWork = nameof(CanUnarchiveAssignedWork);
     public const string CanAddHelperMentorToAssignedWork = nameof(CanAddHelperMentorToAssignedWork);
-    public const string CanReplaceMainMentorOfAssignedWork = nameof(CanReplaceMainMentorOfAssignedWork);
+    public const string CanReplaceMainMentorOfAssignedWork = nameof(
+        CanReplaceMainMentorOfAssignedWork
+    );
     public const string CanShiftDeadlineOfAssignedWork = nameof(CanShiftDeadlineOfAssignedWork);
     public const string CanReturnAssignedWorkToSolve = nameof(CanReturnAssignedWorkToSolve);
     public const string CanReturnAssignedWorkToCheck = nameof(CanReturnAssignedWorkToCheck);
@@ -24,12 +27,22 @@ public class AssignedWorkPolicies : IPolicyRegistrar
 
     public void RegisterPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy(CanGetAssignedWorks, policy =>
-        {
-            policy.RequireRole(
-                nameof(UserRoles.Student),
-                nameof(UserRoles.Mentor)
-            ).RequireNotBlocked();
-        });
+        options.AddPolicy(
+            CanCreateAssignedWork,
+            policy =>
+            {
+                policy.RequireRole(nameof(UserRoles.Student)).RequireNotBlocked();
+            }
+        );
+
+        options.AddPolicy(
+            CanGetAssignedWorks,
+            policy =>
+            {
+                policy
+                    .RequireRole(nameof(UserRoles.Student), nameof(UserRoles.Mentor))
+                    .RequireNotBlocked();
+            }
+        );
     }
 }

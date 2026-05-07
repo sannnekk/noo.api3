@@ -6,5 +6,5 @@ public interface IAssignedWorkHistoryService
 {
     public Task<IEnumerable<AssignedWorkStatusHistoryModel>> GetHistoryAsync(Ulid assignedWorkId);
 
-    public Task PushEventAsync(AssignedWorkStatusHistoryModel @event);
+    public void PushEvent(AssignedWorkStatusHistoryModel @event);
 }

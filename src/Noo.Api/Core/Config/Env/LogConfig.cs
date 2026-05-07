@@ -11,6 +11,8 @@ public class LogConfig : IConfig
 
     public LogLevel MinLevel { get; init; } = LogLevel.Information;
 
+    public ConsoleLogDecoration ConsoleDecorations { get; init; } = ConsoleLogDecoration.Color;
+
     public string? TelegramLogToken { get; init; } = null;
 
     public string[] TelegramChatIds { get; init; } = [];

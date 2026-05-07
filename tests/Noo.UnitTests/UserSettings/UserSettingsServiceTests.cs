@@ -12,7 +12,7 @@ public class UserSettingsServiceTests
 {
     private static IMapper CreateMapper()
     {
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<UserSettingsMapperProfile>());
+        var config = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<UserSettingsMapperProfile>());
         config.AssertConfigurationIsValid();
         return config.CreateMapper();
     }
@@ -25,7 +25,7 @@ public class UserSettingsServiceTests
         var mapper = CreateMapper();
         var userSettingsRepo = new UserSettingsRepository(uow.Context);
 
-        var service = new UserSettingsService(uow, mapper, userSettingsRepo);
+        var service = new UserSettingsService(mapper, userSettingsRepo);
         var userId = Ulid.NewUlid();
 
         var settings = await service.GetUserSettingsAsync(userId);
@@ -44,7 +44,7 @@ public class UserSettingsServiceTests
         var uow = TestHelpers.CreateUowMock(context);
         var mapper = CreateMapper();
         var userSettingsRepo = new UserSettingsRepository(uow.Object.Context);
-        var service = new UserSettingsService(uow.Object, mapper, userSettingsRepo);
+        var service = new UserSettingsService(mapper, userSettingsRepo);
 
         var userId = Ulid.NewUlid();
 
@@ -57,6 +57,7 @@ public class UserSettingsServiceTests
             Theme = UserTheme.Dark,
             FontSize = FontSize.Large
         });
+        await uow.Object.CommitAsync();
 
         // Verify persisted values in a fresh context to avoid tracking issues
         using var verifyCtx = TestHelpers.CreateInMemoryDb(dbName);
@@ -73,7 +74,7 @@ public class UserSettingsServiceTests
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
         var userSettingsRepo = new UserSettingsRepository(uow.Context);
-        var service = new UserSettingsService(uow, mapper, userSettingsRepo);
+        var service = new UserSettingsService(mapper, userSettingsRepo);
 
         var userId = Ulid.NewUlid();
         var entity = new UserSettingsModel { Id = Ulid.NewUlid(), UserId = userId, Theme = "Light", FontSize = "Small" };

@@ -26,7 +26,8 @@ public class CourseController : ApiController
         ICourseService courseService,
         ICourseMembershipService courseMembershipService,
         IMapper mapper
-    ) : base(mapper)
+    )
+        : base(mapper)
     {
         _courseService = courseService;
         _courseMembershipService = courseMembershipService;
@@ -39,7 +40,8 @@ public class CourseController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CoursePolicies.CanGetCourse)]
     [Produces(
-        typeof(ApiResponseDTO<CourseDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<CourseDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -59,7 +61,8 @@ public class CourseController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CoursePolicies.CanGetCourse)]
     [Produces(
-        typeof(ApiResponseDTO<CourseMaterialContentDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<CourseMaterialContentDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -79,7 +82,8 @@ public class CourseController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CoursePolicies.CanSearchCourses)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<CourseDTO>>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IEnumerable<CourseDTO>>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
@@ -98,7 +102,8 @@ public class CourseController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CoursePolicies.CanCreateCourse)]
     [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status201Created,
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status201Created,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
@@ -117,14 +122,17 @@ public class CourseController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CoursePolicies.CanEditCourse)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> UpdateCourseAsync([FromRoute] Ulid courseId,
-        [FromBody] JsonPatchDocument<UpdateCourseDTO> courseUpdateDto)
+    public async Task<IActionResult> UpdateCourseAsync(
+        [FromRoute] Ulid courseId,
+        [FromBody] JsonPatchDocument<UpdateCourseDTO> courseUpdateDto
+    )
     {
         await _courseService.UpdateAsync(courseId, courseUpdateDto);
 
@@ -138,7 +146,8 @@ public class CourseController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CoursePolicies.CanDeleteCourse)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
@@ -157,12 +166,15 @@ public class CourseController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CoursePolicies.CanCreateCourse)]
     [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status201Created,
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status201Created,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> CreateCourseMaterialContentAsync([FromBody] CreateCourseMaterialContentDTO dto)
+    public async Task<IActionResult> CreateCourseMaterialContentAsync(
+        [FromBody] CreateCourseMaterialContentDTO dto
+    )
     {
         var id = await _courseService.CreateMaterialContentAsync(dto);
 
@@ -176,12 +188,16 @@ public class CourseController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CoursePolicies.CanEditCourse)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> UpdateCourseMaterialContentAsync([FromRoute] Ulid contentId, [FromBody] JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto)
+    public async Task<IActionResult> UpdateCourseMaterialContentAsync(
+        [FromRoute] Ulid contentId,
+        [FromBody] JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto
+    )
     {
         await _courseService.UpdateContentAsync(contentId, contentUpdateDto);
 
@@ -195,12 +211,15 @@ public class CourseController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CoursePolicies.CanSearchCourseMemberships)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<CourseMembershipDTO>>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IEnumerable<CourseMembershipDTO>>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> GetCourseMembershipsAsync([FromQuery] CourseMembershipFilter filter)
+    public async Task<IActionResult> GetCourseMembershipsAsync(
+        [FromQuery] CourseMembershipFilter filter
+    )
     {
         var result = await _courseMembershipService.GetMembershipsAsync(filter);
 
@@ -214,14 +233,15 @@ public class CourseController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CoursePolicies.CanCreateCourseMembership)]
     [Produces(
-        typeof(ApiResponseDTO<CourseMembershipDTO>), StatusCodes.Status201Created,
+        typeof(ApiResponseDTO<CourseMembershipDTO>),
+        StatusCodes.Status201Created,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> CreateCourseMembershipAsync([FromBody] CreateCourseMembershipDTO dto)
+    public IActionResult CreateCourseMembership([FromBody] CreateCourseMembershipDTO dto)
     {
-        var id = await _courseMembershipService.CreateMembershipAsync(dto);
+        var id = _courseMembershipService.CreateMembership(dto);
 
         return SendResponse(id);
     }
@@ -233,7 +253,8 @@ public class CourseController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = CoursePolicies.CanDeleteCourseMembership)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden

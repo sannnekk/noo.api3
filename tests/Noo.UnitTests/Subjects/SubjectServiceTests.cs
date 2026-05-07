@@ -13,7 +13,7 @@ public class SubjectServiceTests
 
     private static IMapper CreateMapper()
     {
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<SubjectMapperProfile>());
+        var config = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<SubjectMapperProfile>());
         config.AssertConfigurationIsValid();
         return config.CreateMapper();
     }
@@ -27,10 +27,11 @@ public class SubjectServiceTests
         var mapper = CreateMapper();
         var repository = new SubjectRepository(context);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
-        var service = new SubjectService(uow, repository, jsonPatchService, mapper);
+        var service = new SubjectService(repository, jsonPatchService, mapper);
 
         var create = new SubjectCreationDTO { Name = "Biology", Color = "#abcdef" };
-        var id = await service.CreateSubjectAsync(create);
+        var id = service.CreateSubject(create);
+        await uow.CommitAsync();
         Assert.NotEqual(default, id);
 
         var fetched = await service.GetSubjectByIdAsync(id);
@@ -44,6 +45,7 @@ public class SubjectServiceTests
         var patch = new SystemTextJsonPatch.JsonPatchDocument<SubjectUpdateDTO>();
         patch.Replace(x => x.Name, "Biology 2");
         await service.UpdateSubjectAsync(id, patch);
+        await uow.CommitAsync();
 
         var updated = await service.GetSubjectByIdAsync(id);
         Assert.Equal("Biology 2", updated!.Name);
@@ -52,14 +54,15 @@ public class SubjectServiceTests
         var deleteUow = TestHelpers.CreateUowMock(deleteContext).Object;
         var deleteRepository = new SubjectRepository(deleteContext);
         var deleteJsonPatchService = new JsonPatchUpdateService(mapper);
-        var deleteService = new SubjectService(deleteUow, deleteRepository, deleteJsonPatchService, mapper);
-        await deleteService.DeleteSubjectAsync(id);
+        var deleteService = new SubjectService(deleteRepository, deleteJsonPatchService, mapper);
+        deleteService.DeleteSubject(id);
+        await deleteUow.CommitAsync();
 
         using var verifyContext = TestHelpers.CreateInMemoryDb(dbName);
         var verifyUow = TestHelpers.CreateUowMock(verifyContext).Object;
         var verifyRepository = new SubjectRepository(verifyContext);
         var verifyJsonPatchService = new JsonPatchUpdateService(mapper);
-        var verifyService = new SubjectService(verifyUow, verifyRepository, verifyJsonPatchService, mapper);
+        var verifyService = new SubjectService(verifyRepository, verifyJsonPatchService, mapper);
         var afterDelete = await verifyService.GetSubjectByIdAsync(id);
         Assert.Null(afterDelete);
     }

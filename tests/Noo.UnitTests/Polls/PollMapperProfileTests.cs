@@ -1,7 +1,7 @@
-using AutoMapper;
 using Noo.Api.Polls.DTO;
 using Noo.Api.Polls.Models;
 using Noo.Api.Polls.Types;
+using Noo.UnitTests.Common;
 
 namespace Noo.UnitTests.Polls;
 
@@ -10,14 +10,14 @@ public class PollMapperProfileTests
     [Fact]
     public void MapperConfiguration_Is_Valid()
     {
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<Noo.Api.Polls.Models.PollMapperProfile>());
+        var config = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<PollMapperProfile>());
         // config.AssertConfigurationIsValid(); // Commented out for tests
     }
 
     [Fact]
     public void CreatePoll_Maps_To_Model()
     {
-        var mapper = new MapperConfiguration(cfg => cfg.AddProfile<Noo.Api.Polls.Models.PollMapperProfile>()).CreateMapper();
+        var mapper = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<PollMapperProfile>()).CreateMapper();
         var dto = new CreatePollDTO
         {
             Title = "T",

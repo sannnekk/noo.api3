@@ -1,19 +1,30 @@
 using AutoMapper;
 using Moq;
+using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Filters;
 using Noo.Api.Courses.Models;
 using Noo.Api.Courses.Services;
+using Noo.Api.Media.Models;
+using Noo.Api.Media.Services;
 using Noo.Api.Subjects.Models;
 using Noo.UnitTests.Common;
 using SystemTextJsonPatch;
-using Noo.Api.Core.Request.Patching;
 
 namespace Noo.UnitTests.Courses;
 
 public class CourseServiceTests
 {
+    private sealed class NoOpMediaUrlEnricher : IMediaUrlEnricher
+    {
+        public Task EnrichAsync(MediaModel? media, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task EnrichAsync(IEnumerable<MediaModel?>? media, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task EnrichAsync<T>(T? entity, CancellationToken cancellationToken = default) where T : class, IHasPresignedMedia => Task.CompletedTask;
+        public Task EnrichAsync<T>(IEnumerable<T>? entities, CancellationToken cancellationToken = default) where T : class, IHasPresignedMedia => Task.CompletedTask;
+    }
+
     private static IMapper CreateMapper() => MapperTestUtils.CreateAppMapper();
 
     private static ICurrentUser MakeUser(UserRoles role)
@@ -22,18 +33,20 @@ public class CourseServiceTests
         mock.SetupGet(m => m.UserId).Returns(Ulid.NewUlid());
         mock.SetupGet(m => m.UserRole).Returns(role);
         mock.SetupGet(m => m.IsAuthenticated).Returns(true);
-        mock.Setup(m => m.IsInRole(It.IsAny<UserRoles[]>())).Returns<UserRoles[]>(roles => roles.Contains(role));
+        mock.Setup(m => m.IsInRole(It.IsAny<UserRoles[]>()))
+            .Returns<UserRoles[]>(roles => roles.Contains(role));
         return mock.Object;
     }
 
-    private static CreateCourseDTO MakeCreateCourseDto(string name = "C# 101") => new()
-    {
-        Name = name,
-        Description = "intro",
-        SubjectId = Ulid.NewUlid(),
-        StartDate = DateTime.UtcNow.Date,
-        EndDate = DateTime.UtcNow.Date.AddDays(30)
-    };
+    private static CreateCourseDTO MakeCreateCourseDto(string name = "C# 101") =>
+        new()
+        {
+            Name = name,
+            Description = "intro",
+            SubjectId = Ulid.NewUlid(),
+            StartDate = DateTime.UtcNow.Date,
+            EndDate = DateTime.UtcNow.Date.AddDays(30),
+        };
 
     [Fact]
     public async Task Create_And_GetById_Works()
@@ -44,11 +57,7 @@ public class CourseServiceTests
 
         using (var ctx = TestHelpers.CreateInMemoryDb(dbName))
         {
-            var subject = new SubjectModel
-            {
-                Name = "Math",
-                Color = "#ffffff"
-            };
+            var subject = new SubjectModel { Name = "Math", Color = "#ffffff" };
             ctx.GetDbSet<SubjectModel>().Add(subject);
             await ctx.SaveChangesAsync();
             subjectId = subject.Id;
@@ -59,9 +68,18 @@ public class CourseServiceTests
             var currentUser = MakeUser(UserRoles.Admin);
             var mapper = CreateMapper();
             var jsonPatch = new JsonPatchUpdateService(mapper);
-            var service = new CourseService(uow, courseRepo, courseContentRepo, currentUser, mapper, jsonPatch);
+            var service = new CourseService(
+                courseRepo,
+                courseContentRepo,
+                currentUser,
+                mapper,
+                jsonPatch,
+                new NoOpMediaUrlEnricher(),
+                new EntityReferenceFactory(ctx)
+            );
 
             id = await service.CreateAsync(MakeCreateCourseDto() with { SubjectId = subjectId });
+            await uow.CommitAsync();
             Assert.NotEqual(default, id);
         }
 
@@ -72,7 +90,15 @@ public class CourseServiceTests
             var verifyContentRepo = new CourseContentRepository(verifyCtx);
             var mapper = CreateMapper();
             var jsonPatch = new JsonPatchUpdateService(mapper);
-            var verifyService = new CourseService(verifyUow, verifyRepo, verifyContentRepo, MakeUser(UserRoles.Admin), mapper, jsonPatch);
+            var verifyService = new CourseService(
+                verifyRepo,
+                verifyContentRepo,
+                MakeUser(UserRoles.Admin),
+                mapper,
+                jsonPatch,
+                new NoOpMediaUrlEnricher(),
+                new EntityReferenceFactory(verifyCtx)
+            );
 
             var fetched = await verifyService.GetByIdAsync(id, includeInactive: true);
             Assert.NotNull(fetched);
@@ -100,14 +126,34 @@ public class CourseServiceTests
         await uow.CommitAsync();
 
         // Admin sees all
-        var adminService = new CourseService(uow, courseRepo, courseContentRepo, MakeUser(UserRoles.Admin), mapper, jsonPatch);
-        var adminSearch = await adminService.SearchAsync(new CourseFilter { Page = 1, PerPage = 10 });
+        var adminService = new CourseService(
+            courseRepo,
+            courseContentRepo,
+            MakeUser(UserRoles.Admin),
+            mapper,
+            jsonPatch,
+            new NoOpMediaUrlEnricher(),
+            new EntityReferenceFactory(ctx)
+        );
+        var adminSearch = await adminService.SearchAsync(
+            new CourseFilter { Page = 1, PerPage = 10 }
+        );
         Assert.Equal(2, adminSearch.Total);
 
         // Student sees none unless membership exists
         var student = MakeUser(UserRoles.Student);
-        var studentService = new CourseService(uow, courseRepo, courseContentRepo, student, mapper, jsonPatch);
-        var studentSearch = await studentService.SearchAsync(new CourseFilter { Page = 1, PerPage = 10 });
+        var studentService = new CourseService(
+            courseRepo,
+            courseContentRepo,
+            student,
+            mapper,
+            jsonPatch,
+            new NoOpMediaUrlEnricher(),
+            new EntityReferenceFactory(ctx)
+        );
+        var studentSearch = await studentService.SearchAsync(
+            new CourseFilter { Page = 1, PerPage = 10 }
+        );
         Assert.Equal(0, studentSearch.Total);
     }
 
@@ -122,10 +168,20 @@ public class CourseServiceTests
         var currentUser = MakeUser(UserRoles.Admin);
         var mapper = CreateMapper();
         var jsonPatch = new JsonPatchUpdateService(mapper);
-        var service = new CourseService(uow, courseRepo, courseContentRepo, currentUser, mapper, jsonPatch);
+        var service = new CourseService(
+            courseRepo,
+            courseContentRepo,
+            currentUser,
+            mapper,
+            jsonPatch,
+            new NoOpMediaUrlEnricher(),
+            new EntityReferenceFactory(ctx)
+        );
 
         var id = await service.CreateAsync(MakeCreateCourseDto("ToDelete"));
+        await uow.CommitAsync();
         await service.SoftDeleteAsync(id);
+        await uow.CommitAsync();
 
         // Verify in fresh context to avoid tracking illusions
         using var verifyCtx = TestHelpers.CreateInMemoryDb(dbName);
@@ -145,14 +201,23 @@ public class CourseServiceTests
         var currentUser = MakeUser(UserRoles.Admin);
         var mapper = CreateMapper();
         var jsonPatch = new JsonPatchUpdateService(mapper);
-        var service = new CourseService(uow, courseRepo, courseContentRepo, currentUser, mapper, jsonPatch);
+        var service = new CourseService(
+            courseRepo,
+            courseContentRepo,
+            currentUser,
+            mapper,
+            jsonPatch,
+            new NoOpMediaUrlEnricher(),
+            new EntityReferenceFactory(ctx)
+        );
 
         var dto = new CreateCourseMaterialContentDTO
         {
-            Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText()
+            Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText(),
         };
 
         var contentId = await service.CreateMaterialContentAsync(dto);
+        await uow.CommitAsync();
         Assert.NotEqual(default, contentId);
 
         var fetched = await service.GetContentByIdAsync(contentId);
@@ -176,16 +241,26 @@ public class CourseServiceTests
         var currentUser = MakeUser(UserRoles.Admin);
         var mapper = CreateMapper();
         var jsonPatch = new JsonPatchUpdateService(mapper);
-        var service = new CourseService(uow, courseRepo, courseContentRepo, currentUser, mapper, jsonPatch);
+        var service = new CourseService(
+            courseRepo,
+            courseContentRepo,
+            currentUser,
+            mapper,
+            jsonPatch,
+            new NoOpMediaUrlEnricher(),
+            new EntityReferenceFactory(ctx)
+        );
 
         var original = MakeCreateCourseDto("Initial Name");
         newStart = original.StartDate!.Value.AddDays(2);
         newEnd = original.EndDate!.Value.AddDays(5);
         id = await service.CreateAsync(original);
+        await uow.CommitAsync();
 
         var patch = new JsonPatchDocument<UpdateCourseDTO>();
 
-        patch.Replace(x => x.Name, "Updated Name")
+        patch
+            .Replace(x => x.Name, "Updated Name")
             .Replace(x => x.Description, "updated description")
             .Replace(x => x.StartDate, newStart)
             .Replace(x => x.EndDate, newEnd)
@@ -193,6 +268,7 @@ public class CourseServiceTests
             .Replace(x => x.ThumbnailId, newThumb);
 
         await service.UpdateAsync(id, patch);
+        await uow.CommitAsync();
 
         var verifyUow = TestHelpers.CreateUowMock(ctx).Object;
         var course = await verifyUow.Context.GetDbSet<CourseModel>().FindAsync(id);
@@ -222,12 +298,23 @@ public class CourseServiceTests
             var currentUser = MakeUser(UserRoles.Admin);
             var mapper = CreateMapper();
             var jsonPatch = new JsonPatchUpdateService(mapper);
-            var service = new CourseService(uow, courseRepo, courseContentRepo, currentUser, mapper, jsonPatch);
+            var service = new CourseService(
+                courseRepo,
+                courseContentRepo,
+                currentUser,
+                mapper,
+                jsonPatch,
+                new NoOpMediaUrlEnricher(),
+                new EntityReferenceFactory(ctx)
+            );
 
-            contentId = await service.CreateMaterialContentAsync(new CreateCourseMaterialContentDTO
-            {
-                Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText()
-            });
+            contentId = await service.CreateMaterialContentAsync(
+                new CreateCourseMaterialContentDTO
+                {
+                    Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText(),
+                }
+            );
+            await uow.CommitAsync();
 
             var patch = new JsonPatchDocument<UpdateCourseMaterialContentDTO>();
 #pragma warning disable RCS1201 // Use met
@@ -235,12 +322,15 @@ public class CourseServiceTests
 #pragma warning restore RCS1201 // Use method chaining
 
             await service.UpdateContentAsync(contentId, patch);
+            await uow.CommitAsync();
         }
 
         using (var verifyCtx = TestHelpers.CreateInMemoryDb(dbName))
         {
             var verifyUow = TestHelpers.CreateUowMock(verifyCtx).Object;
-            var content = await verifyUow.Context.GetDbSet<CourseMaterialContentModel>().FindAsync(contentId);
+            var content = await verifyUow
+                .Context.GetDbSet<CourseMaterialContentModel>()
+                .FindAsync(contentId);
             Assert.NotNull(content);
             Assert.NotNull(content.Content);
         }

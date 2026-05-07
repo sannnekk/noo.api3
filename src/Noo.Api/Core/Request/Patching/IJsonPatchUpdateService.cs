@@ -7,7 +7,12 @@ namespace Noo.Api.Core.Request.Patching;
 /// </summary>
 public interface IJsonPatchUpdateService
 {
-    public void ApplyPatch<TEntity, TUpdateDto>(
+    /// <summary>
+    /// Applies a JSON Patch document to an entity and returns the patched DTO
+    /// so callers that need the post-patch state (e.g. to resolve relation ids)
+    /// can use it without duplicating the patch flow.
+    /// </summary>
+    public TUpdateDto ApplyPatch<TEntity, TUpdateDto>(
         TEntity entity,
         JsonPatchDocument<TUpdateDto> patchDocument
     ) where TEntity : class where TUpdateDto : class;

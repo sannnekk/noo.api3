@@ -33,14 +33,13 @@ public class AssignedWorkController : ApiController
     [HttpGet]
     [Authorize(Policy = AssignedWorkPolicies.CanGetAssignedWorks)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<AssignedWorkDTO>>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IEnumerable<AssignedWorkDTO>>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> GetAssignedWorksAsync(
-        [FromQuery] AssignedWorkFilter filter
-    )
+    public async Task<IActionResult> GetAssignedWorksAsync([FromQuery] AssignedWorkFilter filter)
     {
         var userId = User.GetId();
 
@@ -64,21 +63,42 @@ public class AssignedWorkController : ApiController
     }
 
     /// <summary>
+    /// Creates an assigned work instance by a work assignment ID.
+    /// This is used when a student starts working on a work
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpPost("{workAssignmentId}")]
+    [Authorize(Policy = AssignedWorkPolicies.CanCreateAssignedWork)]
+    [Produces(
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> CreateAssignedWorkAsync([FromRoute] Ulid workAssignmentId)
+    {
+        var id = await _assignedWorkService.CreateAsync(workAssignmentId);
+
+        return SendResponse(id);
+    }
+
+    /// <summary>
     /// Gets an assigned work by its ID.
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpGet("{assignedWorkId}")]
     [Authorize(Policy = AssignedWorkPolicies.CanGetAssignedWork)]
     [Produces(
-        typeof(ApiResponseDTO<AssignedWorkDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<AssignedWorkDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> GetAssignedWorkAsync(
-        [FromRoute] Ulid assignedWorkId
-    )
+    public async Task<IActionResult> GetAssignedWorkAsync([FromRoute] Ulid assignedWorkId)
     {
         var result = await _assignedWorkService.GetAsync(assignedWorkId);
 
@@ -87,23 +107,26 @@ public class AssignedWorkController : ApiController
 
     /// <summary>
     /// Gets the progress of an assigned work by its ID.
-    /// Used when loading the whole assigned work is not needed
+    /// Used when loading the whole assigned work is not needed.
     /// </summary>
+    /// <remarks>
+    /// It returns an array of progress because there can be multiple AssignedWork's as separate attempts
+    /// for one WorkAssignment.
+    /// </remarks>
     [MapToApiVersion(NooApiVersions.Current)]
-    [HttpGet("{assignedWorkId}/progress")]
+    [HttpGet("{workAssignmentId}/progress")]
     [Authorize(Policy = AssignedWorkPolicies.CanGetAssignedWorkProgress)]
     [Produces(
-        typeof(ApiResponseDTO<AssignedWorkProgressDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IEnumerable<AssignedWorkProgressDTO>>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> GetAssignedWorkProgressAsync(
-        [FromRoute] Ulid assignedWorkId
-    )
+    public async Task<IActionResult> GetAssignedWorkProgressAsync([FromRoute] Ulid workAssignmentId)
     {
-        var result = await _assignedWorkService.GetProgressAsync(assignedWorkId);
+        var result = await _assignedWorkService.GetProgressAsync(workAssignmentId);
 
         return SendResponse(result);
     }
@@ -116,7 +139,8 @@ public class AssignedWorkController : ApiController
     [HttpPost("{assignedWorkId}/remake")]
     [Authorize(Policy = AssignedWorkPolicies.CanRemakeAssignedWork)]
     [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -146,18 +170,19 @@ public class AssignedWorkController : ApiController
     [HttpPost("{assignedWorkId}/save-answer")]
     [Authorize(Policy = AssignedWorkPolicies.CanEditAssignedWork)]
     [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> SaveAnswerAsync(
+    public IActionResult SaveAnswer(
         [FromRoute] Ulid assignedWorkId,
         [FromBody] UpsertAssignedWorkAnswerDTO answer
     )
     {
-        var id = await _assignedWorkService.SaveAnswerAsync(assignedWorkId, answer);
+        var id = _assignedWorkService.SaveAnswer(assignedWorkId, answer);
 
         return SendResponse(id);
     }
@@ -175,18 +200,19 @@ public class AssignedWorkController : ApiController
     [HttpPost("{assignedWorkId}/comment")]
     [Authorize(Policy = AssignedWorkPolicies.CanCommentAssignedWork)]
     [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> CommentAssignedWorkAsync(
+    public IActionResult CommentAssignedWork(
         [FromRoute] Ulid assignedWorkId,
         [FromBody] UpsertAssignedWorkCommentDTO comment
     )
     {
-        var id = await _assignedWorkService.SaveCommentAsync(assignedWorkId, comment);
+        var id = _assignedWorkService.SaveComment(assignedWorkId, comment);
 
         return SendResponse(id);
     }
@@ -198,15 +224,14 @@ public class AssignedWorkController : ApiController
     [HttpPost("{assignedWorkId}/mark-solved")]
     [Authorize(Policy = AssignedWorkPolicies.CanSolveAssignedWork)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> MarkAssignedWorkAsSolvedAsync(
-        [FromRoute] Ulid assignedWorkId
-    )
+    public async Task<IActionResult> MarkAssignedWorkAsSolvedAsync([FromRoute] Ulid assignedWorkId)
     {
         await _assignedWorkService.MarkAsSolvedAsync(assignedWorkId);
 
@@ -220,15 +245,14 @@ public class AssignedWorkController : ApiController
     [HttpPost("{assignedWorkId}/mark-checked")]
     [Authorize(Policy = AssignedWorkPolicies.CanCheckAssignedWork)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> MarkAssignedWorkAsCheckedAsync(
-        [FromRoute] Ulid assignedWorkId
-    )
+    public async Task<IActionResult> MarkAssignedWorkAsCheckedAsync([FromRoute] Ulid assignedWorkId)
     {
         await _assignedWorkService.MarkAsCheckedAsync(assignedWorkId);
 
@@ -246,15 +270,14 @@ public class AssignedWorkController : ApiController
     [HttpPatch("{assignedWorkId}/archive")]
     [Authorize(Policy = AssignedWorkPolicies.CanArchiveAssignedWork)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> ArchiveAssignedWorkAsync(
-        [FromRoute] Ulid assignedWorkId
-    )
+    public async Task<IActionResult> ArchiveAssignedWorkAsync([FromRoute] Ulid assignedWorkId)
     {
         await _assignedWorkService.ArchiveAsync(assignedWorkId);
 
@@ -272,15 +295,14 @@ public class AssignedWorkController : ApiController
     [HttpPatch("{assignedWorkId}/unarchive")]
     [Authorize(Policy = AssignedWorkPolicies.CanUnarchiveAssignedWork)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> UnarchiveAssignedWorkAsync(
-        [FromRoute] Ulid assignedWorkId
-    )
+    public async Task<IActionResult> UnarchiveAssignedWorkAsync([FromRoute] Ulid assignedWorkId)
     {
         await _assignedWorkService.UnarchiveAsync(assignedWorkId);
 
@@ -294,7 +316,8 @@ public class AssignedWorkController : ApiController
     [HttpPatch("{assignedWorkId}/add-helper-mentor")]
     [Authorize(Policy = AssignedWorkPolicies.CanAddHelperMentorToAssignedWork)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -317,7 +340,8 @@ public class AssignedWorkController : ApiController
     [HttpPatch("{assignedWorkId}/replace-main-mentor")]
     [Authorize(Policy = AssignedWorkPolicies.CanReplaceMainMentorOfAssignedWork)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -340,7 +364,8 @@ public class AssignedWorkController : ApiController
     [HttpPatch("{assignedWorkId}/shift-deadline")]
     [Authorize(Policy = AssignedWorkPolicies.CanShiftDeadlineOfAssignedWork)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -364,15 +389,14 @@ public class AssignedWorkController : ApiController
     [HttpPatch("{assignedWorkId}/return-to-solve")]
     [Authorize(Policy = AssignedWorkPolicies.CanReturnAssignedWorkToSolve)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> ReturnAssignedWorkToSolveAsync(
-        [FromRoute] Ulid assignedWorkId
-    )
+    public async Task<IActionResult> ReturnAssignedWorkToSolveAsync([FromRoute] Ulid assignedWorkId)
     {
         await _assignedWorkService.ReturnToSolveAsync(assignedWorkId);
 
@@ -387,15 +411,14 @@ public class AssignedWorkController : ApiController
     [HttpPatch("{assignedWorkId}/return-to-check")]
     [Authorize(Policy = AssignedWorkPolicies.CanReturnAssignedWorkToCheck)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> ReturnAssignedWorkToCheckAsync(
-        [FromRoute] Ulid assignedWorkId
-    )
+    public async Task<IActionResult> ReturnAssignedWorkToCheckAsync([FromRoute] Ulid assignedWorkId)
     {
         await _assignedWorkService.ReturnToCheckAsync(assignedWorkId);
 
@@ -413,15 +436,14 @@ public class AssignedWorkController : ApiController
     [HttpDelete("{assignedWorkId}")]
     [Authorize(Policy = AssignedWorkPolicies.CanDeleteAssignedWork)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status409Conflict
     )]
-    public async Task<IActionResult> DeleteAssignedWorkAsync(
-        [FromRoute] Ulid assignedWorkId
-    )
+    public async Task<IActionResult> DeleteAssignedWorkAsync([FromRoute] Ulid assignedWorkId)
     {
         await _assignedWorkService.DeleteAsync(assignedWorkId);
 

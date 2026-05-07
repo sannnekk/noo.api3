@@ -1,5 +1,6 @@
 using AutoMapper;
 using Noo.Api.Core.Utils.AutoMapper;
+using IConfigurationProvider = AutoMapper.IConfigurationProvider;
 
 namespace Noo.Api.Core.Initialization.ServiceCollection;
 
@@ -9,20 +10,29 @@ public static class AutoMapperExtension
     {
         var profiles = getProfiles();
 
-        var config = new MapperConfiguration(config =>
+        services.AddSingleton<IConfigurationProvider>(sp =>
         {
-            config.AddGlobalIgnore("EntityName");
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
 
-            foreach (var profile in profiles)
+            var config = new MapperConfiguration(cfg =>
             {
-                config.AddProfile(profile);
-            }
+                cfg.AddGlobalIgnore("EntityName");
+
+                foreach (var profile in profiles)
+                {
+                    cfg.AddProfile(profile);
+                }
+            }, loggerFactory);
+
+            config.AssertConfigurationIsValid();
+            return config;
         });
 
-        config.AssertConfigurationIsValid();
-
-        services.AddSingleton(config);
-        services.AddSingleton(_ => config.CreateMapper());
+        services.AddSingleton<IMapper>(sp =>
+        {
+            var config = sp.GetRequiredService<IConfigurationProvider>();
+            return config.CreateMapper();
+        });
     }
 
     private static List<Type> getProfiles()

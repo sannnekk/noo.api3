@@ -2,6 +2,7 @@ using AutoMapper;
 using Noo.Api.UserSettings.DTO;
 using Noo.Api.UserSettings.Models;
 using Noo.Api.UserSettings.Types;
+using Noo.UnitTests.Common;
 
 namespace Noo.UnitTests.UserSettings;
 
@@ -11,7 +12,7 @@ public class UserSettingsMapperProfileTests
 
     public UserSettingsMapperProfileTests()
     {
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<UserSettingsMapperProfile>());
+        var config = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<UserSettingsMapperProfile>());
         config.AssertConfigurationIsValid();
         _mapper = config.CreateMapper();
     }
@@ -61,11 +62,8 @@ public class UserSettingsMapperProfileTests
 
         var mapped = _mapper.Map(update, model);
 
-        // Updated fields mapped from enum -> string
         Assert.Equal("Dark", mapped.Theme);
         Assert.Equal("Large", mapped.FontSize);
-
-        // Ignored fields unchanged
         Assert.Equal(originalId, mapped.Id);
         Assert.Equal(originalUserId, mapped.UserId);
         Assert.Equal(originalCreated, mapped.CreatedAt);

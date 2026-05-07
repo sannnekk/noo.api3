@@ -1,4 +1,5 @@
 using System.Globalization;
+using Noo.Api.Core.Config;
 using Noo.Api.Core.Config.Env;
 
 namespace Noo.Api.Core.Logging;
@@ -27,17 +28,24 @@ public class ConsoleLogger : ILogger
     {
         if (!IsEnabled(logLevel)) return;
 
+        var useColor = _options.ConsoleDecorations.HasFlag(ConsoleLogDecoration.Color);
+        var useEmoji = _options.ConsoleDecorations.HasFlag(ConsoleLogDecoration.Emoji);
         var message = formatter(state, exception);
+        var emojiPrefix = useEmoji ? $"{GetLogLevelEmoji(logLevel)} " : string.Empty;
         var logMessage = $"[{DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)}] " +
                          $"[{logLevel}] " +
-                         $"[{_categoryName}] " +
+                         $"{emojiPrefix}[{_categoryName}] " +
                          $"{message}";
 
         var originalColor = Console.ForegroundColor;
 
         try
         {
-            SetConsoleColor(logLevel);
+            if (useColor)
+            {
+                SetConsoleColor(logLevel);
+            }
+
             Console.WriteLine(logMessage);
 
             if (exception != null)
@@ -47,9 +55,23 @@ public class ConsoleLogger : ILogger
         }
         finally
         {
-            Console.ForegroundColor = originalColor;
+            if (useColor)
+            {
+                Console.ForegroundColor = originalColor;
+            }
         }
     }
+
+    private static string GetLogLevelEmoji(LogLevel logLevel) => logLevel switch
+    {
+        LogLevel.Trace => "🔍",
+        LogLevel.Debug => "🐛",
+        LogLevel.Information => "ℹ️",
+        LogLevel.Warning => "⚠️",
+        LogLevel.Error => "❌",
+        LogLevel.Critical => "🚨",
+        _ => "📝"
+    };
 
     private static void SetConsoleColor(LogLevel logLevel)
     {

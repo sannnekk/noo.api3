@@ -1,7 +1,5 @@
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Moq;
 using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Request.Patching;
@@ -9,6 +7,7 @@ using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Support.DTO;
 using Noo.Api.Support.Models;
 using Noo.Api.Support.Services;
+using Noo.UnitTests.Common;
 
 namespace Noo.UnitTests.Support;
 
@@ -34,24 +33,19 @@ public class SupportServiceTests
 
         var ctx = new NooDbContext(dbConfig, dbOptions);
 
-        var uow = new Mock<IUnitOfWork>();
-        uow.SetupGet(x => x.Context).Returns(ctx);
-        uow.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
-            .Returns<CancellationToken>(_ => ctx.SaveChangesAsync());
-
-        var mapperCfg = new MapperConfiguration(cfg => cfg.AddProfile(new SupportMapperProfile()));
+        var mapperCfg = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile(new SupportMapperProfile()));
         var mapper = mapperCfg.CreateMapper();
 
         var articleRepo = new SupportArticleRepository(ctx);
         var categoryRepo = new SupportCategoryRepository(ctx);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
 
-        var svc = new SupportService(uow.Object, articleRepo, categoryRepo, jsonPatchService, mapper);
+        var svc = new SupportService(articleRepo, categoryRepo, jsonPatchService, mapper);
         return (svc, ctx);
     }
 
     [Fact]
-    public async Task CreateCategoryAsync_CreatesAndReturnsId()
+    public async Task CreateCategory_CreatesAndReturnsId()
     {
         var (svc, ctx) = CreateService();
 
@@ -64,7 +58,7 @@ public class SupportServiceTests
             ParentId = null
         };
 
-        var id = await svc.CreateCategoryAsync(dto);
+        var id = svc.CreateCategory(dto);
 
         var saved = await ctx.GetDbSet<SupportCategoryModel>().FindAsync(id);
         Assert.NotNull(saved);
@@ -76,11 +70,10 @@ public class SupportServiceTests
     }
 
     [Fact]
-    public async Task CreateArticleAsync_CreatesAndReturnsId()
+    public async Task CreateArticle_CreatesAndReturnsId()
     {
         var (svc, ctx) = CreateService();
 
-        // Seed category
         var cat = new SupportCategoryModel { Name = "FAQ", Order = 1, IsActive = true };
         ctx.Add(cat);
         await ctx.SaveChangesAsync();
@@ -94,7 +87,7 @@ public class SupportServiceTests
             CategoryId = cat.Id
         };
 
-        var id = await svc.CreateArticleAsync(dto);
+        var id = svc.CreateArticle(dto);
 
         var saved = await ctx.GetDbSet<SupportArticleModel>().FindAsync(id);
         Assert.NotNull(saved);
@@ -106,29 +99,35 @@ public class SupportServiceTests
     }
 
     [Fact]
-    public async Task DeleteCategoryAsync_RemovesEntity()
+    public async Task DeleteCategory_RemovesEntity()
     {
         var (svc, ctx) = CreateService();
         var cat = new SupportCategoryModel { Name = "Old", Order = 10 };
         ctx.Add(cat);
         await ctx.SaveChangesAsync();
+        // Detach so Repository.DeleteById's "new T { Id = id }" does not conflict with tracking
+        ctx.Entry(cat).State = EntityState.Detached;
 
-        await svc.DeleteCategoryAsync(cat.Id);
+        svc.DeleteCategory(cat.Id);
+        await ctx.SaveChangesAsync();
 
         var exists = await ctx.GetDbSet<SupportCategoryModel>().FindAsync(cat.Id);
         Assert.Null(exists);
     }
 
     [Fact]
-    public async Task DeleteArticleAsync_RemovesEntity()
+    public async Task DeleteArticle_RemovesEntity()
     {
         var (svc, ctx) = CreateService();
         var cat = new SupportCategoryModel { Name = "FAQ", Order = 1 };
         var art = new SupportArticleModel { Title = "TBD", Order = 1, Category = cat, CategoryId = cat.Id };
         ctx.AddRange(cat, art);
         await ctx.SaveChangesAsync();
+        // Detach so Repository.DeleteById's "new T { Id = id }" does not conflict with tracking
+        ctx.Entry(art).State = EntityState.Detached;
 
-        await svc.DeleteArticleAsync(art.Id);
+        svc.DeleteArticle(art.Id);
+        await ctx.SaveChangesAsync();
 
         var exists = await ctx.GetDbSet<SupportArticleModel>().FindAsync(art.Id);
         Assert.Null(exists);

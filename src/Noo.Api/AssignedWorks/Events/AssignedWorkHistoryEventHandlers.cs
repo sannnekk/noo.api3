@@ -5,14 +5,14 @@ using Noo.Api.AssignedWorks.Types;
 
 namespace Noo.Api.AssignedWorks.Events;
 
-public class AssignedWorkHistoryEventHandlers :
-    INotificationHandler<HelperMentorRemovedEvent>,
-    INotificationHandler<HelperMentorAddedEvent>,
-    INotificationHandler<AssignedWorkCheckedEvent>,
-    INotificationHandler<AssignedWorkSolvedEvent>,
-    INotificationHandler<MainMentorChangedEvent>,
-    INotificationHandler<AssignedWorkCheckDeadlineShiftedEvent>,
-    INotificationHandler<AssignedWorkSolveDeadlineShiftedEvent>
+public class AssignedWorkHistoryEventHandlers
+    : INotificationHandler<HelperMentorRemovedEvent>,
+        INotificationHandler<HelperMentorAddedEvent>,
+        INotificationHandler<AssignedWorkCheckedEvent>,
+        INotificationHandler<AssignedWorkSolvedEvent>,
+        INotificationHandler<MainMentorChangedEvent>,
+        INotificationHandler<AssignedWorkCheckDeadlineShiftedEvent>,
+        INotificationHandler<AssignedWorkSolveDeadlineShiftedEvent>
 {
     private readonly IAssignedWorkHistoryRepository _historyRepository;
 
@@ -27,7 +27,7 @@ public class AssignedWorkHistoryEventHandlers :
         {
             AssignedWorkId = @event.AssignedWorkId,
             Type = AssignedWorkStatusHistoryType.HelperMentorRemoved,
-            ChangedAt = DateTime.UtcNow
+            ChangedAt = DateTime.UtcNow,
         };
 
         _historyRepository.Add(historyEntry);
@@ -41,34 +41,40 @@ public class AssignedWorkHistoryEventHandlers :
             AssignedWorkId = @event.AssignedWorkId,
             Type = AssignedWorkStatusHistoryType.Checked,
             ChangedAt = DateTime.UtcNow,
-            ChangedById = @event.CheckedBy
+            ChangedById = @event.CheckedBy,
         };
 
         _historyRepository.Add(historyEntry);
         return Task.CompletedTask;
     }
 
-    public Task Handle(AssignedWorkCheckDeadlineShiftedEvent @event, CancellationToken cancellationToken)
+    public Task Handle(
+        AssignedWorkCheckDeadlineShiftedEvent @event,
+        CancellationToken cancellationToken
+    )
     {
         var historyEntry = new AssignedWorkStatusHistoryModel()
         {
             AssignedWorkId = @event.AssignedWorkId,
             Type = AssignedWorkStatusHistoryType.CheckDeadlineShifted,
             ChangedAt = DateTime.UtcNow,
-            ChangedById = @event.ShiftedById
+            ChangedById = @event.ShiftedById,
         };
 
         _historyRepository.Add(historyEntry);
         return Task.CompletedTask;
     }
 
-    public Task Handle(AssignedWorkSolveDeadlineShiftedEvent @event, CancellationToken cancellationToken)
+    public Task Handle(
+        AssignedWorkSolveDeadlineShiftedEvent @event,
+        CancellationToken cancellationToken
+    )
     {
         var historyEntry = new AssignedWorkStatusHistoryModel()
         {
             AssignedWorkId = @event.AssignedWorkId,
             Type = AssignedWorkStatusHistoryType.SolveDeadlineShifted,
-            ChangedAt = DateTime.UtcNow
+            ChangedAt = DateTime.UtcNow,
         };
 
         _historyRepository.Add(historyEntry);
@@ -84,9 +90,9 @@ public class AssignedWorkHistoryEventHandlers :
             ChangedAt = DateTime.UtcNow,
             Value = new Dictionary<string, string>
             {
-                { "oldMentorId", @event.OldMentorId.ToString() },
-                { "newMentorId", @event.NewMentorId.ToString() }
-            }
+                { "oldMentorId", @event.OldMentorId?.ToString() ?? "-" },
+                { "newMentorId", @event.NewMentorId.ToString() },
+            },
         };
 
         _historyRepository.Add(historyEntry);
@@ -99,7 +105,7 @@ public class AssignedWorkHistoryEventHandlers :
         {
             AssignedWorkId = @event.AssignedWorkId,
             Type = AssignedWorkStatusHistoryType.Solved,
-            ChangedAt = DateTime.UtcNow
+            ChangedAt = DateTime.UtcNow,
         };
 
         _historyRepository.Add(historyEntry);
@@ -115,8 +121,8 @@ public class AssignedWorkHistoryEventHandlers :
             ChangedAt = DateTime.UtcNow,
             Value = new Dictionary<string, string>
             {
-                { "newMentorId", @event.HelperMentorId.ToString() }
-            }
+                { "newMentorId", @event.HelperMentorId.ToString() },
+            },
         };
 
         _historyRepository.Add(historyEntry);

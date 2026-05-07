@@ -10,7 +10,10 @@ public class AssignedWorkHistoryService : IAssignedWorkHistoryService
     private readonly IAssignedWorkHistoryRepository _assignedWorkHistoryRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public AssignedWorkHistoryService(IUnitOfWork unitOfWork, IAssignedWorkHistoryRepository assignedWorkHistoryRepository)
+    public AssignedWorkHistoryService(
+        IUnitOfWork unitOfWork,
+        IAssignedWorkHistoryRepository assignedWorkHistoryRepository
+    )
     {
         _unitOfWork = unitOfWork;
         _assignedWorkHistoryRepository = assignedWorkHistoryRepository;
@@ -21,9 +24,8 @@ public class AssignedWorkHistoryService : IAssignedWorkHistoryService
         return _assignedWorkHistoryRepository.GetHistoryAsync(assignedWorkId);
     }
 
-    public Task PushEventAsync(AssignedWorkStatusHistoryModel @event)
+    public void PushEvent(AssignedWorkStatusHistoryModel @event)
     {
         _assignedWorkHistoryRepository.Add(@event);
-        return _unitOfWork.CommitAsync();
     }
 }

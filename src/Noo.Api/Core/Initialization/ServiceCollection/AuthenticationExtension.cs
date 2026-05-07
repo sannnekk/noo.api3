@@ -8,7 +8,10 @@ namespace Noo.Api.Core.Initialization.ServiceCollection;
 
 public static class AuthenticationExtension
 {
-    public static void AddNooAuthentication(this IServiceCollection services, IConfiguration configuration)
+    public static void AddNooAuthentication(
+        this IServiceCollection services,
+        IConfiguration configuration
+    )
     {
         var appConfig = configuration.GetSection(AppConfig.SectionName).GetOrThrow<AppConfig>();
 
@@ -22,12 +25,20 @@ public static class AuthenticationExtension
         }
     }
 
-    private static void AddBearerAuthentication(IServiceCollection services, IConfiguration configuration)
+    private static void AddBearerAuthentication(
+        IServiceCollection services,
+        IConfiguration configuration
+    )
     {
         var jwtConfig = configuration.GetSection(JwtConfig.SectionName).GetOrThrow<JwtConfig>();
 
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options => options.TokenValidationParameters = GetTokenValidationParameters(jwtConfig));
+        services
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(
+                JwtBearerDefaults.AuthenticationScheme,
+                options =>
+                    options.TokenValidationParameters = GetTokenValidationParameters(jwtConfig)
+            );
     }
 
     private static TokenValidationParameters GetTokenValidationParameters(JwtConfig jwtConfig)
@@ -43,8 +54,7 @@ public static class AuthenticationExtension
             ValidateAudience = true,
             ValidAudience = jwtConfig.Audience,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = jwtConfig.GetSymmetricSecurityKey()
+            IssuerSigningKey = jwtConfig.SymmetricSecurityKey,
         };
     }
-
 }

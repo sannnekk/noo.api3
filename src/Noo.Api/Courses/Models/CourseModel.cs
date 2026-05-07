@@ -5,6 +5,7 @@ using Noo.Api.Core.DataAbstraction;
 using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
 using Noo.Api.Media.Models;
+using Noo.Api.Media.Services;
 using Noo.Api.Subjects.Models;
 using Noo.Api.Users.Models;
 using IndexAttribute = Microsoft.EntityFrameworkCore.IndexAttribute;
@@ -13,7 +14,7 @@ namespace Noo.Api.Courses.Models;
 
 [Model("course")]
 [Index(nameof(Name), IsUnique = false)]
-public class CourseModel : BaseModel, ISoftDeletableModel
+public class CourseModel : BaseModel, ISoftDeletableModel, IHasPresignedMedia
 {
     [Required]
     [Column("name", TypeName = DbDataTypes.Varchar255)]
@@ -64,4 +65,9 @@ public class CourseModel : BaseModel, ISoftDeletableModel
     public SubjectModel? Subject { get; set; }
 
     #endregion
+
+    public IEnumerable<MediaModel?> GetMediaForPresigning()
+    {
+        yield return Thumbnail;
+    }
 }

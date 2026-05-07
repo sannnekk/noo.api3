@@ -20,8 +20,7 @@ public static class ClaimsPrincipalExtensions
     {
         if (user?.Identity?.IsAuthenticated != true)
         {
-            // Return lowest-privilege role for anonymous/malformed principals
-            return UserRoles.Student;
+            return null;
         }
 
         var raw = user.FindFirst(ClaimTypes.Role)?.Value;
@@ -30,6 +29,11 @@ public static class ClaimsPrincipalExtensions
 
     public static Ulid GetSessionId(this ClaimsPrincipal user)
     {
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            return Ulid.Empty;
+        }
+
         var raw = user.FindFirst(ClaimTypes.Sid)?.Value;
         return Ulid.TryParse(raw, out var id) ? id : Ulid.Empty;
     }

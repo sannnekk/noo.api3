@@ -23,6 +23,7 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
         var course = await Context.GetDbSet<CourseModel>()
             .Where(c => c.Id == courseId)
             .Include(c => c.Subject)
+            .Include(c => c.Thumbnail)
             .FirstOrDefaultAsync();
 
         if (course is null)

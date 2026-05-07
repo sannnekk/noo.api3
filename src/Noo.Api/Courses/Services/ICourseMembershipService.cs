@@ -10,7 +10,9 @@ public interface ICourseMembershipService
     public Task<bool> HasAccessAsync(Ulid courseId, Ulid userId);
     public Task<CourseMembershipModel?> GetMembershipAsync(Ulid courseId, Ulid userId);
     public Task<CourseMembershipModel?> GetMembershipByIdAsync(Ulid membershipId);
-    public Task<SearchResult<CourseMembershipModel>> GetMembershipsAsync(CourseMembershipFilter filter);
-    public Task<Ulid> CreateMembershipAsync(CreateCourseMembershipDTO dto);
+    public Task<SearchResult<CourseMembershipModel>> GetMembershipsAsync(
+        CourseMembershipFilter filter
+    );
+    public Ulid CreateMembership(CreateCourseMembershipDTO dto);
     public Task SoftDeleteMembershipAsync(Ulid membershipId);
 }

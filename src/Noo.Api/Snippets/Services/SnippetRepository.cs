@@ -8,13 +8,13 @@ namespace Noo.Api.Snippets.Services;
 [RegisterScoped(typeof(ISnippetRepository))]
 public class SnippetRepository : Repository<SnippetModel>, ISnippetRepository
 {
-    public SnippetRepository(NooDbContext context) : base(context)
-    {
-    }
+    public SnippetRepository(NooDbContext context)
+        : base(context) { }
 
     public Task<SnippetModel?> GetAsync(Ulid snippetId, Ulid userId)
     {
-        return Context.GetDbSet<SnippetModel>()
+        return Context
+            .GetDbSet<SnippetModel>()
             .Where(x => x.Id == snippetId && x.UserId == userId)
             .FirstOrDefaultAsync();
     }

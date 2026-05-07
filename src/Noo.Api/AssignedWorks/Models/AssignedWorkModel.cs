@@ -7,6 +7,7 @@ using Noo.Api.Core.DataAbstraction;
 using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
 using Noo.Api.Core.Utils.Ulid;
+using Noo.Api.Courses.Models;
 using Noo.Api.Users.Models;
 using Noo.Api.Works.Models;
 using Noo.Api.Works.Types;
@@ -30,7 +31,7 @@ public class AssignedWorkModel : BaseModel
 
     [Column("attempt", TypeName = DbDataTypes.TinyIntUnsigned)]
     [Required]
-    public int Attempt { get; set; }
+    public int Attempt { get; set; } = 1;
 
     [Column("solve_status", TypeName = AssignedWorkEnumDbDataTypes.AssignedWorkSolveStatus)]
     [Required]
@@ -98,7 +99,7 @@ public class AssignedWorkModel : BaseModel
 
     [Column("main_mentor_id", TypeName = DbDataTypes.Ulid)]
     [ForeignKey(nameof(MainMentor))]
-    public Ulid MainMentorId { get; set; }
+    public Ulid? MainMentorId { get; set; }
 
     [Column("helper_mentor_id", TypeName = DbDataTypes.Ulid)]
     [ForeignKey(nameof(HelperMentor))]
@@ -107,6 +108,9 @@ public class AssignedWorkModel : BaseModel
     [Column("work_id", TypeName = DbDataTypes.Ulid)]
     [ForeignKey(nameof(Work))]
     public Ulid? WorkId { get; set; }
+
+    [Column("course_work_assignment_id", TypeName = DbDataTypes.Ulid)]
+    public Ulid? CourseWorkAssignmentId { get; set; }
 
     #region Navigation Properties
 
@@ -117,7 +121,10 @@ public class AssignedWorkModel : BaseModel
     public UserModel Student { get; set; } = default!;
 
     [DeleteBehavior(DeleteBehavior.NoAction)]
-    public UserModel MainMentor { get; set; } = default!;
+    public UserModel? MainMentor { get; set; } = default!;
+
+    [DeleteBehavior(DeleteBehavior.SetNull)]
+    public CourseWorkAssignmentModel? CourseWorkAssignment { get; set; }
 
     [DeleteBehavior(DeleteBehavior.SetNull)]
     public UserModel? HelperMentor { get; set; }
@@ -145,6 +152,31 @@ public class AssignedWorkModel : BaseModel
 
     public bool IsRemakeable() => IsChecked() && Type == WorkType.Test;
 
+    public static AssignedWorkModel CreateNew(
+        CourseWorkAssignmentModel workAssignment,
+        Ulid studentId,
+        int maxScore,
+        Ulid? mainMentorId = null,
+        int attempt = 1
+    )
+    {
+        return new AssignedWorkModel
+        {
+            Title = workAssignment.Work?.Title ?? "-",
+            Type = workAssignment.Work?.Type ?? WorkType.Test,
+            StudentId = studentId,
+            MainMentorId = mainMentorId,
+            WorkId = workAssignment.WorkId,
+            CourseWorkAssignmentId = workAssignment.Id,
+            SolveDeadlineAt = workAssignment.SolveDeadlineAt,
+            CheckDeadlineAt = workAssignment.CheckDeadlineAt,
+            SolveStatus = AssignedWorkSolveStatus.NotSolved,
+            CheckStatus = AssignedWorkCheckStatus.NotChecked,
+            MaxScore = maxScore,
+            Attempt = attempt,
+        };
+    }
+
     public AssignedWorkModel NewAttemptCopy()
     {
         return new AssignedWorkModel
@@ -153,7 +185,7 @@ public class AssignedWorkModel : BaseModel
             Title = $"[Пересдача] {Title}",
             Attempt = Attempt + 1,
             StudentId = StudentId,
-            ExcludedTaskIds = ExcludedTaskIds
+            ExcludedTaskIds = ExcludedTaskIds,
         };
     }
 }

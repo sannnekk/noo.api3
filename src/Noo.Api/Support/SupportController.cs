@@ -19,7 +19,8 @@ public class SupportController : ApiController
 {
     private readonly ISupportService _supportService;
 
-    public SupportController(ISupportService supportService, IMapper mapper) : base(mapper)
+    public SupportController(ISupportService supportService, IMapper mapper)
+        : base(mapper)
     {
         _supportService = supportService;
     }
@@ -30,13 +31,13 @@ public class SupportController : ApiController
     [HttpGet]
     [MapToApiVersion(NooApiVersions.Current)]
     [AllowAnonymous]
-    [Produces(
-        typeof(ApiResponseDTO<IEnumerable<SupportCategoryDTO>>), StatusCodes.Status200OK
-    )]
+    [Produces(typeof(ApiResponseDTO<IEnumerable<SupportCategoryDTO>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTreeAsync()
     {
         var response = await _supportService.GetCategoryTreeAsync();
-        return SendResponse<IEnumerable<SupportCategoryModel>, IEnumerable<SupportCategoryDTO>>(response);
+        return SendResponse<IEnumerable<SupportCategoryModel>, IEnumerable<SupportCategoryDTO>>(
+            response
+        );
     }
 
     /// <summary>
@@ -46,7 +47,8 @@ public class SupportController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [AllowAnonymous]
     [Produces(
-        typeof(ApiResponseDTO<SupportArticleDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<SupportArticleDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status404NotFound
     )]
     public async Task<IActionResult> GetArticleAsync([FromRoute] Ulid articleId)
@@ -63,14 +65,15 @@ public class SupportController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = SupportPolicies.CanCreateArticle)]
     [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status201Created,
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status201Created,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> CreateArticleAsync([FromBody] CreateSupportArticleDTO request)
+    public IActionResult CreateArticle([FromBody] CreateSupportArticleDTO request)
     {
-        var id = await _supportService.CreateArticleAsync(request);
+        var id = _supportService.CreateArticle(request);
 
         return SendResponse(id);
     }
@@ -82,13 +85,17 @@ public class SupportController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = SupportPolicies.CanUpdateArticle)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> UpdateArticleAsync([FromRoute] Ulid articleId, [FromBody] JsonPatchDocument<UpdateSupportArticleDTO> request)
+    public async Task<IActionResult> UpdateArticleAsync(
+        [FromRoute] Ulid articleId,
+        [FromBody] JsonPatchDocument<UpdateSupportArticleDTO> request
+    )
     {
         await _supportService.UpdateArticleAsync(articleId, request);
 
@@ -102,13 +109,14 @@ public class SupportController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = SupportPolicies.CanDeleteArticle)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> DeleteArticleAsync([FromRoute] Ulid articleId)
+    public IActionResult DeleteArticle([FromRoute] Ulid articleId)
     {
-        await _supportService.DeleteArticleAsync(articleId);
+        _supportService.DeleteArticle(articleId);
 
         return SendResponse();
     }
@@ -120,14 +128,15 @@ public class SupportController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = SupportPolicies.CanCreateCategory)]
     [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>), StatusCodes.Status201Created,
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status201Created,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> CreateCategoryAsync([FromBody] CreateSupportCategoryDTO request)
+    public IActionResult CreateCategory([FromBody] CreateSupportCategoryDTO request)
     {
-        var id = await _supportService.CreateCategoryAsync(request);
+        var id = _supportService.CreateCategory(request);
 
         return SendResponse(id);
     }
@@ -139,13 +148,17 @@ public class SupportController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = SupportPolicies.CanUpdateCategory)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> UpdateCategoryAsync([FromRoute] Ulid categoryId, [FromBody] JsonPatchDocument<UpdateSupportCategoryDTO> request)
+    public async Task<IActionResult> UpdateCategoryAsync(
+        [FromRoute] Ulid categoryId,
+        [FromBody] JsonPatchDocument<UpdateSupportCategoryDTO> request
+    )
     {
         await _supportService.UpdateCategoryAsync(categoryId, request);
 
@@ -159,13 +172,14 @@ public class SupportController : ApiController
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = SupportPolicies.CanDeleteCategory)]
     [Produces(
-        null, StatusCodes.Status204NoContent,
+        null,
+        StatusCodes.Status204NoContent,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> DeleteCategoryAsync([FromRoute] Ulid categoryId)
+    public IActionResult DeleteCategory([FromRoute] Ulid categoryId)
     {
-        await _supportService.DeleteCategoryAsync(categoryId);
+        _supportService.DeleteCategory(categoryId);
 
         return SendResponse();
     }

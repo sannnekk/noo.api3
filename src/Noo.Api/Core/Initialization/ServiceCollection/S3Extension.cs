@@ -1,4 +1,3 @@
-using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using Microsoft.Extensions.Options;
@@ -17,7 +16,9 @@ public static class S3Extension
             var credentials = new BasicAWSCredentials(options.AccessKey, options.SecretKey);
             var config = new AmazonS3Config
             {
-                RegionEndpoint = RegionEndpoint.GetBySystemName(options.Region)
+                ServiceURL = options.ServiceUrl,
+                ForcePathStyle = options.ForcePathStyle,
+                AuthenticationRegion = options.Region,
             };
             return new AmazonS3Client(credentials, config);
         });

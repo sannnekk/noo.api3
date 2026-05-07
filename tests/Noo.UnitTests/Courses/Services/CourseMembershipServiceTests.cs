@@ -30,15 +30,16 @@ public class CourseMembershipServiceTests
         var mapper = CreateMapper();
         var current = MakeUser(UserRoles.Admin);
         var courseMembershipRepo = new CourseMembershipRepository(ctx);
-        var service = new CourseMembershipService(uow, courseMembershipRepo, mapper, current);
+        var service = new CourseMembershipService(courseMembershipRepo, mapper, current);
 
         var courseId = Ulid.NewUlid();
         var studentId = Ulid.NewUlid();
-        var id = await service.CreateMembershipAsync(new CreateCourseMembershipDTO
+        var id = service.CreateMembership(new CreateCourseMembershipDTO
         {
             CourseId = courseId,
             StudentId = studentId
         });
+        await uow.CommitAsync();
         Assert.NotEqual(default, id);
 
         var fetched = await service.GetMembershipByIdAsync(id);
@@ -53,6 +54,7 @@ public class CourseMembershipServiceTests
         Assert.True(await service.HasAccessAsync(courseId, studentId));
 
         await service.SoftDeleteMembershipAsync(id);
+        await uow.CommitAsync();
         var after = await service.GetMembershipByIdAsync(id);
         Assert.False(after!.IsActive);
     }
