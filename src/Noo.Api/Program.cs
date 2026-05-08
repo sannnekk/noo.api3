@@ -55,12 +55,17 @@ app.UseSessionActivity();
 app.MapControllers();
 app.MapHealthAllChecks();
 
-// Ensure database is created when running tests
-if (app.Environment.IsEnvironment("Testing"))
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<NooDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    if (app.Environment.IsEnvironment("Testing"))
+    {
+        await db.Database.EnsureCreatedAsync();
+    }
+    else
+    {
+        await db.Database.MigrateAsync();
+    }
 }
 
 await app.RunAsync();
