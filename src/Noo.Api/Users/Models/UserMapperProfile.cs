@@ -41,9 +41,6 @@ public class UserMapperProfile : Profile
 
 
         // mentor assignment
-        CreateMap<MentorAssignmentModel, MentorAssignmentDTO>()
-            .ForMember(d => d.Student, opt => opt.Ignore())
-            .ForMember(d => d.Mentor, opt => opt.Ignore())
-            .ForMember(d => d.Subject, opt => opt.Ignore());
+        CreateMap<MentorAssignmentModel, MentorAssignmentDTO>();
     }
 }

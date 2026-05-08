@@ -2,6 +2,7 @@ using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Users.Filters;
 using Noo.Api.Users.Models;
+using Noo.Api.Users.QuerySpecifications;
 
 namespace Noo.Api.Users.Services;
 
@@ -50,7 +51,9 @@ public class MentorService : IMentorService
     {
         filter.StudentId = studentId;
 
-        return _mentorAssignmentRepository.SearchAsync(filter);
+        var specification = new StudentMentorAssignmentSpecification(studentId);
+
+        return _mentorAssignmentRepository.SearchAsync(filter, [specification]);
     }
 
     public Task<SearchResult<MentorAssignmentModel>> GetStudentAssignmentsAsync(
@@ -60,6 +63,8 @@ public class MentorService : IMentorService
     {
         filter.MentorId = mentorId;
 
-        return _mentorAssignmentRepository.SearchAsync(filter);
+        var specification = new MentorAssignmentSpecification(mentorId);
+
+        return _mentorAssignmentRepository.SearchAsync(filter, [specification]);
     }
 }

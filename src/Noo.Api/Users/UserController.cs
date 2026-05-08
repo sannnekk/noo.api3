@@ -274,7 +274,7 @@ public class UserController : ApiController
     /// <summary>
     /// Unassigns a mentor from a student.
     /// </summary>
-    [HttpPatch("{studentId}/unassign-mentor")]
+    [HttpPatch("{assignmentId}/unassign-mentor")]
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanAssignMentor)]
     [Produces(
@@ -285,9 +285,9 @@ public class UserController : ApiController
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public IActionResult UnassignMentor([FromRoute] Ulid studentId)
+    public IActionResult UnassignMentor([FromRoute] Ulid assignmentId)
     {
-        _mentorService.UnassignMentor(studentId);
+        _mentorService.UnassignMentor(assignmentId);
 
         return SendResponse();
     }
