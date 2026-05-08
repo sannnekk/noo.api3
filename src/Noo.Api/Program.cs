@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.Initialization.App;
 using Noo.Api.Core.Initialization.ServiceCollection;
 using Noo.Api.Core.Initialization.WebHostBuilder;
