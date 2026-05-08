@@ -19,6 +19,7 @@ builder.Services.AddNooAuthentication(builder.Configuration);
 builder.Services.AddNooAuthorization();
 builder.Services.AddNooSwagger(builder.Configuration);
 builder.Services.AddLogger(builder.Configuration);
+builder.Services.AddNooOpenTelemetry(builder.Configuration);
 builder.Services.RegisterDependencies();
 builder.Services.AddNooControllersAndConfigureJson();
 builder.Services.AddHttpContextAccessor();

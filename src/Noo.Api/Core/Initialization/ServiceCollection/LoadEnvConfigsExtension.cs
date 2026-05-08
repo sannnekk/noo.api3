@@ -22,6 +22,7 @@ public static class LoadEnvConfigsExtension
         AddConfig<S3Config>(services, configuration, S3Config.SectionName);
         AddConfig<HttpClientResilienceConfig>(services, configuration, HttpClientResilienceConfig.SectionName);
         AddConfig<RateLimitingConfig>(services, configuration, RateLimitingConfig.SectionName);
+        AddConfig<OpenTelemetryConfig>(services, configuration, OpenTelemetryConfig.SectionName);
 
         AddModuleConfigs(services, configuration);
     }

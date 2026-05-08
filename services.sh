@@ -6,6 +6,7 @@ Brings up everything the API expects on localhost:
   • MySQL          (verified, not started — should be a system service)
   • Mailpit        (SMTP :1025, web UI :8025)
   • MinIO          (S3-compatible, API :9000, console :9001)
+  • Aspire Dash    (OpenTelemetry UI :18888, OTLP/gRPC :4317, OTLP/HTTP :4318)
 
 S3 credentials and bucket name are read from
 src/Noo.Api/appsettings.Development.json so the script stays in sync
@@ -15,6 +16,7 @@ Usage:
     ./services.sh             # run in foreground, Ctrl+C stops everything
     ./services.sh --no-minio  # skip MinIO
     ./services.sh --no-mail   # skip mailpit
+    ./services.sh --no-otel   # skip Aspire Dashboard
 
 Requires Python 3.10+, curl. Pure stdlib otherwise.
 """
@@ -50,8 +52,14 @@ MINIO_API_PORT = 9000
 MINIO_CONSOLE_PORT = 9001
 MYSQL_PORT = 3306
 
+ASPIRE_DASHBOARD_UI_PORT = 18888
+ASPIRE_OTLP_GRPC_PORT = 4317
+ASPIRE_OTLP_HTTP_PORT = 4318
+ASPIRE_BIN_FALLBACK = Path.home() / ".aspire" / "bin"
+
 MINIO_DOWNLOAD = "https://dl.min.io/server/minio/release/linux-amd64/minio"
 MC_DOWNLOAD = "https://dl.min.io/client/mc/release/linux-amd64/mc"
+ASPIRE_INSTALL_URL = "https://aspire.dev/install.sh"
 
 # ─── pretty output ───────────────────────────────────────────────────────────
 
@@ -295,6 +303,34 @@ def ensure_mc() -> str:
     download(MC_DOWNLOAD, LOCAL_BIN / "mc")
     return str(LOCAL_BIN / "mc")
 
+def find_aspire() -> Optional[str]:
+    if path := which("aspire"):
+        return path
+    candidate = ASPIRE_BIN_FALLBACK / "aspire"
+    if candidate.exists() and os.access(candidate, os.X_OK):
+        return str(candidate)
+    return None
+
+def ensure_aspire_cli() -> str:
+    if path := find_aspire():
+        return path
+    warn("aspire CLI not installed — running official installer")
+    info(f"installer: {ASPIRE_INSTALL_URL}")
+    rc = subprocess.run(
+        f"curl -sSL {ASPIRE_INSTALL_URL} | bash",
+        shell=True,
+        check=False,
+    )
+    if rc.returncode != 0:
+        fail("aspire CLI installer failed")
+        sys.exit(1)
+    if path := find_aspire():
+        ok(f"aspire installed → {path}")
+        return path
+    fail(f"aspire CLI installed but not found in PATH or {ASPIRE_BIN_FALLBACK}")
+    fail("Open a new shell so the installer's PATH update takes effect, or rerun.")
+    sys.exit(1)
+
 # ─── service starters ────────────────────────────────────────────────────────
 
 def start_mailpit() -> None:
@@ -341,6 +377,30 @@ def start_minio(s3: dict) -> None:
     ok(f"S3 API on :{MINIO_API_PORT}  •  console: http://localhost:{MINIO_CONSOLE_PORT}")
     ensure_bucket(mc_path, s3)
 
+def start_aspire_dashboard() -> None:
+    banner("Aspire Dashboard (OpenTelemetry)")
+    if port_open("127.0.0.1", ASPIRE_DASHBOARD_UI_PORT):
+        ok(f"already running on :{ASPIRE_DASHBOARD_UI_PORT}")
+        return
+    if port_open("127.0.0.1", ASPIRE_OTLP_GRPC_PORT):
+        warn(f"port {ASPIRE_OTLP_GRPC_PORT} is in use — skipping Aspire Dashboard")
+        return
+    bin_path = ensure_aspire_cli()
+    spawn(
+        "aspire",
+        C.CYAN,
+        [bin_path, "dashboard", "run", "--allow-anonymous"],
+        env={"ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true"},
+    )
+    if wait_for_port("127.0.0.1", ASPIRE_DASHBOARD_UI_PORT, timeout=30):
+        ok(
+            f"UI: http://localhost:{ASPIRE_DASHBOARD_UI_PORT}  "
+            f"•  OTLP/gRPC :{ASPIRE_OTLP_GRPC_PORT}  "
+            f"•  OTLP/HTTP :{ASPIRE_OTLP_HTTP_PORT}"
+        )
+    else:
+        warn(f"aspire dashboard didn't open :{ASPIRE_DASHBOARD_UI_PORT} within 30s — check the log above")
+
 def ensure_bucket(mc_path: str, s3: dict) -> None:
     alias = "noo-local"
     bucket = s3["BucketName"]
@@ -377,6 +437,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Start local dev services for noo-api.")
     ap.add_argument("--no-minio", action="store_true", help="skip MinIO")
     ap.add_argument("--no-mail", action="store_true", help="skip mailpit")
+    ap.add_argument("--no-otel", action="store_true", help="skip Aspire Dashboard")
     args = ap.parse_args()
 
     s3 = load_s3_config()
@@ -395,6 +456,8 @@ def main() -> int:
         start_mailpit()
     if not args.no_minio:
         start_minio(s3)
+    if not args.no_otel:
+        start_aspire_dashboard()
 
     if not SERVICES:
         warn("no services started")

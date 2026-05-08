@@ -161,6 +161,16 @@ The configuration is done in the `appsettings.json` file. An example (all possib
   "AllowedHosts": "*",
   "Events": {
     "QueueCapacity": 2048
+  },
+  "OpenTelemetry": {
+    "Enabled": true,
+    "ServiceName": "noo-api",
+    "ServiceNamespace": "noo",
+    "Endpoint": "http://localhost:4317",
+    "Protocol": "Grpc",
+    "EmitTraces": true,
+    "EmitMetrics": true,
+    "EmitLogs": true
   }
 }
 ```
@@ -170,6 +180,8 @@ The configuration is done in the `appsettings.json` file. An example (all possib
 `RateLimiting` controls the fixed-window limits for the global pipeline plus `LoginPolicy` and `RegistrationPolicy`. Adjust `PermitLimit`, `WindowSeconds`, and queue settings per environment as needed.
 
 `Sessions` config drives TTLs for online/active tracking and cleanup cadence; tune per environment to match expected activity and retention.
+
+`OpenTelemetry` controls telemetry export. Set `Enabled` to `false` to disable everything (no SDK is registered). `Endpoint` is the OTLP collector address — `http://localhost:4317` for gRPC, `http://localhost:4318` for HTTP. `Protocol` is `Grpc` or `HttpProtobuf`. `Headers` (optional) is a comma-separated list of OTLP headers, e.g. `"x-token=abc,x-tenant=noo"`. The three `Emit*` flags toggle traces, metrics, and logs independently. The Testing environment ships with everything disabled so test runs do not emit telemetry.
 
 ## Optional
 
@@ -181,6 +193,42 @@ Those are optional requirements that are needed for some features to work. All o
 - SMTP Server [Not implemented yet]
 - Telegram Bot for notifications [Not implemented yet]
 - Telegram Bot for logs
+- OTLP collector / dashboard (e.g. Aspire Dashboard for local dev, any OTLP-compatible backend in production)
+
+## Observability
+
+The API is wired with [OpenTelemetry](https://opentelemetry.io/) and exports traces, metrics, and logs to any OTLP-compatible backend.
+
+**What is captured**
+
+- **Traces** — ASP.NET Core requests, outbound `HttpClient` calls, EF Core database commands, StackExchange.Redis operations. `/health` and `/healthz` are filtered out to keep the timeline clean.
+- **Metrics** — ASP.NET Core (request rate, latency, status codes), `HttpClient` (outbound), .NET runtime (GC, threadpool, exceptions).
+- **Logs** — every `ILogger` write is forwarded as an OTLP log record alongside the existing console / Telegram providers.
+
+All three signals share one `service.name` / `service.namespace` resource so they correlate in the dashboard. The OTLP exporter is configured from the `OpenTelemetry` section of `appsettings.json` (see [Configuration](#configuration)).
+
+### Local dashboard
+
+The repo ships a one-shot dev orchestrator at [`./services.sh`](./services.sh) that brings up MySQL, Mailpit, MinIO, **and the [Aspire Dashboard](https://aspire.dev/dashboard/standalone/)** — Microsoft's standalone OpenTelemetry UI. It is a single binary, no Docker required.
+
+```bash
+./services.sh                 # all services, foreground, Ctrl+C stops everything
+./services.sh --no-otel       # skip the dashboard
+```
+
+On first run the script downloads the Aspire CLI via the official installer (`curl -sSL https://aspire.dev/install.sh | bash`) into `~/.aspire/bin/`. After that it spawns `aspire dashboard run --allow-anonymous`.
+
+| What | Where |
+|---|---|
+| Dashboard UI | <http://localhost:18888> |
+| OTLP/gRPC endpoint | `http://localhost:4317` |
+| OTLP/HTTP endpoint | `http://localhost:4318` |
+
+Run the API in a separate shell (`./scripts.sh run dev`) and you should see traces and metrics streaming in within a few seconds of the first request.
+
+### Production
+
+In production (k8s) point `OpenTelemetry.Endpoint` at your cluster's OTLP collector (Aspire Dashboard, OpenTelemetry Collector, Grafana Tempo, Datadog, etc.). Use `Headers` to pass any auth tokens the backend requires. The same SDK config covers both environments — only the endpoint changes.
 
 ## Code practices
 
@@ -256,4 +304,4 @@ Always use wrappers for all the third-party libraries, such as EF Core, Redis, R
 - [ ] Use ETags for caching and concurrency control
 - [ ] Use feature flags
 - [x] Implement rate limiting
-- [ ] Add open telemetry
+- [x] Add open telemetry

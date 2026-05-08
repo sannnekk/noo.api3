@@ -10,7 +10,9 @@ namespace Noo.IntegrationTests;
 
 public static class TestAuthClientExtensions
 {
-    // Read Jwt config from Noo.Api/appsettings.development.json (fallback to appsettings.json)
+    // Read Jwt config from Noo.Api/appsettings.Testing.json — the same file the test host loads
+    // via ApiFactory.UseEnvironment("Testing") — so the token-signing secret matches what the
+    // running app validates against.
     private static readonly Lazy<JwtConfig> Jwt = new(LoadJwtConfig);
 
     public static HttpClient AsUserId(this HttpClient client, Ulid userId)
@@ -64,11 +66,9 @@ public static class TestAuthClientExtensions
     private static JwtConfig LoadJwtConfig()
     {
         var root = FindRepoRoot() ?? throw new InvalidOperationException("Repo root not found.");
-        var devPath = Path.Combine(root, "src", "Noo.Api", "appsettings.development.json");
-        var basePath = Path.Combine(root, "src", "Noo.Api", "appsettings.json");
-        var path = File.Exists(devPath) ? devPath : basePath;
+        var path = Path.Combine(root, "src", "Noo.Api", "appsettings.Testing.json");
         if (!File.Exists(path))
-            throw new FileNotFoundException("appsettings file not found for JWT config.", path);
+            throw new FileNotFoundException("appsettings.Testing.json not found for JWT config.", path);
 
         using var fs = File.OpenRead(path);
         using var doc = JsonDocument.Parse(fs);
