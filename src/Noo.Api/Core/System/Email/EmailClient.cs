@@ -85,7 +85,7 @@ public class EmailClient : IEmailClient
 
         var secureSocketOptions = _config.UseSsl
             ? SecureSocketOptions.SslOnConnect
-            : SecureSocketOptions.None;
+            : SecureSocketOptions.Auto;
 
         return _client.ConnectAsync(_config.SmtpHost, _config.SmtpPort, secureSocketOptions);
     }
