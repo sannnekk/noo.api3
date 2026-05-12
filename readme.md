@@ -167,6 +167,7 @@ The configuration is done in the `appsettings.json` file. An example (all possib
     "ServiceName": "noo-api",
     "ServiceNamespace": "noo",
     "Endpoint": "http://localhost:4317",
+    "Headers": "Authorization=..., x-something=...",
     "Protocol": "Grpc",
     "EmitTraces": true,
     "EmitMetrics": true,
