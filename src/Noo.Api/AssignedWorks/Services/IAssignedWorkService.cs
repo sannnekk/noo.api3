@@ -9,7 +9,7 @@ public interface IAssignedWorkService
 {
     public Task<Ulid> CreateAsync(Ulid workAssignmentId);
     public Task<AssignedWorkModel?> GetAsync(Ulid assignedWorkId);
-    public Task<List<AssignedWorkProgressDTO>> GetProgressAsync(Ulid workAssignmentId);
+    public Task<List<AssignedWorkModel>> GetByWorkAssignmentAsync(Ulid workAssignmentId);
     public Task<Ulid> RemakeAsync(Ulid assignedWorkId, RemakeAssignedWorkOptionsDTO options);
     public Ulid SaveAnswer(Ulid assignedWorkId, UpsertAssignedWorkAnswerDTO answer);
     public Ulid SaveComment(Ulid assignedWorkId, UpsertAssignedWorkCommentDTO comment);

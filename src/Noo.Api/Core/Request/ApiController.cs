@@ -8,7 +8,7 @@ namespace Noo.Api.Core.Request;
 
 public abstract class ApiController : ControllerBase
 {
-    private readonly IMapper _mapper;
+    protected readonly IMapper _mapper;
 
     protected ApiController(IMapper mapper)
     {
@@ -27,7 +27,8 @@ public abstract class ApiController : ControllerBase
     /// Sends a response with the provided data mapped to the specified DTO type.
     /// If the data is null, it returns a NotFound result.
     /// </summary>
-    protected IActionResult SendResponse<TModel, TDto>(TModel? data) where TModel : class
+    protected IActionResult SendResponse<TModel, TDto>(TModel? data)
+        where TModel : class
     {
         if (data == null)
         {
@@ -42,7 +43,9 @@ public abstract class ApiController : ControllerBase
     /// <summary>
     /// Sends a response with the provided search result, mapping the items to the specified DTO type.
     /// </summary>
-    protected IActionResult SendResponse<TModel, TDto>(SearchResult<TModel> data) where TModel : BaseModel where TDto : class
+    protected IActionResult SendResponse<TModel, TDto>(SearchResult<TModel> data)
+        where TModel : BaseModel
+        where TDto : class
     {
         var dto = _mapper.Map<IEnumerable<TDto>>(data.Items);
         var metadata = data.Metadata;
@@ -54,7 +57,8 @@ public abstract class ApiController : ControllerBase
     /// Sends a response with the provided data mapped to the specified DTO type.
     /// If the data is null, it returns a NotFound result.
     /// </summary>
-    protected IActionResult SendResponse<TDto>(TDto? data) where TDto : class
+    protected IActionResult SendResponse<TDto>(TDto? data)
+        where TDto : class
     {
         if (data == null)
         {
@@ -68,7 +72,8 @@ public abstract class ApiController : ControllerBase
     /// Sends a response with the provided primitive data.
     /// If the data is null, it returns a NotFound result.
     /// </summary>
-    protected IActionResult SendResponse<T>(T? data) where T : struct
+    protected IActionResult SendResponse<T>(T? data)
+        where T : struct
     {
         if (data == null)
         {
@@ -88,7 +93,9 @@ public abstract class ApiController : ControllerBase
     protected IActionResult SendResponse(Ulid id)
     {
         // Not compliant with rfc but we do not need it
-        return Created(string.Empty, new ApiResponseDTO<IdResponseDTO>(new IdResponseDTO(id), null));
+        return Created(
+            string.Empty,
+            new ApiResponseDTO<IdResponseDTO>(new IdResponseDTO(id), null)
+        );
     }
 }
-

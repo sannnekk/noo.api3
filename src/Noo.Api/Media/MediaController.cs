@@ -17,13 +17,11 @@ namespace Noo.Api.Media;
 public class MediaController : ApiController
 {
     private readonly IMediaService _mediaService;
-    private readonly IMapper _mapper;
 
     public MediaController(IMediaService mediaService, IMapper mapper)
         : base(mapper)
     {
         _mediaService = mediaService;
-        _mapper = mapper;
     }
 
     /// <summary>
@@ -32,7 +30,8 @@ public class MediaController : ApiController
     [HttpPost("upload-url")]
     [MapToApiVersion(NooApiVersions.Current)]
     [Produces(
-        typeof(ApiResponseDTO<UploadTicketDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<UploadTicketDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -40,14 +39,16 @@ public class MediaController : ApiController
     )]
     public async Task<IActionResult> RequestUploadAsync(
         [FromBody] RequestUploadDTO body,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var ticket = await _mediaService.RequestUploadAsync(
             body.Category,
             body.FileName,
             body.ContentType,
             body.EntityId,
-            cancellationToken);
+            cancellationToken
+        );
 
         var dto = new UploadTicketDTO
         {
@@ -67,7 +68,8 @@ public class MediaController : ApiController
     [HttpPost("{mediaId:ulid}/complete")]
     [MapToApiVersion(NooApiVersions.Current)]
     [Produces(
-        typeof(ApiResponseDTO<MediaDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<MediaDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -76,9 +78,15 @@ public class MediaController : ApiController
     public async Task<IActionResult> CompleteUploadAsync(
         [FromRoute] Ulid mediaId,
         [FromBody] CompleteUploadDTO body,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var media = await _mediaService.CompleteUploadAsync(mediaId, body.Size, body.ETag, cancellationToken);
+        var media = await _mediaService.CompleteUploadAsync(
+            mediaId,
+            body.Size,
+            body.ETag,
+            cancellationToken
+        );
         var dto = _mapper.Map<MediaDTO>(media);
         return SendResponse(dto);
     }
@@ -90,14 +98,16 @@ public class MediaController : ApiController
     [HttpGet("{mediaId:ulid}/download-url")]
     [MapToApiVersion(NooApiVersions.Current)]
     [Produces(
-        typeof(ApiResponseDTO<DownloadUrlDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<DownloadUrlDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
     public async Task<IActionResult> GetDownloadUrlAsync(
         [FromRoute] Ulid mediaId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var url = await _mediaService.GetDownloadUrlAsync(mediaId, cancellationToken);
         return SendResponse(new DownloadUrlDTO { Url = url });
@@ -117,7 +127,8 @@ public class MediaController : ApiController
     )]
     public async Task<IActionResult> DeleteAsync(
         [FromRoute] Ulid mediaId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await _mediaService.DeleteAsync(mediaId, cancellationToken);
         return SendResponse();

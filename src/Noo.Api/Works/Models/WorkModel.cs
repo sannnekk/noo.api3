@@ -46,4 +46,6 @@ public class WorkModel : BaseModel
     public ICollection<CourseWorkAssignmentModel>? CourseWorkAssignments { get; set; } = default;
 
     #endregion
+
+    public bool NeedsMentor => Type != WorkType.Test;
 }

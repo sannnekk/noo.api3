@@ -12,6 +12,7 @@ using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Courses.Services;
+using Noo.Api.Users.Models;
 using Noo.Api.Users.Services;
 using Noo.Api.Works.Services;
 
@@ -66,12 +67,17 @@ public class AssignedWorkService : IAssignedWorkService
         workAssignment.Work.ThrowNotFoundIfNull();
         workAssignment.Work.SubjectId.ThrowNotFoundIfNull();
 
-        var mentor = await _mentorAssignmentRepository.GetMentorAsync(
-            _currentUser.UserId.Value,
-            workAssignment.Work.SubjectId.Value
-        );
+        UserModel? mentor = null;
 
-        mentor.ThrowNotFoundIfNull();
+        if (workAssignment.Work.NeedsMentor)
+        {
+            mentor = await _mentorAssignmentRepository.GetMentorAsync(
+                _currentUser.UserId.Value,
+                workAssignment.Work.SubjectId.Value
+            );
+
+            mentor.ThrowNotFoundIfNull();
+        }
 
         var attemptCount = await _assignedWorkRepository.GetCurrentAttemptAsync(
             workAssignmentId,
@@ -84,7 +90,7 @@ public class AssignedWorkService : IAssignedWorkService
             workAssignment,
             _currentUser.UserId.Value,
             maxScore,
-            mentor.Id,
+            mentor?.Id,
             attemptCount + 1
         );
 
@@ -161,9 +167,17 @@ public class AssignedWorkService : IAssignedWorkService
         return assignedWork;
     }
 
-    public Task<List<AssignedWorkProgressDTO>> GetProgressAsync(Ulid workAssignmentId)
+    public Task<List<AssignedWorkModel>> GetByWorkAssignmentAsync(Ulid workAssignmentId)
     {
-        return _assignedWorkRepository.GetProgressAsync(workAssignmentId, _currentUser.UserId);
+        if (!_currentUser.UserId.HasValue)
+        {
+            throw new InvalidOperationException("Current user ID is not set.");
+        }
+
+        return _assignedWorkRepository.GetByWorkAssignmentAsync(
+            workAssignmentId,
+            _currentUser.UserId.Value
+        );
     }
 
     public Task<SearchResult<AssignedWorkModel>> GetAssignedWorksAsync(AssignedWorkFilter filter)

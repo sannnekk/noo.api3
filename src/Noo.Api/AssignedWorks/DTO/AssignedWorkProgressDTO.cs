@@ -28,4 +28,7 @@ public record AssignedWorkProgressDTO
 
     [JsonPropertyName("attempt")]
     public int Attempt { get; init; } = 1;
+
+    [JsonPropertyName("createdAt")]
+    public DateTime CreatedAt { get; init; }
 }

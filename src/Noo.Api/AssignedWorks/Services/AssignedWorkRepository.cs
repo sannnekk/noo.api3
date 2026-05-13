@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
-using Noo.Api.AssignedWorks.DTO;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Db;
@@ -16,22 +15,14 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
     public AssignedWorkRepository(NooDbContext dbContext)
         : base(dbContext) { }
 
-    public Task<List<AssignedWorkProgressDTO>> GetProgressAsync(Ulid workAssignmentId, Ulid? userId)
+    public Task<List<AssignedWorkModel>> GetByWorkAssignmentAsync(
+        Ulid workAssignmentId,
+        Ulid userId
+    )
     {
         return Context
             .Set<AssignedWorkModel>()
             .Where(aw => aw.CourseWorkAssignmentId == workAssignmentId && aw.StudentId == userId)
-            .Select(aw => new AssignedWorkProgressDTO
-            {
-                AssignedWorkId = aw.Id,
-                SolveStatus = aw.SolveStatus,
-                SolvedAt = aw.SolvedAt,
-                CheckStatus = aw.CheckStatus,
-                CheckedAt = aw.CheckedAt,
-                Score = aw.Score,
-                MaxScore = aw.MaxScore,
-                Attempt = aw.Attempt,
-            })
             .ToListAsync();
     }
 

@@ -25,5 +25,8 @@ public class AssignedWorkMapperProfile : Profile
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
 
         CreateMap<AssignedWorkModel, AssignedWorkDTO>();
+
+        CreateMap<AssignedWorkModel, AssignedWorkProgressDTO>()
+            .ForMember(dest => dest.AssignedWorkId, opt => opt.MapFrom(src => src.Id));
     }
 }

@@ -44,5 +44,13 @@ public class AssignedWorkPolicies : IPolicyRegistrar
                     .RequireNotBlocked();
             }
         );
+
+        options.AddPolicy(
+            CanGetAssignedWorkProgress,
+            policy =>
+            {
+                policy.RequireRole(nameof(UserRoles.Student)).RequireNotBlocked();
+            }
+        );
     }
 }

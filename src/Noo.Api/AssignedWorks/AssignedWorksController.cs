@@ -126,9 +126,11 @@ public class AssignedWorkController : ApiController
     )]
     public async Task<IActionResult> GetAssignedWorkProgressAsync([FromRoute] Ulid workAssignmentId)
     {
-        var result = await _assignedWorkService.GetProgressAsync(workAssignmentId);
+        var result = await _assignedWorkService.GetByWorkAssignmentAsync(workAssignmentId);
 
-        return SendResponse(result);
+        var progresses = result.Select(r => _mapper.Map<AssignedWorkProgressDTO>(r));
+
+        return SendResponse(progresses);
     }
 
     /// <summary>

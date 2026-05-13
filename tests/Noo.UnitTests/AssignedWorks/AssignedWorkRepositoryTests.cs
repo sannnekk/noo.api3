@@ -8,7 +8,7 @@ namespace Noo.UnitTests.AssignedWorks;
 public class AssignedWorkRepositoryTests
 {
     [Fact]
-    public async Task GetProgressAsync_Returns_For_Student()
+    public async Task GetByWorkAssignmentAsync_Returns_For_Student()
     {
         using var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx).Object;
@@ -29,9 +29,9 @@ public class AssignedWorkRepositoryTests
         };
         ctx.GetDbSet<AssignedWorkModel>().Add(aw);
         await ctx.SaveChangesAsync();
-        var progress = await repo.GetProgressAsync(workAssignmentId, studentId);
-        Assert.NotNull(progress);
-        Assert.Equal(aw.Attempt, progress!.Single().Attempt);
+        var works = await repo.GetByWorkAssignmentAsync(workAssignmentId, studentId);
+        Assert.NotNull(works);
+        Assert.Equal(aw.Attempt, works.Single().Attempt);
     }
 
     [Fact]

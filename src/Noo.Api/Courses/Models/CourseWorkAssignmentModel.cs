@@ -52,7 +52,7 @@ public class CourseWorkAssignmentModel : OrderedModel
     public WorkModel Work { get; set; } = default!;
 
     [InverseProperty(nameof(AssignedWorkModel.CourseWorkAssignment))]
-    public AssignedWorkModel[] AssignedWorks { get; set; } = default!;
+    public ICollection<AssignedWorkModel> AssignedWorks { get; set; } = default!;
 
     #endregion
 }

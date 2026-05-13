@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using Noo.Api.AssignedWorks.DTO;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Db;
@@ -13,9 +12,9 @@ public interface IAssignedWorkRepository : IRepository<AssignedWorkModel>
     /// <summary>
     /// Returns array because there can be multiple AssignedWork's as separate attempts for one WorkAssignment.
     /// </summary>
-    public Task<List<AssignedWorkProgressDTO>> GetProgressAsync(
+    public Task<List<AssignedWorkModel>> GetByWorkAssignmentAsync(
         Ulid workAssignmentId,
-        Ulid? userId
+        Ulid userId
     );
     public Task<int> GetCurrentAttemptAsync(Ulid workAssignmentId, Ulid userId);
     public Task<AssignedWorkModel?> GetAsync(Ulid assignedWorkId);
