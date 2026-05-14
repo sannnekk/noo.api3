@@ -42,12 +42,14 @@ public class AssignedWorkAnswerModel : BaseModel
     public Ulid TaskId { get; set; }
 
     [Column("assigned_work_id", TypeName = DbDataTypes.Ulid)]
-    [ForeignKey(nameof(AssignedWorkModel))]
+    [ForeignKey(nameof(AssignedWork))]
     public Ulid AssignedWorkId { get; set; }
 
     #region Navigation Properties
 
     public WorkTaskModel Task { get; set; } = default!;
+
+    public AssignedWorkModel AssignedWork { get; set; } = default!;
 
     #endregion
 }

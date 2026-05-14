@@ -179,12 +179,12 @@ public class AssignedWorkController : ApiController
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public IActionResult SaveAnswer(
+    public async Task<IActionResult> SaveAnswerAsync(
         [FromRoute] Ulid assignedWorkId,
         [FromBody] UpsertAssignedWorkAnswerDTO answer
     )
     {
-        var id = _assignedWorkService.SaveAnswer(assignedWorkId, answer);
+        var id = await _assignedWorkService.SaveAnswerAsync(assignedWorkId, answer);
 
         return SendResponse(id);
     }

@@ -157,7 +157,7 @@ public class AssignedWorkService : IAssignedWorkService
 
         foreach (var answer in assignedWork.Answers)
         {
-            if (answer.Status == AssignedWorkAnswerStatus.Checked)
+            if (answer.Status == AssignedWorkAnswerStatus.NotSubmitted)
             {
                 answer.MentorComment = null;
                 answer.Score = null;
@@ -379,10 +379,25 @@ public class AssignedWorkService : IAssignedWorkService
         );
     }
 
-    public Ulid SaveAnswer(Ulid assignedWorkId, UpsertAssignedWorkAnswerDTO dto)
+    public async Task<Ulid> SaveAnswerAsync(Ulid assignedWorkId, UpsertAssignedWorkAnswerDTO dto)
     {
-        // TODO: refactor
+        if (dto.Id.HasValue)
+        {
+            var existing = await _assignedWorkAnswerRepository.GetByIdAsync(dto.Id.Value);
+
+            existing.ThrowNotFoundIfNull();
+
+            if (existing.AssignedWorkId != assignedWorkId)
+            {
+                throw new ForbiddenException();
+            }
+
+            _mapper.Map(dto, existing);
+            return existing.Id;
+        }
+
         var answer = _mapper.Map<AssignedWorkAnswerModel>(dto);
+        answer.AssignedWorkId = assignedWorkId;
         _assignedWorkAnswerRepository.Add(answer);
         return answer.Id;
     }

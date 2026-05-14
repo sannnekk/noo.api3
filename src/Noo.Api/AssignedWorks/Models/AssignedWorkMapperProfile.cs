@@ -12,6 +12,7 @@ public class AssignedWorkMapperProfile : Profile
         CreateMap<UpsertAssignedWorkAnswerDTO, AssignedWorkAnswerModel>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id ?? Ulid.NewUlid()))
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.AssignedWork, opt => opt.Ignore())
             .ForMember(dest => dest.AssignedWorkId, opt => opt.Ignore())
             .ForMember(dest => dest.Task, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());

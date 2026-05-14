@@ -38,6 +38,10 @@ public class CourseMapperProfile : Profile
                     )
             );
 
+        // Chapters are handled in AfterMap so AutoMapper's default collection mapper
+        // (which calls dest.Chapters.Clear() before re-adding) never touches the EF-tracked
+        // collection — that Clear would orphan existing rows under cascade FKs and
+        // delete them despite the merge re-adding them.
         CreateMap<UpdateCourseDTO, CourseModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
@@ -49,21 +53,16 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Memberships, opt => opt.Ignore())
             .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
             .ForMember(dest => dest.Subject, opt => opt.Ignore())
-            .ForMember(
-                dest => dest.Chapters,
-                opt =>
+            .ForMember(dest => dest.Chapters, opt => opt.Ignore())
+            .AfterMap((src, dest, context) =>
+            {
+                if (src.Chapters != null)
                 {
-                    opt.Condition(src => src.Chapters != null);
-                    opt.MapFrom(
-                        (src, _, _, context) =>
-                            src.Chapters.MapDictionaryToCollection<
-                                UpdateCourseChapterDTO,
-                                CourseChapterModel
-                            >(context.Mapper)
-                    );
+                    dest.Chapters = src.Chapters.MapDictionaryToCollection<UpdateCourseChapterDTO, CourseChapterModel>(
+                        dest.Chapters, context.Mapper);
                 }
-            )
-            .AfterMap((_, dest) => ApplyCourseHierarchy(dest));
+                ApplyCourseHierarchy(dest);
+            });
 
         CreateMap<CourseModel, CourseDTO>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
@@ -110,6 +109,8 @@ public class CourseMapperProfile : Profile
                     )
             );
 
+        // SubChapters / Materials are handled in AfterMap to avoid AutoMapper's
+        // Clear-based collection mapping (see comment on UpdateCourseDTO -> CourseModel).
         CreateMap<UpdateCourseChapterDTO, CourseChapterModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
@@ -117,34 +118,22 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Course, opt => opt.Ignore())
             .ForMember(dest => dest.CourseId, opt => opt.Ignore())
             .ForMember(dest => dest.ParentChapter, opt => opt.Ignore())
-            .ForMember(
-                dest => dest.SubChapters,
-                opt =>
+            .ForMember(dest => dest.SubChapters, opt => opt.Ignore())
+            .ForMember(dest => dest.Materials, opt => opt.Ignore())
+            .AfterMap((src, dest, context) =>
+            {
+                if (src.SubChapters != null)
                 {
-                    opt.Condition(src => src.SubChapters != null);
-                    opt.MapFrom(
-                        (src, _, _, context) =>
-                            src.SubChapters.MapDictionaryToCollection<
-                                UpdateCourseChapterDTO,
-                                CourseChapterModel
-                            >(context.Mapper)
-                    );
+                    dest.SubChapters = src.SubChapters.MapDictionaryToCollection<UpdateCourseChapterDTO, CourseChapterModel>(
+                        dest.SubChapters, context.Mapper);
                 }
-            )
-            .ForMember(
-                dest => dest.Materials,
-                opt =>
+
+                if (src.Materials != null)
                 {
-                    opt.Condition(src => src.Materials != null);
-                    opt.MapFrom(
-                        (src, _, _, context) =>
-                            src.Materials.MapDictionaryToCollection<
-                                UpdateCourseMaterialDTO,
-                                CourseMaterialModel
-                            >(context.Mapper)
-                    );
+                    dest.Materials = src.Materials.MapDictionaryToCollection<UpdateCourseMaterialDTO, CourseMaterialModel>(
+                        dest.Materials, context.Mapper);
                 }
-            );
+            });
 
         CreateMap<CourseChapterModel, CourseChapterDTO>()
             .MaxDepth(CourseConfig.MaxChapterTreeDepth);
@@ -208,6 +197,8 @@ public class CourseMapperProfile : Profile
                     )
             );
 
+        // WorkAssignments are handled in AfterMap to avoid AutoMapper's Clear-based
+        // collection mapping (see comment on UpdateCourseDTO -> CourseModel).
         CreateMap<UpdateCourseMaterialContentDTO, CourseMaterialContentModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
@@ -217,20 +208,15 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Poll, opt => opt.Ignore())
             .ForMember(dest => dest.Reactions, opt => opt.Ignore())
             .ForMember(dest => dest.Material, opt => opt.Ignore())
-            .ForMember(
-                dest => dest.WorkAssignments,
-                opt =>
+            .ForMember(dest => dest.WorkAssignments, opt => opt.Ignore())
+            .AfterMap((src, dest, context) =>
+            {
+                if (src.WorkAssignments != null)
                 {
-                    opt.Condition(src => src.WorkAssignments != null);
-                    opt.MapFrom(
-                        (src, _, _, context) =>
-                            src.WorkAssignments.MapDictionaryToCollection<
-                                UpdateCourseWorkAssignmentDTO,
-                                CourseWorkAssignmentModel
-                            >(context.Mapper)
-                    );
+                    dest.WorkAssignments = src.WorkAssignments.MapDictionaryToCollection<UpdateCourseWorkAssignmentDTO, CourseWorkAssignmentModel>(
+                        dest.WorkAssignments, context.Mapper);
                 }
-            );
+            });
 
         CreateMap<CourseMaterialContentModel, CourseMaterialContentDTO>();
 

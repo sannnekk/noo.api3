@@ -60,5 +60,49 @@ public class AssignedWorkPolicies : IPolicyRegistrar
                 policy.RequireAuthenticatedUser().RequireNotBlocked();
             }
         );
+
+        options.AddPolicy(
+            CanRemakeAssignedWork,
+            policy =>
+            {
+                policy.RequireRole(nameof(UserRoles.Student)).RequireNotBlocked();
+            }
+        );
+
+        options.AddPolicy(
+            CanEditAssignedWork,
+            policy =>
+            {
+                policy
+                    .RequireRole([nameof(UserRoles.Student), nameof(UserRoles.Mentor)])
+                    .RequireNotBlocked();
+            }
+        );
+
+        options.AddPolicy(
+            CanCommentAssignedWork,
+            policy =>
+            {
+                policy
+                    .RequireRole([nameof(UserRoles.Student), nameof(UserRoles.Mentor)])
+                    .RequireNotBlocked();
+            }
+        );
+
+        options.AddPolicy(
+            CanSolveAssignedWork,
+            policy =>
+            {
+                policy.RequireRole(nameof(UserRoles.Student)).RequireNotBlocked();
+            }
+        );
+
+        options.AddPolicy(
+            CanCheckAssignedWork,
+            policy =>
+            {
+                policy.RequireRole(nameof(UserRoles.Mentor)).RequireNotBlocked();
+            }
+        );
     }
 }

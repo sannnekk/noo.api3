@@ -357,5 +357,150 @@ public class WorkTests : IClassFixture<ApiFactory>
         items.Should().NotBeEmpty();
         items.Should().OnlyContain(e => e.GetProperty("type").GetString() == nameof(WorkType.Test).ToLower());
     }
+
+    // ------------------------------------------------------------------
+    // Regression: PATCH /work that adds a task via the dictionary keyed by
+    // task id must preserve existing tasks (same Id, same content). This
+    // is the end-to-end version of the nested-dictionary merge test — it
+    // exercises the full pipeline (controller -> JsonPatchUpdateService ->
+    // mapper -> NestedEntityMappingExtensions.MapDictionaryToCollection ->
+    // EF SaveChanges).
+    //
+    // Before the fix, the existing task's Id was rebuilt to a fresh Ulid
+    // (and the entity instance was orphaned), which cascaded through the
+    // FK from assigned_work_answer.task_id and corrupted answer rows.
+    // ------------------------------------------------------------------
+    [Fact(DisplayName = "PATCH /work adds a task; existing task keeps its Id and content")]
+    public async Task Patch_Work_Add_Task_Preserves_Existing_Tasks()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+
+        var workId = await CreateWorkAsync(client, subjectId, title: "Patch-Tasks");
+
+        // Find the existing task id from GET.
+        var getResp = await client.AsTeacher().GetAsync($"/work/{workId}");
+        getResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var tasksBefore = JsonDocument.Parse(await getResp.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("data").GetProperty("tasks").EnumerateArray().ToList();
+        tasksBefore.Should().HaveCount(1);
+        var existingTaskId = tasksBefore[0].GetProperty("id").GetString()!;
+
+        // Build a JSON Patch that ADDs a brand-new task into the tasks dictionary,
+        // keyed by a client-generated Ulid (the way the front-end uses this API).
+        var newTaskId = Ulid.NewUlid().ToString();
+        var patchJson = $$"""
+            [
+              {
+                "op": "add",
+                "path": "/tasks/{{newTaskId}}",
+                "value": {
+                  "id": "{{newTaskId}}",
+                  "type": "word",
+                  "order": 1,
+                  "maxScore": 3,
+                  "content": {"$type":"delta","ops":[{"insert":"new task\n"}]}
+                }
+              }
+            ]
+            """;
+
+        var patchResp = await client.AsTeacher().PatchAsync(
+            $"/work/{workId}",
+            new StringContent(patchJson, Encoding.UTF8, "application/json-patch+json"));
+        patchResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var afterResp = await client.AsTeacher().GetAsync($"/work/{workId}");
+        afterResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var tasksAfter = JsonDocument.Parse(await afterResp.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("data").GetProperty("tasks").EnumerateArray().ToList();
+
+        tasksAfter.Should().HaveCount(2);
+        tasksAfter.Select(t => t.GetProperty("id").GetString())
+            .Should().Contain(existingTaskId, because: "the existing task's Id must be preserved across the patch")
+            .And.Contain(newTaskId);
+    }
+
+    [Fact(DisplayName = "PATCH /work updates a task's field without touching other tasks")]
+    public async Task Patch_Work_Update_Task_Field_Preserves_Others()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+        var workId = await CreateWorkAsync(client, subjectId);
+
+        var getResp = await client.AsTeacher().GetAsync($"/work/{workId}");
+        var existingTaskId = JsonDocument.Parse(await getResp.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("data").GetProperty("tasks").EnumerateArray().First()
+            .GetProperty("id").GetString()!;
+
+        var patchJson = $$"""
+            [
+              { "op": "replace", "path": "/tasks/{{existingTaskId}}/maxScore", "value": 9 }
+            ]
+            """;
+        var patchResp = await client.AsTeacher().PatchAsync(
+            $"/work/{workId}",
+            new StringContent(patchJson, Encoding.UTF8, "application/json-patch+json"));
+        patchResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var afterResp = await client.AsTeacher().GetAsync($"/work/{workId}");
+        var tasksAfter = JsonDocument.Parse(await afterResp.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("data").GetProperty("tasks").EnumerateArray().ToList();
+
+        tasksAfter.Should().HaveCount(1);
+        var updated = tasksAfter[0];
+        updated.GetProperty("id").GetString().Should().Be(existingTaskId);
+        updated.GetProperty("maxScore").GetInt32().Should().Be(9);
+    }
+
+    [Fact(DisplayName = "PATCH /work removes a task; remaining task keeps its Id")]
+    public async Task Patch_Work_Remove_Task_Keeps_Others()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+        var workId = await CreateWorkAsync(client, subjectId);
+
+        // Add a second task first so we have something to remove without leaving an empty work.
+        var getResp = await client.AsTeacher().GetAsync($"/work/{workId}");
+        var keepId = JsonDocument.Parse(await getResp.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("data").GetProperty("tasks").EnumerateArray().First()
+            .GetProperty("id").GetString()!;
+        var dropId = Ulid.NewUlid().ToString();
+        var addPatch = $$"""
+            [
+              {
+                "op": "add",
+                "path": "/tasks/{{dropId}}",
+                "value": {
+                  "id": "{{dropId}}",
+                  "type": "word",
+                  "order": 1,
+                  "maxScore": 2,
+                  "content": {"$type":"delta","ops":[{"insert":"to delete\n"}]}
+                }
+              }
+            ]
+            """;
+        (await client.AsTeacher().PatchAsync(
+            $"/work/{workId}",
+            new StringContent(addPatch, Encoding.UTF8, "application/json-patch+json")))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Now remove it.
+        var removePatch = $$"""
+            [ { "op": "remove", "path": "/tasks/{{dropId}}" } ]
+            """;
+        (await client.AsTeacher().PatchAsync(
+            $"/work/{workId}",
+            new StringContent(removePatch, Encoding.UTF8, "application/json-patch+json")))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var afterResp = await client.AsTeacher().GetAsync($"/work/{workId}");
+        var tasksAfter = JsonDocument.Parse(await afterResp.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("data").GetProperty("tasks").EnumerateArray().ToList();
+
+        tasksAfter.Should().HaveCount(1);
+        tasksAfter[0].GetProperty("id").GetString().Should().Be(keepId);
+    }
 }
 

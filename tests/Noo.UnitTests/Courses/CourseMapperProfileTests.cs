@@ -8,6 +8,8 @@ using Noo.Api.Subjects.Models;
 using Noo.Api.Users.Models;
 using Noo.Api.Works.Models;
 using Noo.UnitTests.Common;
+using Noo.Api.Core.Request.Patching;
+using SystemTextJsonPatch;
 
 namespace Noo.UnitTests.Courses;
 
@@ -83,5 +85,279 @@ public class CourseMapperProfileTests
         Assert.NotNull(dto.Subject);
         Assert.Equal(subject.Id, dto.Subject!.Id);
         Assert.Equal(subject.Name, dto.Subject.Name);
+    }
+
+    // ----------------------------------------------------------------------
+    // Patch round-trip regression tests for every nested dictionary->collection
+    // mapping in this profile. Each test seeds a parent with one existing child
+    // (a known reference), runs the same Model -> DTO -> patch -> Map(DTO, Model)
+    // flow as JsonPatchUpdateService, then asserts the existing child:
+    //   1) is the SAME instance (so EF still tracks it as Unchanged),
+    //   2) kept its original Id, and
+    //   3) kept its content.
+    // The new child must also land with the Id from the dict key.
+    //
+    // Bug being guarded against: assigning a fresh list of fresh children would
+    // make EF orphan the originals (and, with cascade FKs, corrupt related rows
+    // such as assigned_work_answer).
+    // ----------------------------------------------------------------------
+
+    private static CourseModel BuildCourse(Ulid existingChapterId, string chapterTitle = "Existing Chapter")
+        => new()
+        {
+            Id = Ulid.NewUlid(),
+            Name = "C",
+            SubjectId = Ulid.NewUlid(),
+            Chapters = new List<CourseChapterModel>
+            {
+                new()
+                {
+                    Id = existingChapterId,
+                    Title = chapterTitle,
+                    Order = 0,
+                    IsActive = true,
+                }
+            }
+        };
+
+    [Fact(DisplayName = "Course mapper: PATCH adds a chapter, preserves existing chapter identity")]
+    public void Patch_Add_Chapter_Preserves_Existing()
+    {
+        var mapper = CreateConfiguration().CreateMapper();
+        var existingChapterId = Ulid.NewUlid();
+        var model = BuildCourse(existingChapterId);
+        var existingChapterRef = model.Chapters!.First();
+
+        var dto = mapper.Map<UpdateCourseDTO>(model);
+
+        var newChapterId = Ulid.NewUlid();
+        dto.Chapters![newChapterId.ToString()] = new UpdateCourseChapterDTO
+        {
+            Id = newChapterId,
+            Title = "New Chapter",
+            Order = 1,
+            IsActive = true,
+        };
+
+        mapper.Map(dto, model);
+
+        Assert.Equal(2, model.Chapters!.Count);
+        var kept = model.Chapters!.Single(c => c.Id == existingChapterId);
+        Assert.Same(existingChapterRef, kept);
+        Assert.Equal("Existing Chapter", kept.Title);
+
+        Assert.Contains(model.Chapters!, c => c.Id == newChapterId);
+    }
+
+    [Fact(DisplayName = "Course mapper: PATCH adds a sub-chapter, preserves existing sub-chapter identity")]
+    public void Patch_Add_SubChapter_Preserves_Existing()
+    {
+        var mapper = CreateConfiguration().CreateMapper();
+        var existingSubChapterId = Ulid.NewUlid();
+
+        var model = new CourseModel
+        {
+            Id = Ulid.NewUlid(),
+            Name = "C",
+            SubjectId = Ulid.NewUlid(),
+            Chapters = new List<CourseChapterModel>
+            {
+                new()
+                {
+                    Id = Ulid.NewUlid(),
+                    Title = "Parent",
+                    Order = 0,
+                    IsActive = true,
+                    SubChapters = new List<CourseChapterModel>
+                    {
+                        new()
+                        {
+                            Id = existingSubChapterId,
+                            Title = "Existing Sub",
+                            Order = 0,
+                            IsActive = true,
+                        }
+                    }
+                }
+            }
+        };
+        var parentChapter = model.Chapters!.First();
+        var existingSubRef = parentChapter.SubChapters!.First();
+
+        var dto = mapper.Map<UpdateCourseDTO>(model);
+        var parentDto = dto.Chapters!.Values.Single();
+
+        var newSubId = Ulid.NewUlid();
+        parentDto.SubChapters![newSubId.ToString()] = new UpdateCourseChapterDTO
+        {
+            Id = newSubId,
+            Title = "New Sub",
+            Order = 1,
+            IsActive = true,
+        };
+
+        mapper.Map(dto, model);
+
+        var parentAfter = model.Chapters!.Single();
+        Assert.Equal(2, parentAfter.SubChapters!.Count);
+        var keptSub = parentAfter.SubChapters!.Single(c => c.Id == existingSubChapterId);
+        Assert.Same(existingSubRef, keptSub);
+        Assert.Equal("Existing Sub", keptSub.Title);
+        Assert.Contains(parentAfter.SubChapters!, c => c.Id == newSubId);
+    }
+
+    [Fact(DisplayName = "Course mapper: PATCH adds a material, preserves existing material identity")]
+    public void Patch_Add_Material_Preserves_Existing()
+    {
+        var mapper = CreateConfiguration().CreateMapper();
+        var existingMaterialId = Ulid.NewUlid();
+
+        var chapter = new CourseChapterModel
+        {
+            Id = Ulid.NewUlid(),
+            Title = "Parent",
+            Order = 0,
+            IsActive = true,
+            Materials = new List<CourseMaterialModel>
+            {
+                new()
+                {
+                    Id = existingMaterialId,
+                    Title = "Existing Material",
+                    Order = 0,
+                    IsActive = true,
+                }
+            }
+        };
+        var model = new CourseModel
+        {
+            Id = Ulid.NewUlid(),
+            Name = "C",
+            SubjectId = Ulid.NewUlid(),
+            Chapters = new List<CourseChapterModel> { chapter },
+        };
+        var existingMaterialRef = chapter.Materials!.First();
+
+        var dto = mapper.Map<UpdateCourseDTO>(model);
+        var parentDto = dto.Chapters!.Values.Single();
+
+        var newMaterialId = Ulid.NewUlid();
+        parentDto.Materials![newMaterialId.ToString()] = new UpdateCourseMaterialDTO
+        {
+            Id = newMaterialId,
+            Title = "New Material",
+            Order = 1,
+            IsActive = true,
+        };
+
+        mapper.Map(dto, model);
+
+        var chapterAfter = model.Chapters!.Single();
+        Assert.Equal(2, chapterAfter.Materials!.Count);
+        var keptMaterial = chapterAfter.Materials!.Single(m => m.Id == existingMaterialId);
+        Assert.Same(existingMaterialRef, keptMaterial);
+        Assert.Equal("Existing Material", keptMaterial.Title);
+        Assert.Contains(chapterAfter.Materials!, m => m.Id == newMaterialId);
+    }
+
+    [Fact(DisplayName = "Course mapper: PATCH adds a work-assignment, preserves existing work-assignment identity")]
+    public void Patch_Add_WorkAssignment_Preserves_Existing()
+    {
+        var mapper = CreateConfiguration().CreateMapper();
+        var existingAssignmentId = Ulid.NewUlid();
+
+        var model = new CourseMaterialContentModel
+        {
+            Id = Ulid.NewUlid(),
+            WorkAssignments = new List<CourseWorkAssignmentModel>
+            {
+                new()
+                {
+                    Id = existingAssignmentId,
+                    Order = 0,
+                    IsActive = true,
+                    WorkId = Ulid.NewUlid(),
+                    Note = "Existing",
+                }
+            }
+        };
+        var existingAssignmentRef = model.WorkAssignments!.First();
+
+        var dto = mapper.Map<UpdateCourseMaterialContentDTO>(model);
+
+        var newAssignmentId = Ulid.NewUlid();
+        dto.WorkAssignments![newAssignmentId.ToString()] = new UpdateCourseWorkAssignmentDTO
+        {
+            Order = 1,
+            IsActive = true,
+            WorkId = Ulid.NewUlid(),
+            Note = "New",
+        };
+
+        mapper.Map(dto, model);
+
+        Assert.Equal(2, model.WorkAssignments!.Count);
+        var keptAssignment = model.WorkAssignments!.Single(a => a.Id == existingAssignmentId);
+        Assert.Same(existingAssignmentRef, keptAssignment);
+        Assert.Equal("Existing", keptAssignment.Note);
+        Assert.Contains(model.WorkAssignments!, a => a.Id == newAssignmentId);
+    }
+
+    [Fact(DisplayName = "Course mapper: PATCH that removes a chapter drops it from the collection")]
+    public void Patch_Remove_Chapter_Drops_It()
+    {
+        var mapper = CreateConfiguration().CreateMapper();
+        var keepId = Ulid.NewUlid();
+        var dropId = Ulid.NewUlid();
+
+        var model = new CourseModel
+        {
+            Id = Ulid.NewUlid(),
+            Name = "C",
+            SubjectId = Ulid.NewUlid(),
+            Chapters = new List<CourseChapterModel>
+            {
+                new() { Id = keepId, Title = "K", Order = 0, IsActive = true },
+                new() { Id = dropId, Title = "D", Order = 1, IsActive = true },
+            }
+        };
+
+        var dto = mapper.Map<UpdateCourseDTO>(model);
+        dto.Chapters!.Remove(dropId.ToString());
+
+        mapper.Map(dto, model);
+
+        Assert.Single(model.Chapters!);
+        Assert.Equal(keepId, model.Chapters!.Single().Id);
+    }
+
+    [Fact(DisplayName = "Course mapper: PATCH via JsonPatchUpdateService — adding a chapter preserves existing rows")]
+    public void Patch_End_To_End_Add_Chapter_Preserves_Existing()
+    {
+        var mapper = CreateConfiguration().CreateMapper();
+        var patchService = new JsonPatchUpdateService(mapper);
+
+        var existingChapterId = Ulid.NewUlid();
+        var model = BuildCourse(existingChapterId);
+        var existingRef = model.Chapters!.First();
+
+        var newChapterId = Ulid.NewUlid();
+        var patch = new JsonPatchDocument<UpdateCourseDTO>();
+        patch.Add(
+            x => x.Chapters![newChapterId.ToString()],
+            new UpdateCourseChapterDTO
+            {
+                Id = newChapterId,
+                Title = "Brand New",
+                Order = 1,
+                IsActive = true,
+            });
+
+        patchService.ApplyPatch(model, patch);
+
+        Assert.Equal(2, model.Chapters!.Count);
+        var kept = model.Chapters!.Single(c => c.Id == existingChapterId);
+        Assert.Same(existingRef, kept);
+        Assert.Equal("Existing Chapter", kept.Title);
     }
 }

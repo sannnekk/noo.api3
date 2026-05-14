@@ -11,7 +11,7 @@ public interface IAssignedWorkService
     public Task<AssignedWorkModel?> GetAsync(Ulid assignedWorkId);
     public Task<List<AssignedWorkModel>> GetByWorkAssignmentAsync(Ulid workAssignmentId);
     public Task<Ulid> RemakeAsync(Ulid assignedWorkId, RemakeAssignedWorkOptionsDTO options);
-    public Ulid SaveAnswer(Ulid assignedWorkId, UpsertAssignedWorkAnswerDTO answer);
+    public Task<Ulid> SaveAnswerAsync(Ulid assignedWorkId, UpsertAssignedWorkAnswerDTO answer);
     public Ulid SaveComment(Ulid assignedWorkId, UpsertAssignedWorkCommentDTO comment);
     public Task MarkAsSolvedAsync(Ulid assignedWorkId);
     public Task MarkAsCheckedAsync(Ulid assignedWorkId);

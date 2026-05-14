@@ -299,16 +299,113 @@ public class AssignedWorkServiceTests
     }
 
     [Fact]
-    public async Task SaveAnswer_Assumes_Behavior_Updates_Status()
+    public async Task SaveAnswer_Inserts_New_Answer_When_No_Id()
     {
-        // Even though not implemented, assume it stores/updates answer and returns Id; test reflects expected behavior.
         var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
         var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(student.Id);
         var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
         var answerDto = new UpsertAssignedWorkAnswerDTO { TaskId = Ulid.NewUlid(), Status = AssignedWorkAnswerStatus.Submitted, MaxScore = 10, Score = 5 };
-        var id = svc.SaveAnswer(aw.Id, answerDto);
+
+        var id = await svc.SaveAnswerAsync(aw.Id, answerDto);
+        await ctx.SaveChangesAsync();
+
         Assert.NotEqual(default, id);
+        var saved = await ctx.GetDbSet<AssignedWorkAnswerModel>().FindAsync(id);
+        Assert.NotNull(saved);
+        Assert.Equal(aw.Id, saved!.AssignedWorkId);
+        Assert.Equal(5, saved.Score);
+    }
+
+    [Fact]
+    public async Task SaveAnswer_Updates_Existing_Answer_When_Id_Provided()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
+        var existing = new AssignedWorkAnswerModel
+        {
+            AssignedWorkId = aw.Id,
+            TaskId = Ulid.NewUlid(),
+            Status = AssignedWorkAnswerStatus.NotSubmitted,
+            MaxScore = 10,
+            Score = 1,
+            WordContent = "old",
+        };
+        ctx.GetDbSet<AssignedWorkAnswerModel>().Add(existing);
+        ctx.SaveChanges();
+
+        var dto = new UpsertAssignedWorkAnswerDTO
+        {
+            Id = existing.Id,
+            TaskId = existing.TaskId,
+            Status = AssignedWorkAnswerStatus.Submitted,
+            MaxScore = 10,
+            Score = 8,
+            WordContent = "new",
+        };
+
+        var id = await svc.SaveAnswerAsync(aw.Id, dto);
+        await ctx.SaveChangesAsync();
+
+        Assert.Equal(existing.Id, id);
+        var all = ctx.GetDbSet<AssignedWorkAnswerModel>().Where(a => a.AssignedWorkId == aw.Id).ToList();
+        Assert.Single(all);
+        Assert.Equal(8, all[0].Score);
+        Assert.Equal("new", all[0].WordContent);
+        Assert.Equal(AssignedWorkAnswerStatus.Submitted, all[0].Status);
+        Assert.Equal(aw.Id, all[0].AssignedWorkId);
+    }
+
+    [Fact]
+    public async Task SaveAnswer_Throws_NotFound_When_Id_Does_Not_Exist()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
+        var dto = new UpsertAssignedWorkAnswerDTO
+        {
+            Id = Ulid.NewUlid(),
+            TaskId = Ulid.NewUlid(),
+            Status = AssignedWorkAnswerStatus.Submitted,
+            MaxScore = 10,
+            Score = 5,
+        };
+
+        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(() => svc.SaveAnswerAsync(aw.Id, dto));
+    }
+
+    [Fact]
+    public async Task SaveAnswer_Throws_Forbidden_When_Answer_Belongs_To_Different_AssignedWork()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var ownAw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
+        var otherAw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
+        var otherAnswer = new AssignedWorkAnswerModel
+        {
+            AssignedWorkId = otherAw.Id,
+            TaskId = Ulid.NewUlid(),
+            Status = AssignedWorkAnswerStatus.Submitted,
+            MaxScore = 10,
+            Score = 5,
+        };
+        ctx.GetDbSet<AssignedWorkAnswerModel>().Add(otherAnswer);
+        ctx.SaveChanges();
+
+        var dto = new UpsertAssignedWorkAnswerDTO
+        {
+            Id = otherAnswer.Id,
+            TaskId = otherAnswer.TaskId,
+            Status = AssignedWorkAnswerStatus.Submitted,
+            MaxScore = 10,
+            Score = 9,
+        };
+
+        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.ForbiddenException>(() => svc.SaveAnswerAsync(ownAw.Id, dto));
     }
 
     [Fact]

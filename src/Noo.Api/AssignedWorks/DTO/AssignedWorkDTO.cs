@@ -100,5 +100,6 @@ public record AssignedWorkDTO
     public WorkDTO? Work { get; init; }
 
     [JsonPropertyName("answers")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IEnumerable<AssignedWorkAnswerDTO>? Answers { get; init; }
 }
