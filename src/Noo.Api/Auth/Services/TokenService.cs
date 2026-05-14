@@ -27,7 +27,7 @@ public class AuthTokenService : ITokenService
         _unitOfWork = unitOfWork;
     }
 
-    public TokenModel CreateToken(Ulid userId, TokenType type)
+    public TokenModel CreateToken(Ulid userId, TokenType type, string? payload = null)
     {
         var token = new TokenModel
         {
@@ -44,6 +44,11 @@ public class AuthTokenService : ITokenService
                 _ => throw new NotImplementedException($"Token type {type} not implemented"),
             },
         };
+
+        if (string.IsNullOrEmpty(payload) is false)
+        {
+            token.Payload = payload;
+        }
 
         _tokenRepository.Add(token);
 

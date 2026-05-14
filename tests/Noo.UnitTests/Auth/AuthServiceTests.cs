@@ -23,6 +23,7 @@ public class AuthServiceTests
         public Mock<ITokenService> Token { get; } = new();
         public Mock<IAuthEmailService> Email { get; } = new();
         public Mock<IAuthUrlGenerator> Url { get; } = new();
+        public Mock<IEmailChangeService> EmailChange { get; } = new();
         public Mock<IUserService> Users { get; } = new();
         public IHashService Hash { get; } = new HashService(Options.Create(new AppConfig
         {
@@ -36,7 +37,7 @@ public class AuthServiceTests
         public Mock<ISessionService> Sessions { get; } = new();
         public IHttpContextAccessor Ctx { get; } = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
 
-        public AuthService Build() => new(Token.Object, Email.Object, Url.Object, Users.Object, Hash, Sessions.Object, Ctx);
+        public AuthService Build() => new(Token.Object, Email.Object, Url.Object, EmailChange.Object, Users.Object, Hash, Sessions.Object, Ctx);
     }
 
     [Fact]
@@ -290,75 +291,20 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task RequestEmailChange_Sends_Email()
+    public async Task ConfirmEmailChange_Delegates_To_EmailChangeService()
     {
-        var pwd = new HashService(Options.Create(new AppConfig
-        {
-            Location = "test",
-            BaseUrl = "http://localhost",
-            UserOnlineThresholdMinutes = 15,
-            UserActiveThresholdDays = 14,
-            HashSecret = "secret",
-            AllowedOrigins = new[] { "*" }
-        })).Hash("pwd");
-        var user = new UserModel
-        {
-            Id = Ulid.NewUlid(),
-            Username = "john",
-            Email = "john@example.com",
-            Name = "John",
-            PasswordHash = pwd,
-            Role = UserRoles.Student,
-            IsVerified = true,
-            IsBlocked = false
-        };
+        var userId = Ulid.NewUlid();
 
         var h = new Harness();
-        h.Users.Setup(s => s.UserExistsAsync(null, "new@example.com")).ReturnsAsync(false);
-        h.Users.Setup(s => s.GetUserByIdAsync(user.Id)).ReturnsAsync(user);
-        h.Token.Setup(t => t.CreateToken(user.Id, TokenType.EmailChange))
-            .Returns(new TokenModel { Token = "ectoken", UserId = user.Id, Type = TokenType.EmailChange, ExpiresAt = DateTime.UtcNow.AddDays(1) });
-        h.Url.Setup(u => u.GenerateEmailChangeUrl("ectoken")).Returns("/email-change/ectoken");
-        var sent = 0;
-        h.Email.Setup(e => e.SendEmailChangeEmailAsync("new@example.com", user.Name, "/email-change/ectoken")).Callback(() => sent++).Returns(Task.CompletedTask);
-        var svc = h.Build();
-
-        await svc.RequestEmailChangeAsync(user.Id, "new@example.com");
-        Assert.Equal(1, sent);
-    }
-
-    [Fact]
-    public async Task ConfirmEmailChange_Updates_Email()
-    {
-        var pwd = new HashService(Options.Create(new AppConfig
-        {
-            Location = "test",
-            BaseUrl = "http://localhost",
-            UserOnlineThresholdMinutes = 15,
-            UserActiveThresholdDays = 14,
-            HashSecret = "secret",
-            AllowedOrigins = new[] { "*" }
-        })).Hash("pwd");
-        var user = new UserModel
-        {
-            Id = Ulid.NewUlid(),
-            Username = "john",
-            Email = "john@example.com",
-            Name = "John",
-            PasswordHash = pwd,
-            Role = UserRoles.Student,
-            IsVerified = true,
-            IsBlocked = false
-        };
-
-        var h = new Harness();
-        h.Users.Setup(s => s.GetUserByIdAsync(user.Id)).ReturnsAsync(user);
-        h.Token.Setup(t => t.ValidateTokenAsync("ectok")).ReturnsAsync(((Ulid?)user.Id, (TokenType?)TokenType.EmailChange, (string?)"new@example.com"));
-        h.Users.Setup(s => s.UpdateUserEmailAsync(user.Id, "new@example.com")).Returns(Task.CompletedTask).Verifiable();
+        h.Token.Setup(t => t.ValidateTokenAsync("ectok"))
+            .ReturnsAsync(((Ulid?)userId, (TokenType?)TokenType.EmailChange, (string?)"new@example.com"));
+        h.EmailChange.Setup(e => e.ConfirmAsync(userId, "new@example.com"))
+            .Returns(Task.CompletedTask)
+            .Verifiable();
         var svc = h.Build();
 
         await svc.ConfirmEmailAsync("ectok");
-        h.Users.Verify();
+        h.EmailChange.Verify();
     }
 
     [Fact]

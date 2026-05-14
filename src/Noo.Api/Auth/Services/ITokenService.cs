@@ -6,7 +6,7 @@ public interface ITokenService
 {
     public (string, DateTime) GenerateAccessToken(AccessTokenPayload payload);
 
-    public TokenModel CreateToken(Ulid userId, TokenType type);
+    public TokenModel CreateToken(Ulid userId, TokenType type, string? payload = null);
 
     /// <summary>
     /// Validates the token and returns the user ID if valid, otherwise null.

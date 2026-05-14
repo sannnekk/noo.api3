@@ -30,4 +30,14 @@ public class HashService : IHashService
     {
         return string.Equals(Hash(input), hash, StringComparison.Ordinal);
     }
+
+    public bool VerifyPassword(string passwordToCheck, string passwordHash)
+    {
+        if (string.IsNullOrEmpty(passwordToCheck) || string.IsNullOrEmpty(passwordHash))
+        {
+            return false;
+        }
+
+        return passwordHash == Hash(passwordToCheck);
+    }
 }

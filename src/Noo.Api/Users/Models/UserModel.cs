@@ -42,6 +42,11 @@ public class UserModel : BaseModel
     [Column("email", TypeName = DbDataTypes.Varchar255)]
     public string Email { get; set; } = string.Empty;
 
+    [MinLength(1)]
+    [MaxLength(30)]
+    [Column("phone", TypeName = DbDataTypes.Varchar31)]
+    public string? Phone { get; set; }
+
     [Column("telegram_id", TypeName = DbDataTypes.Varchar63)]
     [MaxLength(63)]
     public string? TelegramId { get; set; }
@@ -104,7 +109,8 @@ public class UserModel : BaseModel
 
     public ICollection<NooTubeVideoReactionModel> NooTubeVideoReactions { get; set; } = [];
 
-    public ICollection<AssignedWorkStatusHistoryModel> AssignedWorkHistoryChanges { get; set; } = [];
+    public ICollection<AssignedWorkStatusHistoryModel> AssignedWorkHistoryChanges { get; set; } =
+    [];
 
     // Mentor / Student assignments
     [InverseProperty(nameof(MentorAssignmentModel.Student))]

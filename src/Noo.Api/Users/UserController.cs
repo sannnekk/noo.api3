@@ -293,13 +293,14 @@ public class UserController : ApiController
     }
 
     /// <summary>
-    /// Deletes a user by their unique identifier.
+    /// Deletes a current user.
     /// </summary>
     /// <remarks>
     /// The user is only soft-deleted, meaning their data is retained but they can no longer log in and do not appear in user searches.
+    /// Also, the personal data of the user (such as email and name) will be anonymized to protect their privacy
     /// </remarks>
     /// TODO: implement soft deleting
-    [HttpDelete("{userId}")]
+    [HttpPost("delete")]
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanDeleteUser)]
     [Produces(
@@ -309,9 +310,9 @@ public class UserController : ApiController
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public IActionResult DeleteUser([FromRoute] Ulid userId)
+    public async Task<IActionResult> DeleteUserAsync([FromBody] UserDeletionDTO deletionDto)
     {
-        _userService.DeleteUser(userId);
+        await _userService.DeleteUserAsync(deletionDto.Password);
         return SendResponse();
     }
 }

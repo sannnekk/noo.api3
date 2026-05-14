@@ -5,6 +5,7 @@ using Noo.Api.AssignedWorks.Events;
 using Noo.Api.AssignedWorks.Exceptions;
 using Noo.Api.AssignedWorks.Filters;
 using Noo.Api.AssignedWorks.Models;
+using Noo.Api.AssignedWorks.Specifications;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions;
@@ -182,7 +183,13 @@ public class AssignedWorkService : IAssignedWorkService
 
     public Task<SearchResult<AssignedWorkModel>> GetAssignedWorksAsync(AssignedWorkFilter filter)
     {
-        return _assignedWorkRepository.SearchAsync(filter);
+        if (!_currentUser.UserRole.HasValue)
+        {
+            throw new InvalidOperationException("Current user ID is not set.");
+        }
+
+        var specification = new AssignedWorkSearchSpecification(_currentUser.UserRole.Value);
+        return _assignedWorkRepository.SearchAsync(filter, [specification]);
     }
 
     public async Task MarkAsCheckedAsync(Ulid assignedWorkId)

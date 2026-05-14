@@ -36,9 +36,38 @@ public class UserMapperProfile : Profile
             .ForMember(dest => dest.AssignedWorkHistoryChanges, opt => opt.Ignore())
             .ForMember(dest => dest.MentorAssignmentsAsMentor, opt => opt.Ignore())
             .ForMember(dest => dest.MentorAssignmentsAsStudent, opt => opt.Ignore())
+            .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role))
+            .ForMember(dest => dest.Phone, opt => opt.Ignore())
             .ForMember(dest => dest.IsBlocked, opt => opt.MapFrom(_ => false))
             .ForMember(dest => dest.IsVerified, opt => opt.MapFrom(_ => false));
 
+        CreateMap<UserModel, UpdateUserDTO>();
+        CreateMap<UpdateUserDTO, UserModel>()
+            .ForMember(dest => dest.AssignedWorkHistoryChanges, opt => opt.Ignore())
+            .ForMember(dest => dest.MentorAssignmentsAsMentor, opt => opt.Ignore())
+            .ForMember(dest => dest.MentorAssignmentsAsStudent, opt => opt.Ignore())
+            .ForMember(dest => dest.CoursesAsMember, opt => opt.Ignore())
+            .ForMember(dest => dest.CoursesAsAssigner, opt => opt.Ignore())
+            .ForMember(dest => dest.CoursesAsAuthor, opt => opt.Ignore())
+            .ForMember(dest => dest.CoursesAsEditor, opt => opt.Ignore())
+            .ForMember(dest => dest.CourseMaterialReactions, opt => opt.Ignore())
+            .ForMember(dest => dest.Avatar, opt => opt.Ignore())
+            .ForMember(dest => dest.Sessions, opt => opt.Ignore())
+            .ForMember(dest => dest.Snippets, opt => opt.Ignore())
+            .ForMember(dest => dest.PollParticipations, opt => opt.Ignore())
+            .ForMember(dest => dest.CalendarEvents, opt => opt.Ignore())
+            .ForMember(dest => dest.Notifications, opt => opt.Ignore())
+            .ForMember(dest => dest.Settings, opt => opt.Ignore())
+            .ForMember(dest => dest.UploadedVideos, opt => opt.Ignore())
+            .ForMember(dest => dest.NooTubeVideoComments, opt => opt.Ignore())
+            .ForMember(dest => dest.NooTubeVideoReactions, opt => opt.Ignore())
+            .ForMember(dest => dest.IsBlocked, opt => opt.Ignore())
+            .ForMember(dest => dest.IsVerified, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
+            .ForMember(dest => dest.Role, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.Id, opt => opt.Ignore());
 
         // mentor assignment
         CreateMap<MentorAssignmentModel, MentorAssignmentDTO>();

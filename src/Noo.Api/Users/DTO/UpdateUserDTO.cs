@@ -14,6 +14,11 @@ public record UpdateUserDTO
     [EmailAddress]
     public string? Email { get; set; }
 
+    [JsonPropertyName("phone")]
+    [MinLength(1)]
+    [MaxLength(30)]
+    public string? Phone { get; set; }
+
     [JsonPropertyName("name")]
     [MinLength(1)]
     [MaxLength(255)]

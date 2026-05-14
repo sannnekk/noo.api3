@@ -52,5 +52,13 @@ public class AssignedWorkPolicies : IPolicyRegistrar
                 policy.RequireRole(nameof(UserRoles.Student)).RequireNotBlocked();
             }
         );
+
+        options.AddPolicy(
+            CanGetAssignedWork,
+            policy =>
+            {
+                policy.RequireAuthenticatedUser().RequireNotBlocked();
+            }
+        );
     }
 }

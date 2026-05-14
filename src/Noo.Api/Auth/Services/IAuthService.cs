@@ -12,8 +12,6 @@ public interface IAuthService
 
     public Task ConfirmPasswordResetAsync(string token, string newPassword);
 
-    public Task RequestEmailChangeAsync(Ulid userId, string newEmail);
-
     public Task ConfirmEmailAsync(string token);
 
     public Task<bool> IsUsernameFreeAsync(string username);

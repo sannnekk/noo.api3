@@ -1,6 +1,9 @@
 using AutoMapper;
+using Moq;
+using Noo.Api.Auth.Services;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request.Patching;
+using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Users.DTO;
 using Noo.Api.Users.Filters;
@@ -59,6 +62,25 @@ public class UserServiceTests
         return config.CreateMapper();
     }
 
+    private static UserService CreateService(
+        UserRepository userRepo,
+        JsonPatchUpdateService patchUpdateService,
+        IMapper mapper,
+        Mock<ICurrentUser>? currentUser = null,
+        Mock<IHashService>? hashService = null,
+        Mock<IEmailChangeService>? emailChangeService = null
+    )
+    {
+        return new UserService(
+            userRepo,
+            patchUpdateService,
+            mapper,
+            (currentUser ?? new Mock<ICurrentUser>()).Object,
+            (hashService ?? new Mock<IHashService>()).Object,
+            (emailChangeService ?? new Mock<IEmailChangeService>()).Object
+        );
+    }
+
     private static UserCreationPayload MakePayload(string username = "john", string email = "john@example.com", string name = "John Doe", UserRoles role = UserRoles.Student)
         => new UserCreationPayload
         {
@@ -78,7 +100,7 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(userRepo, patchUpdateService, mapper);
+        var service = CreateService(userRepo, patchUpdateService, mapper);
 
         var id = service.CreateUser(MakePayload());
         await uow.CommitAsync();
@@ -107,8 +129,12 @@ public class UserServiceTests
             var deleteUow = TestHelpers.CreateUowMock(deleteContext).Object;
             var deleteUserRepo = new UserRepository(deleteContext);
             var deletePatchUpdateService = new JsonPatchUpdateService(mapper);
-            var deleteService = new UserService(deleteUserRepo, deletePatchUpdateService, mapper);
-            deleteService.DeleteUser(id);
+            var currentUser = new Mock<ICurrentUser>();
+            currentUser.SetupGet(c => c.UserId).Returns(id);
+            var hashService = new Mock<IHashService>();
+            hashService.Setup(h => h.VerifyPassword("pwd", "hash")).Returns(true);
+            var deleteService = CreateService(deleteUserRepo, deletePatchUpdateService, mapper, currentUser, hashService);
+            await deleteService.DeleteUserAsync("pwd");
             await deleteUow.CommitAsync();
         }
 
@@ -117,7 +143,7 @@ public class UserServiceTests
             var verifyUow = TestHelpers.CreateUowMock(verifyContext).Object;
             var verifyUserRepo = new UserRepository(verifyContext);
             var verifyPatchUpdateService = new JsonPatchUpdateService(mapper);
-            var verifyService = new UserService(verifyUserRepo, verifyPatchUpdateService, mapper);
+            var verifyService = CreateService(verifyUserRepo, verifyPatchUpdateService, mapper);
             var afterDelete = await verifyService.GetUserByIdAsync(id);
             Assert.Null(afterDelete);
         }
@@ -132,7 +158,7 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(userRepo, patchUpdateService, mapper);
+        var service = CreateService(userRepo, patchUpdateService, mapper);
 
         var studentId = service.CreateUser(MakePayload("stud", "stud@example.com", role: UserRoles.Student));
         await uow.CommitAsync();
@@ -157,7 +183,7 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(userRepo, patchUpdateService, mapper);
+        var service = CreateService(userRepo, patchUpdateService, mapper);
 
         // Not found
         await Assert.ThrowsAsync<NotFoundException>(() => service.ChangeRoleAsync(Ulid.NewUlid(), UserRoles.Mentor));
@@ -185,7 +211,7 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(userRepo, patchUpdateService, mapper);
+        var service = CreateService(userRepo, patchUpdateService, mapper);
 
         var id = service.CreateUser(MakePayload("u1", "u1@example.com"));
         await uow.CommitAsync();
@@ -208,7 +234,7 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(userRepo, patchUpdateService, mapper);
+        var service = CreateService(userRepo, patchUpdateService, mapper);
 
         var id = service.CreateUser(MakePayload("u2", "u2@example.com"));
 
@@ -218,7 +244,7 @@ public class UserServiceTests
             var verifyUow = TestHelpers.CreateUowMock(verifyCtx).Object;
             var verifyUserRepo = new UserRepository(verifyCtx);
             var verifyPatchUpdateService = new JsonPatchUpdateService(mapper);
-            var verifyService = new UserService(verifyUserRepo, verifyPatchUpdateService, mapper);
+            var verifyService = CreateService(verifyUserRepo, verifyPatchUpdateService, mapper);
             Assert.True(await verifyService.IsBlockedAsync(id));
         }
 
@@ -228,7 +254,7 @@ public class UserServiceTests
             var verifyUow2 = TestHelpers.CreateUowMock(verifyCtx2).Object;
             var verifyUserRepo2 = new UserRepository(verifyCtx2);
             var verifyPatchUpdateService2 = new JsonPatchUpdateService(mapper);
-            var verifyService2 = new UserService(verifyUserRepo2, verifyPatchUpdateService2, mapper);
+            var verifyService2 = CreateService(verifyUserRepo2, verifyPatchUpdateService2, mapper);
             Assert.False(await verifyService2.IsBlockedAsync(id));
         }
     }
@@ -241,7 +267,7 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(userRepo, patchUpdateService, mapper);
+        var service = CreateService(userRepo, patchUpdateService, mapper);
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.UserExistsAsync(null, null));
 
@@ -270,7 +296,7 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(userRepo, patchUpdateService, mapper);
+        var service = CreateService(userRepo, patchUpdateService, mapper);
 
         var id = service.CreateUser(MakePayload("verify", "verify@example.com"));
         await uow.CommitAsync();
@@ -288,7 +314,7 @@ public class UserServiceTests
         var mapper = CreateMapper();
         var userRepo = new UserRepository(context);
         var patchUpdateService = new JsonPatchUpdateService(mapper);
-        var service = new UserService(userRepo, patchUpdateService, mapper);
+        var service = CreateService(userRepo, patchUpdateService, mapper);
 
         var patch = new JsonPatchDocument<UpdateUserDTO>().Replace(x => x.Name, "N");
         await Assert.ThrowsAsync<NotFoundException>(() => service.UpdateUserAsync(Ulid.NewUlid(), patch));

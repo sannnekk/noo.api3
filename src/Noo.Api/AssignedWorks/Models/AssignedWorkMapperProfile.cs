@@ -26,6 +26,8 @@ public class AssignedWorkMapperProfile : Profile
 
         CreateMap<AssignedWorkModel, AssignedWorkDTO>();
 
+        CreateMap<AssignedWorkAnswerModel, AssignedWorkAnswerDTO>();
+
         CreateMap<AssignedWorkModel, AssignedWorkProgressDTO>()
             .ForMember(dest => dest.AssignedWorkId, opt => opt.MapFrom(src => src.Id));
     }

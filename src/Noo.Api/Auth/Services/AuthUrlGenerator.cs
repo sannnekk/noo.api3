@@ -26,6 +26,6 @@ public class AuthUrlGenerator : IAuthUrlGenerator
 
     public string GenerateEmailChangeUrl(string token)
     {
-        return $"{_appConfig.BaseUrl}/auth/verify-email-change?token={token}";
+        return $"{_appConfig.BaseUrl}/auth/verify-email?token={token}";
     }
 }

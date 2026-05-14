@@ -22,6 +22,8 @@ public class AuthService : IAuthService
 
     private readonly IAuthUrlGenerator _urlGenerator;
 
+    private readonly IEmailChangeService _emailChangeService;
+
     private readonly IHashService _hashService;
 
     private readonly IHttpContextAccessor _httpContextAccessor;
@@ -30,6 +32,7 @@ public class AuthService : IAuthService
         ITokenService tokenService,
         IAuthEmailService emailService,
         IAuthUrlGenerator urlGenerator,
+        IEmailChangeService emailChangeService,
         IUserService userService,
         IHashService hashService,
         ISessionService sessionService,
@@ -41,6 +44,7 @@ public class AuthService : IAuthService
         _emailService = emailService;
         _hashService = hashService;
         _urlGenerator = urlGenerator;
+        _emailChangeService = emailChangeService;
         _sessionService = sessionService;
         _httpContextAccessor = httpContextAccessor;
     }
@@ -54,7 +58,7 @@ public class AuthService : IAuthService
             throw new UnauthorizedException();
         }
 
-        if (!VerifyPassword(request.Password, user.PasswordHash))
+        if (!_hashService.VerifyPassword(request.Password, user.PasswordHash))
         {
             throw new UnauthorizedException();
         }
@@ -170,28 +174,6 @@ public class AuthService : IAuthService
         _tokenService.DeleteTokens(user.Id, TokenType.PasswordReset);
     }
 
-    public async Task RequestEmailChangeAsync(Ulid userId, string newEmail)
-    {
-        var exists = await _userService.UserExistsAsync(null, newEmail);
-
-        if (exists)
-        {
-            throw new AlreadyExistsException();
-        }
-
-        var user = await _userService.GetUserByIdAsync(userId);
-
-        if (user == null)
-        {
-            throw new UnauthorizedException();
-        }
-
-        var token = _tokenService.CreateToken(user.Id, TokenType.EmailChange);
-        var link = _urlGenerator.GenerateEmailChangeUrl(token.Token);
-
-        await _emailService.SendEmailChangeEmailAsync(newEmail, user.Name, link);
-    }
-
     public async Task ConfirmEmailAsync(string token)
     {
         var (userId, tokenType, newEmail) = await _tokenService.ValidateTokenAsync(token);
@@ -201,44 +183,28 @@ public class AuthService : IAuthService
             throw new UnauthorizedException();
         }
 
-        var user = await _userService.GetUserByIdAsync(userId.Value);
-
-        if (user == null)
+        if (tokenType == TokenType.EmailVerification && string.IsNullOrEmpty(newEmail))
         {
-            throw new UnauthorizedException();
-        }
+            var user = await _userService.GetUserByIdAsync(userId.Value)
+                ?? throw new UnauthorizedException();
 
-        if (string.IsNullOrEmpty(newEmail) && tokenType == TokenType.EmailVerification)
-        {
-            // In case of just verification of the email
             user.IsVerified = true;
             _tokenService.DeleteTokens(user.Id, TokenType.EmailVerification);
             return;
         }
 
-        // in case of email change
-        if (tokenType != TokenType.EmailChange || string.IsNullOrEmpty(newEmail))
+        if (tokenType == TokenType.EmailChange && !string.IsNullOrEmpty(newEmail))
         {
-            throw new UnauthorizedException();
+            await _emailChangeService.ConfirmAsync(userId.Value, newEmail);
+            return;
         }
 
-        await _userService.UpdateUserEmailAsync(user.Id, newEmail);
-        _tokenService.DeleteTokens(user.Id, TokenType.EmailChange);
+        throw new UnauthorizedException();
     }
 
     public async Task<bool> IsUsernameFreeAsync(string username)
     {
         var usernameIsTaken = await _userService.UserExistsAsync(username, null);
         return !usernameIsTaken;
-    }
-
-    private bool VerifyPassword(string passwordToCheck, string passwordHash)
-    {
-        if (string.IsNullOrEmpty(passwordToCheck) || string.IsNullOrEmpty(passwordHash))
-        {
-            return false;
-        }
-
-        return passwordHash == _hashService.Hash(passwordToCheck);
     }
 }

@@ -1,8 +1,10 @@
 using AutoMapper;
+using Noo.Api.Auth.Services;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request.Patching;
+using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Users.DTO;
@@ -22,15 +24,27 @@ public class UserService : IUserService
 
     private readonly IJsonPatchUpdateService _patchUpdateService;
 
+    private readonly ICurrentUser _currentUser;
+
+    private readonly IHashService _hashService;
+
+    private readonly IEmailChangeService _emailChangeService;
+
     public UserService(
         IUserRepository userRepository,
         IJsonPatchUpdateService patchUpdateService,
-        IMapper mapper
+        IMapper mapper,
+        ICurrentUser currentUser,
+        IHashService hashService,
+        IEmailChangeService emailChangeService
     )
     {
         _userRepository = userRepository;
         _patchUpdateService = patchUpdateService;
         _mapper = mapper;
+        _currentUser = currentUser;
+        _hashService = hashService;
+        _emailChangeService = emailChangeService;
     }
 
     public async Task BlockUserAsync(Ulid id)
@@ -71,10 +85,19 @@ public class UserService : IUserService
         return model.Id;
     }
 
-    public void DeleteUser(Ulid id)
+    public async Task DeleteUserAsync(string password)
     {
-        // TODO: soft delete instead
-        _userRepository.DeleteById(id);
+        var currentUserId = _currentUser.UserId ?? throw new UnauthorizedException();
+
+        var user =
+            await _userRepository.GetByIdAsync(currentUserId) ?? throw new NotFoundException();
+
+        if (!_hashService.VerifyPassword(password, user.PasswordHash))
+        {
+            throw new UnauthorizedException();
+        }
+
+        _userRepository.DeleteById(currentUserId);
     }
 
     public Task<UserModel?> GetUserByIdAsync(Ulid id)
@@ -104,11 +127,20 @@ public class UserService : IUserService
 
     public async Task UpdateUserAsync(Ulid id, JsonPatchDocument<UpdateUserDTO> patchUserDto)
     {
-        var model = await _userRepository.GetByIdAsync(id) ?? throw new NotFoundException();
+        var user = await _userRepository.GetByIdAsync(id) ?? throw new NotFoundException();
 
-        model.ThrowNotFoundIfNull();
+        user.ThrowNotFoundIfNull();
 
-        _patchUpdateService.ApplyPatch(model, patchUserDto);
+        if (patchUserDto.ContainsOperation(u => u.Email))
+        {
+            var (_, newEmail) = patchUserDto.RemoveOperation(u => u.Email);
+            await _emailChangeService.RequestAsync(
+                user.Id,
+                newEmail?.ToString() ?? throw new BadRequestException("Email value is required")
+            );
+        }
+
+        _patchUpdateService.ApplyPatch(user, patchUserDto);
     }
 
     public async Task UpdateUserEmailAsync(Ulid id, string newEmail)

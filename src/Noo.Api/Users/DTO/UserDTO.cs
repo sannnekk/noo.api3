@@ -22,6 +22,9 @@ public record UserDTO
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string Email { get; set; } = string.Empty;
 
+    [JsonPropertyName("phone")]
+    public string? Phone { get; set; }
+
     [Required]
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
