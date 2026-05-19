@@ -1,28 +1,40 @@
 using Moq;
-using MediatR;
+using Noo.Api.AssignedWorks;
 using Noo.Api.AssignedWorks.DTO;
+using Noo.Api.AssignedWorks.Events;
+using Noo.Api.AssignedWorks.Exceptions;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Services;
 using Noo.Api.AssignedWorks.Types;
-using Noo.Api.AssignedWorks.Exceptions;
-using Noo.Api.AssignedWorks.Events;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.System.Events;
+using Noo.Api.Core.Utils.Richtext.Delta;
+using Noo.Api.Courses.Services;
 using Noo.Api.Users.Models;
 using Noo.Api.Users.Services;
-using Noo.Api.Courses.Services;
-using Noo.Api.Works.Services;
-using Noo.UnitTests.Common;
 using Noo.Api.Works.Models;
+using Noo.Api.Works.Services;
 using Noo.Api.Works.Types;
-using Noo.Api.Core.Utils.Richtext.Delta;
-using Noo.Api.AssignedWorks;
+using Noo.UnitTests.Common;
 
 namespace Noo.UnitTests.AssignedWorks;
 
 public class AssignedWorkServiceTests
 {
-    private static (AssignedWorkService svc, NooDbContext ctx, Mock<IUnitOfWork> uowMock, Mock<ICurrentUser> currentUserMock, Mock<IMediator> mediatorMock) CreateService(UserRoles role, Ulid? userId = null)
+    private sealed class CapturingPublisher : IEventPublisher
+    {
+        public List<IDomainEvent> Published { get; } = new();
+
+        public Task PublishAsync<TEvent>(TEvent @event, CancellationToken ct = default)
+            where TEvent : IDomainEvent
+        {
+            Published.Add(@event);
+            return Task.CompletedTask;
+        }
+    }
+
+    private static (AssignedWorkService svc, NooDbContext ctx, Mock<IUnitOfWork> uowMock, Mock<ICurrentUser> currentUserMock, CapturingPublisher publisher) CreateService(UserRoles role, Ulid? userId = null)
     {
         var ctx = TestHelpers.CreateInMemoryDb();
         var uowMock = TestHelpers.CreateUowMock(ctx);
@@ -32,7 +44,7 @@ public class AssignedWorkServiceTests
         currentUser.SetupGet(c => c.UserRole).Returns(role);
         currentUser.SetupGet(c => c.IsAuthenticated).Returns(true);
         currentUser.Setup(c => c.IsInRole(It.IsAny<UserRoles[]>())).Returns<UserRoles[]>(r => r.Contains(role));
-        var mediator = new Mock<IMediator>();
+        var publisher = new CapturingPublisher();
         var mapperCfg = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile(new AssignedWorkMapperProfile()));
         var mapper = mapperCfg.CreateMapper();
         var assignedWorkRepo = new AssignedWorkRepository(ctx);
@@ -41,8 +53,18 @@ public class AssignedWorkServiceTests
         var courseWorkAssignmentRepo = new Mock<ICourseWorkAssignmentRepository>();
         var mentorAssignmentRepo = new Mock<IMentorAssignmentRepository>();
         var workTaskRepo = new WorkTaskRepository(ctx);
-        var svc = new AssignedWorkService(assignedWorkRepo, assignedWorkAnswerRepo, assignedWorkCommentRepo, courseWorkAssignmentRepo.Object, mentorAssignmentRepo.Object, currentUser.Object, workTaskRepo, mediator.Object, mapper);
-        return (svc, ctx, uowMock, currentUser, mediator);
+        var svc = new AssignedWorkService(
+            assignedWorkRepo,
+            assignedWorkAnswerRepo,
+            assignedWorkCommentRepo,
+            courseWorkAssignmentRepo.Object,
+            mentorAssignmentRepo.Object,
+            currentUser.Object,
+            workTaskRepo,
+            mapper,
+            publisher
+        );
+        return (svc, ctx, uowMock, currentUser, publisher);
     }
 
     private static UserModel MakeUser(UserRoles role) => new()
@@ -79,7 +101,7 @@ public class AssignedWorkServiceTests
     [Fact]
     public async Task AddHelperMentor_Adds_When_Valid()
     {
-        var (svc, ctx, _, currentUser, mediator) = CreateService(UserRoles.Mentor);
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
         var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student);
         var mainMentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mainMentor);
         var newHelper = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(newHelper);
@@ -90,13 +112,12 @@ public class AssignedWorkServiceTests
         await svc.AddHelperMentorAsync(aw.Id, new AddHelperMentorOptionsDTO { MentorId = newHelper.Id });
         var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
         Assert.Equal(newHelper.Id, updated!.HelperMentorId);
-        mediator.Verify(m => m.Publish(It.IsAny<HelperMentorAddedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task AddHelperMentor_NoOp_When_Already_Main()
     {
-        var (svc, ctx, _, currentUser, mediator) = CreateService(UserRoles.Mentor);
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
         var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student);
         var mainMentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mainMentor);
         ctx.SaveChanges();
@@ -106,13 +127,12 @@ public class AssignedWorkServiceTests
         await svc.AddHelperMentorAsync(aw.Id, new AddHelperMentorOptionsDTO { MentorId = mainMentor.Id });
         var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
         Assert.Null(updated!.HelperMentorId);
-        mediator.Verify(m => m.Publish(It.IsAny<HelperMentorAddedEvent>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task MarkAsSolved_Sets_Fields()
+    public async Task MarkAsSolved_Sets_Fields_And_Publishes_Event()
     {
-        var (svc, ctx, _, currentUser, mediator) = CreateService(UserRoles.Student);
+        var (svc, ctx, _, currentUser, publisher) = CreateService(UserRoles.Student);
         var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(student.Id);
         var aw = SeedAssignedWork(ctx, student.Id, mainMentorId: Ulid.NewUlid());
@@ -121,25 +141,29 @@ public class AssignedWorkServiceTests
         var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
         Assert.Equal(AssignedWorkSolveStatus.Solved, updated!.SolveStatus);
         Assert.NotNull(updated.SolvedAt);
-        mediator.Verify(m => m.Publish(It.IsAny<AssignedWorkSolvedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+
+        var solved = Assert.Single(publisher.Published.OfType<AssignedWorkSolvedEvent>());
+        Assert.Equal(aw.Id, solved.AssignedWorkId);
+        Assert.Equal(student.Id, solved.StudentId);
     }
 
     [Fact]
     public async Task MarkAsSolved_AlreadySolved_Throws()
     {
-        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var (svc, ctx, _, currentUser, publisher) = CreateService(UserRoles.Student);
         var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(student.Id);
         var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid(), solveStatus: AssignedWorkSolveStatus.Solved);
         aw.SolvedAt = DateTime.UtcNow; ctx.SaveChanges();
 
         await Assert.ThrowsAsync<AssignedWorkAlreadySolvedException>(() => svc.MarkAsSolvedAsync(aw.Id));
+        Assert.Empty(publisher.Published);
     }
 
     [Fact]
     public async Task MarkAsChecked_Sets_Fields()
     {
-        var (svc, ctx, _, currentUser, mediator) = CreateService(UserRoles.Mentor);
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
         var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
         var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id, solveStatus: AssignedWorkSolveStatus.Solved);
@@ -149,7 +173,6 @@ public class AssignedWorkServiceTests
         var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
         Assert.Equal(AssignedWorkCheckStatus.Checked, updated!.CheckStatus);
         Assert.NotNull(updated.CheckedAt);
-        mediator.Verify(m => m.Publish(It.IsAny<AssignedWorkCheckedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -165,7 +188,7 @@ public class AssignedWorkServiceTests
     [Fact]
     public async Task ReturnToSolve_Resets_Solve_State()
     {
-        var (svc, ctx, _, currentUser, mediator) = CreateService(UserRoles.Mentor);
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
         var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
         var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), mentor.Id, solveStatus: AssignedWorkSolveStatus.Solved);
@@ -175,13 +198,12 @@ public class AssignedWorkServiceTests
         var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
         Assert.Equal(AssignedWorkSolveStatus.InProgress, updated!.SolveStatus);
         Assert.Null(updated.SolvedAt);
-        mediator.Verify(m => m.Publish(It.IsAny<AssignedWorkReturnedToSolveEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task ReturnToCheck_Resets_Check_State()
     {
-        var (svc, ctx, _, currentUser, mediator) = CreateService(UserRoles.Mentor);
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
         var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
         var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), mentor.Id, solveStatus: AssignedWorkSolveStatus.Solved, checkStatus: AssignedWorkCheckStatus.Checked);
@@ -191,7 +213,6 @@ public class AssignedWorkServiceTests
         var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
         Assert.Equal(AssignedWorkCheckStatus.NotChecked, updated!.CheckStatus);
         Assert.Null(updated.CheckedAt);
-        mediator.Verify(m => m.Publish(It.IsAny<AssignedWorkReturnedToCheckEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -203,8 +224,6 @@ public class AssignedWorkServiceTests
         var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid(), type: WorkType.Test, solveStatus: AssignedWorkSolveStatus.Solved, checkStatus: AssignedWorkCheckStatus.Checked);
         aw.SolvedAt = DateTime.UtcNow; aw.CheckedAt = DateTime.UtcNow; ctx.SaveChanges();
 
-        // Seed answers (one correct, one incorrect)
-        // Seed related work & tasks
         var work = new WorkModel { Title = "WorkTitle", Type = WorkType.Test };
         ctx.GetDbSet<WorkModel>().Add(work);
         ctx.SaveChanges();
@@ -234,11 +253,11 @@ public class AssignedWorkServiceTests
         ctx.SaveChanges();
         Assert.NotEqual(default, newId);
         var all = ctx.GetDbSet<AssignedWorkModel>().ToList();
-        Assert.Equal(2, all.Count); // original + new attempt
+        Assert.Equal(2, all.Count);
         var copy = all.Single(x => x.Id == newId);
         Assert.True(copy.Attempt == aw.Attempt + 1);
         Assert.NotNull(copy.ExcludedTaskIds);
-        Assert.Contains(task1.Id, copy.ExcludedTaskIds!); // correct task excluded
+        Assert.Contains(task1.Id, copy.ExcludedTaskIds!);
         Assert.DoesNotContain(task2.Id, copy.ExcludedTaskIds!);
     }
 
@@ -260,7 +279,7 @@ public class AssignedWorkServiceTests
     [Fact]
     public async Task ShiftDeadline_Student_Within_Limit_Succeeds()
     {
-        var (svc, ctx, _, currentUser, mediator) = CreateService(UserRoles.Student);
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
         var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(student.Id);
         var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
@@ -268,13 +287,12 @@ public class AssignedWorkServiceTests
         await svc.ShiftDeadlineAsync(aw.Id, new ShiftAssignedWorkDeadlineOptionsDTO { NewDeadline = newDeadline, NotifyOthers = true });
         var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
         Assert.Equal(newDeadline, updated!.SolveDeadlineAt);
-        mediator.Verify(m => m.Publish(It.IsAny<AssignedWorkSolveDeadlineShiftedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task ShiftDeadline_Mentor_Within_Limit_Succeeds()
     {
-        var (svc, ctx, _, currentUser, mediator) = CreateService(UserRoles.Mentor);
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
         var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
         var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), mentor.Id);
@@ -282,7 +300,6 @@ public class AssignedWorkServiceTests
         await svc.ShiftDeadlineAsync(aw.Id, new ShiftAssignedWorkDeadlineOptionsDTO { NewDeadline = newDeadline });
         var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
         Assert.Equal(newDeadline, updated!.CheckDeadlineAt);
-        mediator.Verify(m => m.Publish(It.IsAny<AssignedWorkCheckDeadlineShiftedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -378,7 +395,7 @@ public class AssignedWorkServiceTests
     }
 
     [Fact]
-    public async Task SaveAnswer_Throws_Forbidden_When_Answer_Belongs_To_Different_AssignedWork()
+    public async Task SaveAnswer_Throws_NotFound_When_Answer_Belongs_To_Different_AssignedWork()
     {
         var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
         var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
@@ -405,7 +422,7 @@ public class AssignedWorkServiceTests
             Score = 9,
         };
 
-        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.ForbiddenException>(() => svc.SaveAnswerAsync(ownAw.Id, dto));
+        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(() => svc.SaveAnswerAsync(ownAw.Id, dto));
     }
 
     [Fact]

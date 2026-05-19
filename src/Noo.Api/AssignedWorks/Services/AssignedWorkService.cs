@@ -1,5 +1,4 @@
 using AutoMapper;
-using MediatR;
 using Noo.Api.AssignedWorks.DTO;
 using Noo.Api.AssignedWorks.Events;
 using Noo.Api.AssignedWorks.Exceptions;
@@ -11,6 +10,7 @@ using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Courses.Services;
 using Noo.Api.Users.Models;
@@ -29,8 +29,8 @@ public class AssignedWorkService : IAssignedWorkService
     private readonly IWorkTaskRepository _workTaskRepository;
     private readonly IMentorAssignmentRepository _mentorAssignmentRepository;
     private readonly ICurrentUser _currentUser;
-    private readonly IMediator _mediator;
     private readonly IMapper _mapper;
+    private readonly IEventPublisher _events;
 
     public AssignedWorkService(
         IAssignedWorkRepository assignedWorkRepository,
@@ -40,8 +40,8 @@ public class AssignedWorkService : IAssignedWorkService
         IMentorAssignmentRepository mentorAssignmentRepository,
         ICurrentUser currentUser,
         IWorkTaskRepository workTaskRepository,
-        IMediator mediator,
-        IMapper mapper
+        IMapper mapper,
+        IEventPublisher events
     )
     {
         _assignedWorkRepository = assignedWorkRepository;
@@ -51,8 +51,8 @@ public class AssignedWorkService : IAssignedWorkService
         _mentorAssignmentRepository = mentorAssignmentRepository;
         _currentUser = currentUser;
         _workTaskRepository = workTaskRepository;
-        _mediator = mediator;
         _mapper = mapper;
+        _events = events;
     }
 
     public async Task<Ulid> CreateAsync(Ulid workAssignmentId)
@@ -122,13 +122,6 @@ public class AssignedWorkService : IAssignedWorkService
         }
 
         assignedWork.HelperMentorId = options.MentorId;
-
-        await _mediator.Publish(
-            new HelperMentorAddedEvent(
-                AssignedWorkId: assignedWork.Id,
-                HelperMentorId: options.MentorId
-            )
-        );
     }
 
     public async Task DeleteAsync(Ulid assignedWorkId)
@@ -221,13 +214,6 @@ public class AssignedWorkService : IAssignedWorkService
 
         assignedWork.CheckedAt = DateTime.UtcNow;
         assignedWork.CheckStatus = AssignedWorkCheckStatus.Checked;
-
-        await _mediator.Publish(
-            new AssignedWorkCheckedEvent(
-                AssignedWorkId: assignedWork.Id,
-                CheckedBy: _currentUser.UserId.Value
-            )
-        );
     }
 
     public async Task MarkAsSolvedAsync(Ulid assignedWorkId)
@@ -250,7 +236,7 @@ public class AssignedWorkService : IAssignedWorkService
         assignedWork.SolvedAt = DateTime.UtcNow;
         assignedWork.SolveStatus = AssignedWorkSolveStatus.Solved;
 
-        await _mediator.Publish(new AssignedWorkSolvedEvent(AssignedWorkId: assignedWork.Id));
+        await _events.PublishAsync(new AssignedWorkSolvedEvent(assignedWork.Id, assignedWork.StudentId));
     }
 
     public async Task<Ulid> RemakeAsync(Ulid assignedWorkId, RemakeAssignedWorkOptionsDTO options)
@@ -313,16 +299,6 @@ public class AssignedWorkService : IAssignedWorkService
 
         var OldMentorId = assignedWork.MainMentorId;
         assignedWork.MainMentorId = options.MentorId;
-
-        await _mediator.Publish(
-            new MainMentorChangedEvent(
-                OldMentorId: OldMentorId,
-                NewMentorId: options.MentorId,
-                AssignedWorkId: assignedWork.Id,
-                NotifyMentor: options.NotifyMentor,
-                NotifyStudent: options.NotifyStudent
-            )
-        );
     }
 
     public async Task ReturnToCheckAsync(Ulid assignedWorkId)
@@ -344,10 +320,6 @@ public class AssignedWorkService : IAssignedWorkService
 
         assignedWork.CheckedAt = null;
         assignedWork.CheckStatus = AssignedWorkCheckStatus.NotChecked;
-
-        await _mediator.Publish(
-            new AssignedWorkReturnedToCheckEvent(AssignedWorkId: assignedWork.Id)
-        );
     }
 
     public async Task ReturnToSolveAsync(Ulid assignedWorkId)
@@ -373,14 +345,11 @@ public class AssignedWorkService : IAssignedWorkService
 
         assignedWork.SolvedAt = null;
         assignedWork.SolveStatus = AssignedWorkSolveStatus.InProgress;
-
-        await _mediator.Publish(
-            new AssignedWorkReturnedToSolveEvent(AssignedWorkId: assignedWork.Id)
-        );
     }
 
     public async Task<Ulid> SaveAnswerAsync(Ulid assignedWorkId, UpsertAssignedWorkAnswerDTO dto)
     {
+        // its an already existing answer
         if (dto.Id.HasValue)
         {
             var existing = await _assignedWorkAnswerRepository.GetByIdAsync(dto.Id.Value);
@@ -389,7 +358,7 @@ public class AssignedWorkService : IAssignedWorkService
 
             if (existing.AssignedWorkId != assignedWorkId)
             {
-                throw new ForbiddenException();
+                throw new NotFoundException();
             }
 
             _mapper.Map(dto, existing);
@@ -397,8 +366,18 @@ public class AssignedWorkService : IAssignedWorkService
         }
 
         var answer = _mapper.Map<AssignedWorkAnswerModel>(dto);
+
         answer.AssignedWorkId = assignedWorkId;
         _assignedWorkAnswerRepository.Add(answer);
+
+        var assignedWork = await _assignedWorkRepository.GetAsync(
+            assignedWorkId,
+            _currentUser.UserId
+        );
+
+        assignedWork.ThrowNotFoundIfNull();
+        assignedWork.SolveStatus = AssignedWorkSolveStatus.InProgress;
+
         return answer.Id;
     }
 
@@ -433,25 +412,11 @@ public class AssignedWorkService : IAssignedWorkService
         {
             AssertCorrectStudentDeadlineShift(assignedWork, options.NewDeadline);
             assignedWork.SolveDeadlineAt = options.NewDeadline;
-            await _mediator.Publish(
-                new AssignedWorkSolveDeadlineShiftedEvent(
-                    AssignedWorkId: assignedWork.Id,
-                    NotifyOthers: options.NotifyOthers
-                )
-            );
         }
         else if (_currentUser.UserRole == UserRoles.Mentor)
         {
             AssertCorrectMentorDeadlineShift(assignedWork, options.NewDeadline);
             assignedWork.CheckDeadlineAt = options.NewDeadline;
-
-            await _mediator.Publish(
-                new AssignedWorkCheckDeadlineShiftedEvent(
-                    AssignedWorkId: assignedWork.Id,
-                    ShiftedById: _currentUser.UserId.Value,
-                    NotifyOthers: options.NotifyOthers
-                )
-            );
         }
     }
 

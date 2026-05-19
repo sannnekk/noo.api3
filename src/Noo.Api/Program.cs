@@ -34,7 +34,7 @@ builder.Services.AddRouting();
 builder.Services.AddAutoMapperProfiles();
 builder.Services.AddCacheProvider(builder.Configuration);
 builder.Services.AddMetrics();
-builder.Services.AddDomainEventsBackgroundWorker();
+builder.Services.AddDomainEvents();
 builder.Services.AddHostedServices();
 builder.Services.AddMediatR();
 

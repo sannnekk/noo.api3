@@ -9,21 +9,16 @@ public class DomainEventQueueTests
     private sealed class DummyEvent : IDomainEvent { }
 
     [Fact]
-    public void DropOnFull_Works_As_Configured()
+    public void TryEnqueue_Returns_False_When_Full()
     {
         var opts = Options.Create(new EventsConfig { QueueCapacity = 2 });
         var queue = new DomainEventQueue(opts);
 
-        // Fill to capacity
-        var ok1 = queue.TryEnqueue(new DummyEvent());
-        var ok2 = queue.TryEnqueue(new DummyEvent());
-        // With DropOldest, TryEnqueue returns true and queue retains latest items
-        var ok3 = queue.TryEnqueue(new DummyEvent());
+        Assert.True(queue.TryEnqueue(new DummyEvent()));
+        Assert.True(queue.TryEnqueue(new DummyEvent()));
+        // Queue is at capacity; with Wait full-mode, TryEnqueue surfaces back-pressure.
+        Assert.False(queue.TryEnqueue(new DummyEvent()));
 
-        Assert.True(ok1);
-        Assert.True(ok2);
-        Assert.True(ok3);
-        // Only two items should be readable due to capacity
         var read = 0;
         while (queue.Reader.TryRead(out _)) read++;
         Assert.Equal(2, read);

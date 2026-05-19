@@ -160,7 +160,10 @@ The configuration is done in the `appsettings.json` file. An example (all possib
   },
   "AllowedHosts": "*",
   "Events": {
-    "QueueCapacity": 2048
+    "QueueCapacity": 2048,
+    "HandlerTimeoutSeconds": 30,
+    "MaxConcurrentEvents": 8,
+    "MaxConcurrentHandlersPerEvent": 4
   },
   "OpenTelemetry": {
     "Enabled": true,
@@ -181,6 +184,8 @@ The configuration is done in the `appsettings.json` file. An example (all possib
 `RateLimiting` controls the fixed-window limits for the global pipeline plus `LoginPolicy` and `RegistrationPolicy`. Adjust `PermitLimit`, `WindowSeconds`, and queue settings per environment as needed.
 
 `Sessions` config drives TTLs for online/active tracking and cleanup cadence; tune per environment to match expected activity and retention.
+
+`Events` configures the in-memory domain event bus. `QueueCapacity` is the bounded channel size; `HandlerTimeoutSeconds` caps the execution time of an individual handler; `MaxConcurrentEvents` limits how many events are dispatched in parallel; `MaxConcurrentHandlersPerEvent` limits how many handlers run in parallel for a single event.
 
 `OpenTelemetry` controls telemetry export. Set `Enabled` to `false` to disable everything (no SDK is registered). `Endpoint` is the OTLP collector address — `http://localhost:4317` for gRPC, `http://localhost:4318` for HTTP. `Protocol` is `Grpc` or `HttpProtobuf`. `Headers` (optional) is a comma-separated list of OTLP headers, e.g. `"x-token=abc,x-tenant=noo"`. The three `Emit*` flags toggle traces, metrics, and logs independently. The Testing environment ships with everything disabled so test runs do not emit telemetry.
 
