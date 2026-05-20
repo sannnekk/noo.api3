@@ -6,6 +6,7 @@ using Noo.Api.AssignedWorks.Exceptions;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Services;
 using Noo.Api.AssignedWorks.Types;
+using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.System.Events;
@@ -62,7 +63,8 @@ public class AssignedWorkServiceTests
             currentUser.Object,
             workTaskRepo,
             mapper,
-            publisher
+            publisher,
+            new MemoryCacheRepository()
         );
         return (svc, ctx, uowMock, currentUser, publisher);
     }

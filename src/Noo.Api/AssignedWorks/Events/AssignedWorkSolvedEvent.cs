@@ -9,6 +9,9 @@ namespace Noo.Api.AssignedWorks.Events;
 
 public sealed record AssignedWorkSolvedEvent(Ulid AssignedWorkId, Ulid StudentId) : IDomainEvent;
 
+/// <summary>
+/// Adds an entry into the assigned work history when a work is solved.
+/// </summary>
 public sealed class AssignedWorkSolvedHistoryHandler : IEventHandler<AssignedWorkSolvedEvent>
 {
     private readonly IAssignedWorkHistoryRepository _historyRepository;
@@ -20,18 +23,23 @@ public sealed class AssignedWorkSolvedHistoryHandler : IEventHandler<AssignedWor
 
     public Task HandleAsync(AssignedWorkSolvedEvent @event, CancellationToken ct = default)
     {
-        _historyRepository.Add(new AssignedWorkStatusHistoryModel
-        {
-            AssignedWorkId = @event.AssignedWorkId,
-            ChangedById = @event.StudentId,
-            Type = AssignedWorkStatusHistoryType.Solved,
-            ChangedAt = DateTime.UtcNow,
-        });
+        _historyRepository.Add(
+            new AssignedWorkStatusHistoryModel
+            {
+                AssignedWorkId = @event.AssignedWorkId,
+                ChangedById = @event.StudentId,
+                Type = AssignedWorkStatusHistoryType.Solved,
+                ChangedAt = DateTime.UtcNow,
+            }
+        );
 
         return Task.CompletedTask;
     }
 }
 
+/// <summary>
+/// Notifies the student and mentors when a work is solved.
+/// </summary>
 public sealed class AssignedWorkSolvedNotificationHandler : IEventHandler<AssignedWorkSolvedEvent>
 {
     private readonly INotificationService _notificationService;
@@ -67,14 +75,16 @@ public sealed class AssignedWorkSolvedNotificationHandler : IEventHandler<Assign
             .Where(id => id.HasValue)
             .Select(id => id!.Value);
 
-        await _notificationService.BulkCreateNotificationsAsync(new BulkCreateNotificationsDTO
-        {
-            UserIds = recipientIds,
-            Type = "assigned_work.solved",
-            Title = "Работа сдана",
-            Message = $"Работа \"{assignedWork.Title}\" была сдана и ожидает проверки.",
-            Link = _linkGenerator.GenerateViewLink(assignedWork.Id),
-            LinkText = "Перейти к работе",
-        });
+        await _notificationService.BulkCreateNotificationsAsync(
+            new BulkCreateNotificationsDTO
+            {
+                UserIds = recipientIds,
+                Type = "assigned_work.solved",
+                Title = "Работа сдана",
+                Message = $"Работа \"{assignedWork.Title}\" была сдана и ожидает проверки.",
+                Link = _linkGenerator.GenerateViewLink(assignedWork.Id),
+                LinkText = "Перейти к работе",
+            }
+        );
     }
 }

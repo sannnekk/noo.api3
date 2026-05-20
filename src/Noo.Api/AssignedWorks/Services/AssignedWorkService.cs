@@ -6,6 +6,7 @@ using Noo.Api.AssignedWorks.Filters;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Specifications;
 using Noo.Api.AssignedWorks.Types;
+using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Exceptions.Http;
@@ -22,6 +23,8 @@ namespace Noo.Api.AssignedWorks.Services;
 [RegisterScoped(typeof(IAssignedWorkService))]
 public class AssignedWorkService : IAssignedWorkService
 {
+    private static readonly TimeSpan _metadataCacheTtl = TimeSpan.FromSeconds(30);
+
     private readonly IAssignedWorkRepository _assignedWorkRepository;
     private readonly IAssignedWorkAnswerRepository _assignedWorkAnswerRepository;
     private readonly IAssignedWorkCommentRepository _assignedWorkCommentRepository;
@@ -31,6 +34,7 @@ public class AssignedWorkService : IAssignedWorkService
     private readonly ICurrentUser _currentUser;
     private readonly IMapper _mapper;
     private readonly IEventPublisher _events;
+    private readonly ICacheRepository _cache;
 
     public AssignedWorkService(
         IAssignedWorkRepository assignedWorkRepository,
@@ -41,7 +45,8 @@ public class AssignedWorkService : IAssignedWorkService
         ICurrentUser currentUser,
         IWorkTaskRepository workTaskRepository,
         IMapper mapper,
-        IEventPublisher events
+        IEventPublisher events,
+        ICacheRepository cache
     )
     {
         _assignedWorkRepository = assignedWorkRepository;
@@ -53,7 +58,10 @@ public class AssignedWorkService : IAssignedWorkService
         _workTaskRepository = workTaskRepository;
         _mapper = mapper;
         _events = events;
+        _cache = cache;
     }
+
+    private static string MetadataCacheKey(Ulid userId) => $"assigned-work:metadata:{userId}";
 
     public async Task<Ulid> CreateAsync(Ulid workAssignmentId)
     {
@@ -161,6 +169,17 @@ public class AssignedWorkService : IAssignedWorkService
         return assignedWork;
     }
 
+    public async Task<AssignedWorksMetadataDTO> GetMetadataAsync(Ulid userId)
+    {
+        var counts = await _cache.GetOrSetAsync(
+            MetadataCacheKey(userId),
+            () => _assignedWorkRepository.GetCountsForUserAsync(userId),
+            _metadataCacheTtl
+        );
+
+        return new AssignedWorksMetadataDTO { Counts = counts ?? new AssignedWorksCounts() };
+    }
+
     public Task<List<AssignedWorkModel>> GetByWorkAssignmentAsync(Ulid workAssignmentId)
     {
         if (!_currentUser.UserId.HasValue)
@@ -236,7 +255,9 @@ public class AssignedWorkService : IAssignedWorkService
         assignedWork.SolvedAt = DateTime.UtcNow;
         assignedWork.SolveStatus = AssignedWorkSolveStatus.Solved;
 
-        await _events.PublishAsync(new AssignedWorkSolvedEvent(assignedWork.Id, assignedWork.StudentId));
+        await _events.PublishAsync(
+            new AssignedWorkSolvedEvent(assignedWork.Id, assignedWork.StudentId)
+        );
     }
 
     public async Task<Ulid> RemakeAsync(Ulid assignedWorkId, RemakeAssignedWorkOptionsDTO options)

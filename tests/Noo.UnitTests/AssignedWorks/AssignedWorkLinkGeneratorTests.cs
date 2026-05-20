@@ -11,6 +11,6 @@ public class AssignedWorkLinkGeneratorTests
         var id = Ulid.NewUlid();
         var json = gen.GenerateViewLink(id);
         Assert.Contains(id.ToString(), json);
-        Assert.Contains("assigned-works.view", json);
+        Assert.Contains("assigned-works.detail", json);
     }
 }

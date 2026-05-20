@@ -27,4 +27,5 @@ public interface IAssignedWorkService
     public Task ReturnToCheckAsync(Ulid assignedWorkId);
     public Task DeleteAsync(Ulid assignedWorkId);
     public Task<SearchResult<AssignedWorkModel>> GetAssignedWorksAsync(AssignedWorkFilter filter);
+    public Task<AssignedWorksMetadataDTO> GetMetadataAsync(Ulid userId);
 }

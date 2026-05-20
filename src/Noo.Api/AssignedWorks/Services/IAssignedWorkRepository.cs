@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Noo.Api.AssignedWorks.DTO;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Db;
@@ -46,4 +47,11 @@ public interface IAssignedWorkRepository : IRepository<AssignedWorkModel>
         Ulid studentId,
         WorkType? workType
     );
+
+    /// <summary>
+    /// Returns the assigned-work counts (total, not solved, not checked, checked)
+    /// for the given user in a single aggregate query. The user is matched as
+    /// student, main mentor or helper mentor.
+    /// </summary>
+    public Task<AssignedWorksCounts> GetCountsForUserAsync(Ulid userId);
 }

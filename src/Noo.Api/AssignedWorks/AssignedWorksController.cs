@@ -63,6 +63,26 @@ public class AssignedWorkController : ApiController
     }
 
     /// <summary>
+    /// Get metadata of assigned works
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpGet("{userId}/metadata")]
+    [Authorize(Policy = AssignedWorkPolicies.CanGetAssignedWorks)]
+    [Produces(
+        typeof(ApiResponseDTO<AssignedWorksMetadataDTO>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden
+    )]
+    public async Task<IActionResult> GetAssignedWorksMetadataAsync([FromRoute] Ulid userId)
+    {
+        var result = await _assignedWorkService.GetMetadataAsync(userId);
+
+        return SendResponse(result);
+    }
+
+    /// <summary>
     /// Creates an assigned work instance by a work assignment ID.
     /// This is used when a student starts working on a work
     /// </summary>

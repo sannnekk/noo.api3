@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using Noo.Api.AssignedWorks.DTO;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Db;
@@ -208,5 +209,35 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
                 )
                 .MaxAsync(aw => (int?)aw.Attempt)
             ?? 0;
+    }
+
+    public async Task<AssignedWorksCounts> GetCountsForUserAsync(Ulid userId)
+    {
+        // Single round-trip aggregate. Translates to one SELECT with conditional
+        // SUMs over the user's rows (covered by IX_assigned_work_student_id /
+        // _main_mentor_id / _helper_mentor_id and the status indexes).
+        var counts = await Context
+            .Set<AssignedWorkModel>()
+            .Where(aw =>
+                aw.StudentId == userId
+                || aw.MainMentorId == userId
+                || aw.HelperMentorId == userId
+            )
+            .GroupBy(_ => 1)
+            .Select(g => new AssignedWorksCounts
+            {
+                Total = g.Count(),
+                NotSolved = g.Count(aw =>
+                    aw.SolveStatus != AssignedWorkSolveStatus.Solved
+                ),
+                NotChecked = g.Count(aw =>
+                    aw.SolveStatus == AssignedWorkSolveStatus.Solved
+                    && aw.CheckStatus != AssignedWorkCheckStatus.Checked
+                ),
+                Checked = g.Count(aw => aw.CheckStatus == AssignedWorkCheckStatus.Checked),
+            })
+            .FirstOrDefaultAsync();
+
+        return counts ?? new AssignedWorksCounts();
     }
 }
