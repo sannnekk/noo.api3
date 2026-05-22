@@ -17,17 +17,27 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
         _assignedWorkRepository = assignedWorkRepository;
     }
 
-    public async Task<StatisticsBlockDTO> GetAssignedWorkStatisticsAsync(WorkType? workType, DateTime from, DateTime to)
+    public async Task<StatisticsBlockDTO> GetAssignedWorkStatisticsAsync(
+        WorkType? workType,
+        DateTime from,
+        DateTime to
+    )
     {
-        var solvedTask = _assignedWorkRepository.GetByDateRangeAsync(aw => aw.Type == workType, from, to);
-        var checkedTask = _assignedWorkRepository.GetByDateRangeAsync(aw => aw.Type == workType, from, to);
-        var createdCountTask = _assignedWorkRepository.GetCountAsync(aw => aw.Type == workType, from, to);
-
-        await Task.WhenAll(solvedTask, checkedTask, createdCountTask);
-
-        var solvedWorks = solvedTask.Result;
-        var checkedWorks = checkedTask.Result;
-        var createdCount = createdCountTask.Result;
+        var solvedWorks = await _assignedWorkRepository.GetByDateRangeAsync(
+            aw => aw.Type == workType,
+            from,
+            to
+        );
+        var checkedWorks = await _assignedWorkRepository.GetByDateRangeAsync(
+            aw => aw.Type == workType,
+            from,
+            to
+        );
+        var createdCount = await _assignedWorkRepository.GetCountAsync(
+            aw => aw.Type == workType,
+            from,
+            to
+        );
 
         var solvedTotal = solvedWorks.Values.Sum();
         var checkedTotal = checkedWorks.Values.Sum();
@@ -43,14 +53,14 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
                     new()
                     {
                         Name = "Проверено",
-                        Values = StatisticsHelpers.NormalizeDictionary(checkedWorks)
+                        Values = StatisticsHelpers.NormalizeDictionary(checkedWorks),
                     },
                     new()
                     {
                         Name = "Решено",
-                        Values = StatisticsHelpers.NormalizeDictionary(solvedWorks)
-                    }
-                ]
+                        Values = StatisticsHelpers.NormalizeDictionary(solvedWorks),
+                    },
+                ],
             },
             NumberBlocks =
             [
@@ -58,39 +68,43 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
                 {
                     Title = "Решено",
                     Value = solvedTotal,
-                    SubValues = new()
-                    {
-                        { "Начато", createdCount },
-                        { "Проверено", checkedTotal }
-                    }
-                }
-            ]
+                    SubValues = new() { { "Начато", createdCount }, { "Проверено", checkedTotal } },
+                },
+            ],
         };
     }
 
-    public async Task<StatisticsBlockDTO> GetMentorAssignedWorkStatisticsAsync(Ulid mentorId, WorkType? workType, DateTime from, DateTime to)
+    public async Task<StatisticsBlockDTO> GetMentorAssignedWorkStatisticsAsync(
+        Ulid mentorId,
+        WorkType? workType,
+        DateTime from,
+        DateTime to
+    )
     {
-        var checkedInDeadlineTask = _assignedWorkRepository.GetByDateRangeAsync(
-            aw => (aw.MainMentorId == mentorId || aw.HelperMentorId == mentorId)
+        var checkedInDeadline = await _assignedWorkRepository.GetByDateRangeAsync(
+            aw =>
+                (aw.MainMentorId == mentorId || aw.HelperMentorId == mentorId)
                 && (workType == null || aw.Type == workType)
                 && aw.CheckedAt <= aw.CheckDeadlineAt,
-            from, to);
-        var checkedAfterDeadlineTask = _assignedWorkRepository.GetByDateRangeAsync(
-            aw => (aw.MainMentorId == mentorId || aw.HelperMentorId == mentorId)
+            from,
+            to
+        );
+        var checkedAfterDeadline = await _assignedWorkRepository.GetByDateRangeAsync(
+            aw =>
+                (aw.MainMentorId == mentorId || aw.HelperMentorId == mentorId)
                 && (workType == null || aw.Type == workType)
                 && aw.CheckedAt > aw.CheckDeadlineAt,
-            from, to);
-        var deadlineShiftsCountTask = _assignedWorkRepository.GetCountAsync(
-            aw => (aw.MainMentorId == mentorId || aw.HelperMentorId == mentorId)
+            from,
+            to
+        );
+        var deadlineShiftsCount = await _assignedWorkRepository.GetCountAsync(
+            aw =>
+                (aw.MainMentorId == mentorId || aw.HelperMentorId == mentorId)
                 && (workType == null || aw.Type == workType)
                 && aw.IsCheckDeadlineShifted,
-            from, to);
-
-        await Task.WhenAll(checkedInDeadlineTask, checkedAfterDeadlineTask, deadlineShiftsCountTask);
-
-        var checkedInDeadline = checkedInDeadlineTask.Result;
-        var checkedAfterDeadline = checkedAfterDeadlineTask.Result;
-        var deadlineShiftsCount = deadlineShiftsCountTask.Result;
+            from,
+            to
+        );
 
         var checkedInDeadlineTotal = checkedInDeadline.Values.Sum();
         var checkedAfterDeadlineTotal = checkedAfterDeadline.Values.Sum();
@@ -99,6 +113,8 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
         return new StatisticsBlockDTO
         {
             Title = "Работы",
+            Description =
+                "Здесь отображается статистика по работам выбранного типа, если тип выбран, или по всем работам, если тип не выбран. Статистика охватывает только выбранный промежуток времени.",
             Graph = new StatisticsGraphDTO
             {
                 Label = "Динамика работ",
@@ -107,14 +123,14 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
                     new()
                     {
                         Name = "Проверено в дедлайн",
-                        Values = StatisticsHelpers.NormalizeDictionary(checkedInDeadline)
+                        Values = StatisticsHelpers.NormalizeDictionary(checkedInDeadline),
                     },
                     new()
                     {
                         Name = "Проверено после дедлайна",
-                        Values = StatisticsHelpers.NormalizeDictionary(checkedAfterDeadline)
-                    }
-                ]
+                        Values = StatisticsHelpers.NormalizeDictionary(checkedAfterDeadline),
+                    },
+                ],
             },
             NumberBlocks =
             [
@@ -125,25 +141,29 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
                     SubValues = new()
                     {
                         { "В дедлайн", checkedInDeadlineTotal },
-                        { "После дедлайна", checkedAfterDeadlineTotal }
-                    }
+                        { "После дедлайна", checkedAfterDeadlineTotal },
+                    },
                 },
-                new()
-                {
-                    Title = "Сдвиги дедлайна",
-                    Value = deadlineShiftsCount
-                }
-            ]
+                new() { Title = "Сдвиги дедлайна", Value = deadlineShiftsCount },
+            ],
         };
     }
 
-    public async Task<StatisticsBlockDTO> GetOverallStudentAssignedWorkStatisticsAsync(Ulid studentId, WorkType? workType)
+    public async Task<StatisticsBlockDTO> GetOverallStudentAssignedWorkStatisticsAsync(
+        Ulid studentId,
+        WorkType? workType
+    )
     {
-        var averageScores = await _assignedWorkRepository.GetMonthAverageScoresAsync(studentId, workType);
+        var averageScores = await _assignedWorkRepository.GetMonthAverageScoresAsync(
+            studentId,
+            workType
+        );
 
         return new StatisticsBlockDTO
         {
             Title = "Статистика за все время",
+            Description =
+                "Здесь отображается статистика по всем работам выбранного типа, если тип выбран, или по всем работам, если тип не выбран. Здесь видно все работы, которые когда-либо были проверены, и их средний балл. Статистика не ограничивается промежутком времени.",
             Graph = new StatisticsGraphDTO
             {
                 Label = "Средний балл по работам",
@@ -152,26 +172,34 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
                     new()
                     {
                         Name = "Средний балл",
-                        Values = StatisticsHelpers.NormalizeDictionary(averageScores)
+                        Values = StatisticsHelpers.NormalizeDictionary(averageScores),
                     },
-                ]
-            }
+                ],
+            },
         };
     }
 
-    public async Task<StatisticsBlockDTO> GetStudentAssignedWorkStatisticsAsync(Ulid studentId, WorkType? workType, DateTime from, DateTime to)
+    public async Task<StatisticsBlockDTO> GetStudentAssignedWorkStatisticsAsync(
+        Ulid studentId,
+        WorkType? workType,
+        DateTime from,
+        DateTime to
+    )
     {
-        Expression<Func<AssignedWorkModel, bool>> predicate = aw => aw.StudentId == studentId && aw.Type == workType;
+        Expression<Func<AssignedWorkModel, bool>> predicate = aw =>
+            aw.StudentId == studentId && aw.Type == workType;
 
-        var solvedInDeadlineTask = _assignedWorkRepository.GetByDateRangeAsync(predicate, from, to);
-        var solvedAfterDeadlineTask = _assignedWorkRepository.GetByDateRangeAsync(predicate, from, to);
-        var deadlineShiftsCountTask = _assignedWorkRepository.GetCountAsync(predicate, from, to);
-
-        await Task.WhenAll(solvedInDeadlineTask, solvedAfterDeadlineTask, deadlineShiftsCountTask);
-
-        var checkedInDeadline = solvedInDeadlineTask.Result;
-        var checkedAfterDeadline = solvedAfterDeadlineTask.Result;
-        var deadlineShiftsCount = deadlineShiftsCountTask.Result;
+        var checkedInDeadline = await _assignedWorkRepository.GetByDateRangeAsync(
+            predicate,
+            from,
+            to
+        );
+        var checkedAfterDeadline = await _assignedWorkRepository.GetByDateRangeAsync(
+            predicate,
+            from,
+            to
+        );
+        var deadlineShiftsCount = await _assignedWorkRepository.GetCountAsync(predicate, from, to);
 
         var checkedInDeadlineTotal = checkedInDeadline.Values.Sum();
         var checkedAfterDeadlineTotal = checkedAfterDeadline.Values.Sum();
@@ -180,6 +208,8 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
         return new StatisticsBlockDTO
         {
             Title = "Работы",
+            Description =
+                "Здесь отображается статистика по работам выбранного типа, если тип выбран, или по всем работам, если тип не выбран. Статистика охватывает только выбранный промежуток времени.",
             Graph = new StatisticsGraphDTO
             {
                 Label = "Динамика работ",
@@ -188,14 +218,14 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
                     new()
                     {
                         Name = "Проверено в дедлайн",
-                        Values = StatisticsHelpers.NormalizeDictionary(checkedInDeadline)
+                        Values = StatisticsHelpers.NormalizeDictionary(checkedInDeadline),
                     },
                     new()
                     {
                         Name = "Проверено после дедлайна",
-                        Values = StatisticsHelpers.NormalizeDictionary(checkedAfterDeadline)
-                    }
-                ]
+                        Values = StatisticsHelpers.NormalizeDictionary(checkedAfterDeadline),
+                    },
+                ],
             },
             NumberBlocks =
             [
@@ -206,15 +236,11 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
                     SubValues = new()
                     {
                         { "В дедлайн", checkedInDeadlineTotal },
-                        { "После дедлайна", checkedAfterDeadlineTotal }
-                    }
+                        { "После дедлайна", checkedAfterDeadlineTotal },
+                    },
                 },
-                new()
-                {
-                    Title = "Сдвиги дедлайна",
-                    Value = deadlineShiftsCount
-                }
-            ]
+                new() { Title = "Сдвиги дедлайна", Value = deadlineShiftsCount },
+            ],
         };
     }
 }

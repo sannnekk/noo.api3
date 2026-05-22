@@ -31,7 +31,8 @@ public class StatisticsController : ApiController
     [HttpGet("platform")]
     [Authorize(Policy = StatisticsPolicies.CanGetPlatformStatistics)]
     [Produces(
-        typeof(ApiResponseDTO<StatisticsDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<StatisticsDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
@@ -51,13 +52,14 @@ public class StatisticsController : ApiController
     /// Retrieves the statistics of a specific student.
     /// </summary>
     /// <remarks>
-    /// It returns 404 only if the student does not exist or is not a student.
+    /// It returns 404 only if the student does not exist or is not a student or a mentor.
     /// </remarks>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpGet("user/{userId}")]
     [Authorize(Policy = StatisticsPolicies.CanGetUserStatistics)]
     [Produces(
-        typeof(ApiResponseDTO<StatisticsDTO>), StatusCodes.Status200OK,
+        typeof(ApiResponseDTO<StatisticsDTO>),
+        StatusCodes.Status200OK,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
@@ -69,7 +71,12 @@ public class StatisticsController : ApiController
         [FromQuery] DateTime? to = null
     )
     {
-        var statistics = await _statisticsService.GetUserStatisticsAsync(userId, workType, from, to);
+        var statistics = await _statisticsService.GetUserStatisticsAsync(
+            userId,
+            workType,
+            from,
+            to
+        );
 
         return SendResponse(statistics);
     }

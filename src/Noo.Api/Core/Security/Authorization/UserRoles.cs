@@ -25,5 +25,21 @@ public enum UserRoles
     /// <summary>
     /// Student role - default role everyone gets after registration
     /// </summary>
-    Student
+    Student,
+}
+
+public static class UserRolesExtensions
+{
+    public static string? Translate(this UserRoles role)
+    {
+        return role switch
+        {
+            UserRoles.Admin => "Администратор",
+            UserRoles.Teacher => "Преподаватель",
+            UserRoles.Mentor => "Куратор",
+            UserRoles.Assistant => "Ассистент",
+            UserRoles.Student => "Ученик",
+            _ => null,
+        };
+    }
 }

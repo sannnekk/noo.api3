@@ -1,9 +1,9 @@
+using Microsoft.Extensions.Options;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Sessions;
 using Noo.Api.Sessions.Services;
 using Noo.Api.Statistics.DTO;
 using Noo.Api.Users.Services;
-using Microsoft.Extensions.Options;
 
 namespace Noo.Api.Statistics.Services;
 
@@ -18,7 +18,12 @@ public class UserStatisticsCollector : IUserStatisticsCollector
 
     private readonly SessionConfig _sessionOptions;
 
-    public UserStatisticsCollector(IOnlineService onlineService, IUserRepository userRepository, IActiveUserService activeUserService, IOptions<SessionConfig> sessionOptions)
+    public UserStatisticsCollector(
+        IOnlineService onlineService,
+        IUserRepository userRepository,
+        IActiveUserService activeUserService,
+        IOptions<SessionConfig> sessionOptions
+    )
     {
         _userRepository = userRepository;
         _onlineService = onlineService;
@@ -28,12 +33,10 @@ public class UserStatisticsCollector : IUserStatisticsCollector
 
     public async Task<StatisticsBlockDTO> GetUserStatisticsAsync(DateTime from, DateTime to)
     {
-        var registrationsTask = _userRepository.GetRegistrationsByDateRangeAsync(from, to);
-        var totalPerRoleTask = _userRepository.GetTotalUsersByRolesAsync(from, to);
-        var onlinePerRoleTask = _onlineService.GetOnlineCountByRolesAsync();
-        var activePerRoleTask = _activeUserService.GetActiveCountByRolesAsync();
-
-        await Task.WhenAll(registrationsTask, totalPerRoleTask, onlinePerRoleTask, activePerRoleTask);
+        var onlinePerRole = await _onlineService.GetOnlineCountByRolesAsync();
+        var activePerRole = await _activeUserService.GetActiveCountByRolesAsync();
+        var registrations = await _userRepository.GetRegistrationsByDateRangeAsync(from, to);
+        var totalPerRole = await _userRepository.GetTotalUsersByRolesAsync(from, to);
 
         return new StatisticsBlockDTO
         {
@@ -46,33 +49,33 @@ public class UserStatisticsCollector : IUserStatisticsCollector
                     new()
                     {
                         Name = "Регистрации по дням",
-                        Values = StatisticsHelpers.NormalizeDictionary(registrationsTask.Result)
-                    }
-                ]
+                        Values = StatisticsHelpers.NormalizeDictionary(registrations),
+                    },
+                ],
             },
             NumberBlocks =
             [
                 new()
                 {
                     Title = "Всего пользователей",
-                    Value = totalPerRoleTask.Result.Values.Sum(),
-                    SubValues = StatisticsHelpers.NormalizeDictionary(totalPerRoleTask.Result)
+                    Value = totalPerRole.Values.Sum(),
+                    SubValues = StatisticsHelpers.NormalizeDictionary(totalPerRole),
                 },
                 new()
                 {
                     Title = "Онлайн",
                     Description = $"TTL ~ {_sessionOptions.OnlineTtlMinutes} мин",
-                    Value = onlinePerRoleTask.Result.Values.Sum(),
-                    SubValues = StatisticsHelpers.NormalizeDictionary(onlinePerRoleTask.Result)
+                    Value = onlinePerRole.Values.Sum(),
+                    SubValues = StatisticsHelpers.NormalizeDictionary(onlinePerRole),
                 },
                 new()
                 {
                     Title = "Активные",
-                    Description = $"За последние {_sessionOptions.ActiveTtlDays} дн.",
-                    Value = activePerRoleTask.Result.Values.Sum(),
-                    SubValues = StatisticsHelpers.NormalizeDictionary(activePerRoleTask.Result)
-                }
-            ]
+                    Description = $"За последние {_sessionOptions.ActiveTtlDays} дней",
+                    Value = activePerRole.Values.Sum(),
+                    SubValues = StatisticsHelpers.NormalizeDictionary(activePerRole),
+                },
+            ],
         };
     }
 }
