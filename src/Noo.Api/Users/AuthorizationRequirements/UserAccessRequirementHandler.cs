@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
+using Noo.Api.Core.Request;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Users.Services;
-using Noo.Api.Core.Request;
 
 namespace Noo.Api.Users.AuthorizationRequirements;
 
@@ -16,7 +16,10 @@ public class UserAccessRequirementHandler : AuthorizationHandler<UserAccessRequi
         _mentorAssignmentRepository = mentorAssignmentRepository;
     }
 
-    protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, UserAccessRequirement requirement)
+    protected override async Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        UserAccessRequirement requirement
+    )
     {
         if (context.Resource is not HttpContext httpContext)
         {
@@ -55,13 +58,6 @@ public class UserAccessRequirementHandler : AuthorizationHandler<UserAccessRequi
 
         // Self access allowed for any authenticated (non-blocked enforced elsewhere)
         if (targetUserId == currentUserId)
-        {
-            context.Succeed(requirement);
-            return;
-        }
-
-        // Mentor: can access data of assigned students
-        if (currentUserRole == UserRoles.Mentor && await _mentorAssignmentRepository.GetAsync(currentUserId, targetUserId.Value) != null)
         {
             context.Succeed(requirement);
             return;

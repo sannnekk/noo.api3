@@ -92,8 +92,12 @@ public class UserPolicies : IPolicyRegistrar
             policy =>
             {
                 policy
-                    .RequireAuthenticatedUser()
-                    .AddRequirements(new MentorAssignRequirement())
+                    .RequireRole(
+                        nameof(UserRoles.Teacher),
+                        nameof(UserRoles.Admin),
+                        nameof(UserRoles.Assistant),
+                        nameof(UserRoles.Mentor)
+                    )
                     .RequireNotBlocked();
             }
         );

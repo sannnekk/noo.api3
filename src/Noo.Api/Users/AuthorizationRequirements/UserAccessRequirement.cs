@@ -6,15 +6,11 @@ namespace Noo.Api.Users.AuthorizationRequirements;
 /// <summary>
 /// Access to a user resource (reading user data or mentor/student assignments).
 /// Rules:
-/// - Admin/Teacher/Assistant: can access anybody.
+/// - Admin/Teacher/Assistant/Mentor: can access anybody.
 /// - Student: only self.
-/// - Mentor: self or any student they are assigned to (check via mentor assignments).
 /// </summary>
 public class UserAccessRequirement : IAuthorizationRequirement
 {
-    public IEnumerable<UserRoles> AlwaysAllowedRoles { get; } = [
-        UserRoles.Admin,
-        UserRoles.Teacher,
-        UserRoles.Assistant
-    ];
+    public IEnumerable<UserRoles> AlwaysAllowedRoles { get; } =
+    [UserRoles.Admin, UserRoles.Teacher, UserRoles.Assistant, UserRoles.Mentor];
 }

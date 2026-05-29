@@ -48,12 +48,18 @@ public class CourseMembershipService : ICourseMembershipService
     }
 
     public Task<SearchResult<CourseMembershipModel>> GetMembershipsAsync(
-        CourseMembershipFilter filter
+        CourseMembershipFilter filter,
+        Ulid? userId = null
     )
     {
         return _courseMembershipRepository.SearchAsync(
             filter,
-            [new CourseMembershipSpecification(_currentUser.UserRole, _currentUser.UserId)]
+            [
+                new CourseMembershipSpecification(
+                    _currentUser.UserRole,
+                    userId.HasValue ? userId.Value : _currentUser.UserId
+                ),
+            ]
         );
     }
 

@@ -11,7 +11,8 @@ public interface ICourseMembershipService
     public Task<CourseMembershipModel?> GetMembershipAsync(Ulid courseId, Ulid userId);
     public Task<CourseMembershipModel?> GetMembershipByIdAsync(Ulid membershipId);
     public Task<SearchResult<CourseMembershipModel>> GetMembershipsAsync(
-        CourseMembershipFilter filter
+        CourseMembershipFilter filter,
+        Ulid? userId = null
     );
     public Ulid CreateMembership(CreateCourseMembershipDTO dto);
     public Task SoftDeleteMembershipAsync(Ulid membershipId);

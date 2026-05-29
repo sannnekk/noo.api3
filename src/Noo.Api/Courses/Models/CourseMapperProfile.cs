@@ -54,15 +54,19 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
             .ForMember(dest => dest.Subject, opt => opt.Ignore())
             .ForMember(dest => dest.Chapters, opt => opt.Ignore())
-            .AfterMap((src, dest, context) =>
-            {
-                if (src.Chapters != null)
+            .AfterMap(
+                (src, dest, context) =>
                 {
-                    dest.Chapters = src.Chapters.MapDictionaryToCollection<UpdateCourseChapterDTO, CourseChapterModel>(
-                        dest.Chapters, context.Mapper);
+                    if (src.Chapters != null)
+                    {
+                        dest.Chapters = src.Chapters.MapDictionaryToCollection<
+                            UpdateCourseChapterDTO,
+                            CourseChapterModel
+                        >(dest.Chapters, context.Mapper);
+                    }
+                    ApplyCourseHierarchy(dest);
                 }
-                ApplyCourseHierarchy(dest);
-            });
+            );
 
         CreateMap<CourseModel, CourseDTO>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
@@ -120,20 +124,26 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.ParentChapter, opt => opt.Ignore())
             .ForMember(dest => dest.SubChapters, opt => opt.Ignore())
             .ForMember(dest => dest.Materials, opt => opt.Ignore())
-            .AfterMap((src, dest, context) =>
-            {
-                if (src.SubChapters != null)
+            .AfterMap(
+                (src, dest, context) =>
                 {
-                    dest.SubChapters = src.SubChapters.MapDictionaryToCollection<UpdateCourseChapterDTO, CourseChapterModel>(
-                        dest.SubChapters, context.Mapper);
-                }
+                    if (src.SubChapters != null)
+                    {
+                        dest.SubChapters = src.SubChapters.MapDictionaryToCollection<
+                            UpdateCourseChapterDTO,
+                            CourseChapterModel
+                        >(dest.SubChapters, context.Mapper);
+                    }
 
-                if (src.Materials != null)
-                {
-                    dest.Materials = src.Materials.MapDictionaryToCollection<UpdateCourseMaterialDTO, CourseMaterialModel>(
-                        dest.Materials, context.Mapper);
+                    if (src.Materials != null)
+                    {
+                        dest.Materials = src.Materials.MapDictionaryToCollection<
+                            UpdateCourseMaterialDTO,
+                            CourseMaterialModel
+                        >(dest.Materials, context.Mapper);
+                    }
                 }
-            });
+            );
 
         CreateMap<CourseChapterModel, CourseChapterDTO>()
             .MaxDepth(CourseConfig.MaxChapterTreeDepth);
@@ -209,22 +219,23 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Reactions, opt => opt.Ignore())
             .ForMember(dest => dest.Material, opt => opt.Ignore())
             .ForMember(dest => dest.WorkAssignments, opt => opt.Ignore())
-            .AfterMap((src, dest, context) =>
-            {
-                if (src.WorkAssignments != null)
+            .AfterMap(
+                (src, dest, context) =>
                 {
-                    dest.WorkAssignments = src.WorkAssignments.MapDictionaryToCollection<UpdateCourseWorkAssignmentDTO, CourseWorkAssignmentModel>(
-                        dest.WorkAssignments, context.Mapper);
+                    if (src.WorkAssignments != null)
+                    {
+                        dest.WorkAssignments = src.WorkAssignments.MapDictionaryToCollection<
+                            UpdateCourseWorkAssignmentDTO,
+                            CourseWorkAssignmentModel
+                        >(dest.WorkAssignments, context.Mapper);
+                    }
                 }
-            });
+            );
 
         CreateMap<CourseMaterialContentModel, CourseMaterialContentDTO>();
 
         // Course membership
-        CreateMap<CourseMembershipModel, CourseMembershipDTO>()
-            .ForMember(dest => dest.Course, opt => opt.Ignore())
-            .ForMember(dest => dest.Student, opt => opt.Ignore())
-            .ForMember(dest => dest.Assigner, opt => opt.Ignore());
+        CreateMap<CourseMembershipModel, CourseMembershipDTO>();
 
         CreateMap<CreateCourseMembershipDTO, CourseMembershipModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())

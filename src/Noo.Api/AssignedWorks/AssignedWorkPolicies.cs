@@ -39,9 +39,7 @@ public class AssignedWorkPolicies : IPolicyRegistrar
             CanGetAssignedWorks,
             policy =>
             {
-                policy
-                    .RequireRole(nameof(UserRoles.Student), nameof(UserRoles.Mentor))
-                    .RequireNotBlocked();
+                policy.RequireAuthenticatedUser().RequireNotBlocked();
             }
         );
 
