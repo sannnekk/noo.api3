@@ -37,5 +37,5 @@ public record PollQuestionDTO
     public DateTime CreatedAt { get; init; }
 
     [JsonPropertyName("updatedAt")]
-    public DateTime UpdatedAt { get; init; }
+    public DateTime? UpdatedAt { get; init; }
 }

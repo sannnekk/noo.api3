@@ -1,5 +1,6 @@
 using AutoMapper;
 using Noo.Api.Core.Exceptions.Http;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Sessions.Models;
 using Noo.Api.Sessions.Utils;
@@ -46,8 +47,8 @@ public class SessionService : ISessionService
         }
 
         // Update metadata on existing session
-        existing.LastRequestAt = DateTime.UtcNow;
-        existing.UpdatedAt = DateTime.UtcNow;
+        existing.LastRequestAt = Clock.Now;
+        existing.UpdatedAt = Clock.Now;
         existing.UserAgent = incoming.UserAgent;
         existing.Browser = incoming.Browser;
         existing.Os = incoming.Os;

@@ -12,6 +12,7 @@ using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.System.Events;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Courses.Services;
 using Noo.Api.Users.Models;
@@ -231,7 +232,7 @@ public class AssignedWorkService : IAssignedWorkService
             throw new AssignedWorkAlreadyCheckedException();
         }
 
-        assignedWork.CheckedAt = DateTime.UtcNow;
+        assignedWork.CheckedAt = Clock.Now;
         assignedWork.CheckStatus = AssignedWorkCheckStatus.Checked;
     }
 
@@ -252,7 +253,7 @@ public class AssignedWorkService : IAssignedWorkService
             throw new AssignedWorkAlreadySolvedException();
         }
 
-        assignedWork.SolvedAt = DateTime.UtcNow;
+        assignedWork.SolvedAt = Clock.Now;
         assignedWork.SolveStatus = AssignedWorkSolveStatus.Solved;
 
         await _events.PublishAsync(

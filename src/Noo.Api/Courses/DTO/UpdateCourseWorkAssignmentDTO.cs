@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Noo.Api.Core.Utils.AutoMapper;
 
 namespace Noo.Api.Courses.DTO;
 
@@ -19,9 +20,11 @@ public record UpdateCourseWorkAssignmentDTO
     [JsonPropertyName("deactivatedAt")]
     public DateTime? DeactivatedAt { get; init; }
 
+    [MoscowEndOfDay]
     [JsonPropertyName("solveDeadlineAt")]
     public DateTime? SolveDeadlineAt { get; init; }
 
+    [MoscowEndOfDay]
     [JsonPropertyName("checkDeadlineAt")]
     public DateTime? CheckDeadlineAt { get; init; }
 }

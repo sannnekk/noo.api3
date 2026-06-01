@@ -23,6 +23,8 @@ public static class MapperTestUtils
             {
                 cfg.AddProfile(profile);
             }
+
+            cfg.AddMoscowEndOfDayNormalization();
         });
 
         // config.AssertConfigurationIsValid(); // Commented out for tests to allow unmapped properties

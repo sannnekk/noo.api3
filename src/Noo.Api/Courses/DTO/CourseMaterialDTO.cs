@@ -30,7 +30,7 @@ public record CourseMaterialDTO
 
     [Required]
     [JsonPropertyName("publishAt")]
-    public DateTime PublishAt { get; init; }
+    public DateTime? PublishAt { get; init; }
 
     [Required]
     [JsonPropertyName("chapterId")]

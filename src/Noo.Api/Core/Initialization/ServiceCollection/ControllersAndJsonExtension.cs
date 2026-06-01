@@ -21,10 +21,13 @@ public static class ControllersAndJsonExtension
                 );
             })
             .AddJsonOptions(options =>
+            {
                 options.JsonSerializerOptions.Converters.Add(
                     new HyphenLowerCaseStringEnumConverterFactory()
-                )
-            )
+                );
+                options.JsonSerializerOptions.Converters.Add(new MoscowDateTimeConverter());
+                options.JsonSerializerOptions.Converters.Add(new MoscowNullableDateTimeConverter());
+            })
             .ConfigureApiBehaviorOptions(options =>
                 options.InvalidModelStateResponseFactory = context =>
                 {

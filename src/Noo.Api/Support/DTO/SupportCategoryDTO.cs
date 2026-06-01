@@ -41,5 +41,5 @@ public record SupportCategoryDTO
     public DateTime CreatedAt { get; set; }
 
     [JsonPropertyName("updatedAt")]
-    public DateTime UpdatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }

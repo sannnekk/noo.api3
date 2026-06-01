@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Polls.Services;
 
@@ -47,7 +48,7 @@ public class PollParticipationCreationRequirementHandler : AuthorizationHandler<
             return;
         }
 
-        if (poll.ExpiresAt != default && poll.ExpiresAt <= DateTime.UtcNow)
+        if (poll.ExpiresAt.HasValue && poll.ExpiresAt.Value <= Clock.Now)
         {
             context.Fail();
             return;

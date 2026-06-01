@@ -22,10 +22,10 @@ public class CourseModel : BaseModel, ISoftDeletableModel, IHasPresignedMedia
     public string Name { get; set; } = string.Empty;
 
     [Column("start_date", TypeName = DbDataTypes.DateTimeWithoutTZ)]
-    public DateTime StartDate { get; set; }
+    public DateTime? StartDate { get; set; }
 
     [Column("end_date", TypeName = DbDataTypes.DateTimeWithoutTZ)]
-    public DateTime EndDate { get; set; }
+    public DateTime? EndDate { get; set; }
 
     [Column("description", TypeName = DbDataTypes.Text)]
     [MaxLength(500)]

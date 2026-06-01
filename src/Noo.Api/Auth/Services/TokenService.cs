@@ -36,11 +36,11 @@ public class AuthTokenService : ITokenService
             Token = RandomGenerator.GenerateRandomUrlToken(),
             ExpiresAt = type switch
             {
-                TokenType.PasswordReset => DateTime.UtcNow.Add(AuthConfig.ResetPasswordExpireTime),
-                TokenType.EmailVerification => DateTime.UtcNow.Add(
+                TokenType.PasswordReset => Clock.Now.Add(AuthConfig.ResetPasswordExpireTime),
+                TokenType.EmailVerification => Clock.Now.Add(
                     AuthConfig.ConfirmEmailExpireTime
                 ),
-                TokenType.EmailChange => DateTime.UtcNow.Add(AuthConfig.ConfirmEmailExpireTime),
+                TokenType.EmailChange => Clock.Now.Add(AuthConfig.ConfirmEmailExpireTime),
                 _ => throw new NotImplementedException($"Token type {type} not implemented"),
             },
         };
@@ -79,7 +79,7 @@ public class AuthTokenService : ITokenService
         return token switch
         {
             null => (null, null, null),
-            _ when token.ExpiresAt < DateTime.UtcNow => (null, null, null),
+            _ when token.ExpiresAt < Clock.Now => (null, null, null),
             _ => (token.UserId, token.Type, token.Payload),
         };
     }

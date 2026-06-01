@@ -26,7 +26,7 @@ public record PollDTO
 
     [Required]
     [JsonPropertyName("expiresAt")]
-    public DateTime ExpiresAt { get; init; }
+    public DateTime? ExpiresAt { get; init; }
 
     [Required]
     [JsonPropertyName("isAuthRequired")]
@@ -37,7 +37,7 @@ public record PollDTO
     public DateTime CreatedAt { get; init; }
 
     [JsonPropertyName("updatedAt")]
-    public DateTime UpdatedAt { get; init; }
+    public DateTime? UpdatedAt { get; init; }
 
     [JsonPropertyName("questions")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

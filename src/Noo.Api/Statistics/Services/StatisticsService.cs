@@ -1,5 +1,6 @@
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Statistics.DTO;
 using Noo.Api.Statistics.Exceptions;
@@ -78,7 +79,7 @@ public class StatisticsService : IStatisticsService
 
     private static (DateTime from, DateTime to) NormalizeDateRange(DateTime? from, DateTime? to)
     {
-        var now = DateTime.UtcNow.Date;
+        var now = Clock.Today;
         var toDate = (to ?? now).Date;
         var fromDate = (from ?? toDate.AddDays(-29)).Date;
 

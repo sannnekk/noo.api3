@@ -2,6 +2,7 @@ using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Services;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.System.Events;
+using Noo.Api.Core.Utils;
 using Noo.Api.Notifications.DTO;
 using Noo.Api.Notifications.Services;
 
@@ -29,7 +30,7 @@ public sealed class AssignedWorkSolvedHistoryHandler : IEventHandler<AssignedWor
                 AssignedWorkId = @event.AssignedWorkId,
                 ChangedById = @event.StudentId,
                 Type = AssignedWorkStatusHistoryType.Solved,
-                ChangedAt = DateTime.UtcNow,
+                ChangedAt = Clock.Now,
             }
         );
 

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Noo.Api.Core.Config.Env;
+using Noo.Api.Core.Utils;
 
 namespace Noo.Api.Core.Logging;
 
@@ -38,7 +39,7 @@ public class TelegramLogger : ILogger
     private string FormatMessage(LogLevel logLevel, string message, Exception? exception)
     {
         var emoji = GetLogLevelEmoji(logLevel);
-        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+        var timestamp = Clock.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
         var formatted = $"{emoji} *[{logLevel}]* `{timestamp}`\n" +
                        $"📁 `{_categoryName}`\n" +

@@ -3,6 +3,7 @@ using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.ThirdPartyServices.Google;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.GoogleSheetsIntegrations.DTO;
 using Noo.Api.GoogleSheetsIntegrations.Exceptions;
@@ -139,7 +140,7 @@ public class GoogleSheetsIntegrationService : IGoogleSheetsIntegrationService
                 await _googleSheets.SaveAsync(auth, sheet);
             }
 
-            integration.LastRunAt = DateTime.UtcNow;
+            integration.LastRunAt = Clock.Now;
         }
         catch (Exception exception)
         {

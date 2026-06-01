@@ -1,6 +1,7 @@
 using System.Globalization;
 using Noo.Api.Core.Config;
 using Noo.Api.Core.Config.Env;
+using Noo.Api.Core.Utils;
 
 namespace Noo.Api.Core.Logging;
 
@@ -32,7 +33,7 @@ public class ConsoleLogger : ILogger
         var useEmoji = _options.ConsoleDecorations.HasFlag(ConsoleLogDecoration.Emoji);
         var message = formatter(state, exception);
         var emojiPrefix = useEmoji ? $"{GetLogLevelEmoji(logLevel)} " : string.Empty;
-        var logMessage = $"[{DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)}] " +
+        var logMessage = $"[{Clock.Now.ToString("o", CultureInfo.InvariantCulture)}] " +
                          $"[{logLevel}] " +
                          $"{emojiPrefix}[{_categoryName}] " +
                          $"{message}";

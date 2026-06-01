@@ -1,4 +1,5 @@
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Core.Utils.Versioning;
 using Noo.Api.Platform.DTO;
@@ -21,7 +22,7 @@ public class PlatformService : IPlatformService
             new ChangeLogDTO
             {
                 Version = NooApiVersions.Current,
-                Date = DateTime.UtcNow,
+                Date = Clock.Now,
                 Changes = [
                     new PlatformChange
                     {

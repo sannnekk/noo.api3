@@ -24,7 +24,7 @@ public class PollModel : BaseModel
     public bool IsActive { get; set; } = true;
 
     [Column("expires_at", TypeName = DbDataTypes.DateTimeWithoutTZ)]
-    public DateTime ExpiresAt { get; set; }
+    public DateTime? ExpiresAt { get; set; }
 
     [Column("is_auth_required", TypeName = DbDataTypes.Boolean)]
     [Required]

@@ -1,3 +1,4 @@
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.UserAgent;
 using Noo.Api.Sessions.Models;
 
@@ -30,7 +31,7 @@ public static class HttpContextExtensions
             Device = info.Device,
             DeviceType = info.DeviceType,
             IpAddress = ip,
-            LastRequestAt = DateTime.UtcNow
+            LastRequestAt = Clock.Now
         };
     }
 }

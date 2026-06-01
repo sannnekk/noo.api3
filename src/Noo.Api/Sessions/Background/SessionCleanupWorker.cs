@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Utils;
 using Noo.Api.Sessions.Models;
 
 namespace Noo.Api.Sessions.Background;
@@ -26,7 +27,7 @@ public class SessionCleanupWorker : BackgroundService
             {
                 using var scope = _services.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<NooDbContext>();
-                var cutoff = DateTime.UtcNow.AddDays(-_options.SessionRetentionDays);
+                var cutoff = Clock.Now.AddDays(-_options.SessionRetentionDays);
                 await db.Set<SessionModel>()
                     .Where(s => (s.LastRequestAt ?? s.UpdatedAt ?? s.CreatedAt) < cutoff)
                     .ExecuteDeleteAsync(stoppingToken);

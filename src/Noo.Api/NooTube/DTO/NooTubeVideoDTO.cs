@@ -48,7 +48,7 @@ public record NooTubeVideoDTO
 
     [Required]
     [JsonPropertyName("publishedAt")]
-    public DateTime PublishedAt { get; set; }
+    public DateTime? PublishedAt { get; set; }
 
     [Required]
     [JsonPropertyName("uploadedByUserId")]

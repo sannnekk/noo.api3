@@ -22,6 +22,8 @@ public static class AutoMapperExtension
                 {
                     cfg.AddProfile(profile);
                 }
+
+                cfg.AddMoscowEndOfDayNormalization();
             }, loggerFactory);
 
             config.AssertConfigurationIsValid();
