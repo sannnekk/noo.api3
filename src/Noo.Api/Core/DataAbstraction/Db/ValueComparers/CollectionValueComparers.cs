@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Noo.Api.Core.Utils.Richtext;
 // Other required namespaces (System.*, System.Linq, collections) are provided via implicit global usings.
 
 namespace Noo.Api.Core.DataAbstraction.Db.ValueComparers;
@@ -13,6 +14,18 @@ public static class CollectionValueComparers
         (a, b) => ReferenceEquals(a, b) || (a != null && b != null && a.SequenceEqual(b)),
         a => a == null ? 0 : a.Aggregate(17, (h, v) => unchecked(h * 31 + v.GetHashCode())),
         a => a == null ? null! : a.ToArray()
+    );
+
+    /// <summary>
+    /// Structural comparer for rich text columns. Rich text is a mutable reference type, so without a
+    /// deep snapshot EF Core tracks it by reference and misses in-place edits (e.g. JSON Patch updates).
+    /// Equality, hashing and snapshotting all go through the JSON representation so a clone is compared
+    /// against the original rather than the same mutated instance.
+    /// </summary>
+    public static readonly ValueComparer<IRichTextType?> RichText = new(
+        (a, b) => RichTextJsonSerializer.Serialize(a) == RichTextJsonSerializer.Serialize(b),
+        v => v == null ? 0 : RichTextJsonSerializer.Serialize(v)!.GetHashCode(StringComparison.Ordinal),
+        v => RichTextJsonSerializer.Deserialize(RichTextJsonSerializer.Serialize(v))
     );
 
     public static ValueComparer<Dictionary<string, TValue>> Dictionary<TValue>() where TValue : notnull

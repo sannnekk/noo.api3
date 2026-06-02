@@ -367,4 +367,44 @@ public class CourseNestedPatchTests : IClassFixture<ApiFactory>
         notes.Should().Contain("New");
         content.WorkAssignments!.Should().Contain(a => a.Id == newAssignmentId);
     }
+
+    [Fact(DisplayName = "PATCH /course/material-content replaces rich text content and persists it")]
+    public async Task Patch_MaterialContent_Replaces_RichText_Content()
+    {
+        using var client = _factory.CreateClient();
+
+        // Create a material-content whose rich text has a single insert op.
+        var createContentPayload = new
+        {
+            content = RichTextFactory.Create("body"),
+            nootubeVideoIds = Array.Empty<string>(),
+            mediaIds = Array.Empty<string>(),
+            workAssignments = Array.Empty<object>(),
+        };
+        var createResp = await client.AsTeacher()
+            .PostAsJsonAsync("/course/material-content", createContentPayload, JsonOptions);
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var contentId = (await createResp.Content
+            .ReadFromJsonAsync<ApiResponseDTO<IdResponseDTO>>(JsonOptions))!.Data!.Id;
+
+        // Replace the insert text in place. This mutates the existing rich text instance,
+        // which EF Core only detects with a structural value comparer on the converter.
+        const string patchJson = """
+            [
+              { "op": "replace", "path": "/content/ops/0/insert", "value": "patched" }
+            ]
+            """;
+        (await PatchAsync(client.AsTeacher(), $"/course/material-content/{contentId}", patchJson))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider
+            .GetRequiredService<Noo.Api.Core.DataAbstraction.Db.NooDbContext>();
+        var content = await db
+            .GetDbSet<Noo.Api.Courses.Models.CourseMaterialContentModel>()
+            .AsNoTracking()
+            .FirstAsync(c => c.Id == contentId);
+
+        content.Content!.ToString().Should().Be("patched");
+    }
 }

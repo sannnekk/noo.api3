@@ -122,7 +122,7 @@ public static class DbContextExtensions
 
             modelBuilder.Entity(property.DeclaringType!)
                 .Property(property.Name)
-                .HasConversion(converter)
+                .HasConversion(converter, CollectionValueComparers.RichText)
                 .HasColumnType(richTextAttribute.TypeName)
                 .HasCharSet(richTextAttribute.Charset)
                 .UseCollation(richTextAttribute.Collation);
