@@ -34,6 +34,7 @@ public class WorkService : IWorkService
     {
         var model = _mapper.Map<WorkModel>(work);
 
+        model.MaxScore = model.Tasks?.Sum(t => t.MaxScore) ?? 0;
         _workRepository.Add(model);
 
         return model.Id;
@@ -56,6 +57,8 @@ public class WorkService : IWorkService
         workModel.ThrowNotFoundIfNull();
 
         _patchUpdateService.ApplyPatch(workModel, updateWorkDto);
+
+        workModel.MaxScore = workModel.Tasks?.Sum(t => t.MaxScore) ?? 0;
     }
 
     public void DeleteWork(Ulid id)

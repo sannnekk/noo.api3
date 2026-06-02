@@ -17,7 +17,6 @@ using Noo.Api.Core.Utils.DI;
 using Noo.Api.Courses.Services;
 using Noo.Api.Users.Models;
 using Noo.Api.Users.Services;
-using Noo.Api.Works.Services;
 
 namespace Noo.Api.AssignedWorks.Services;
 
@@ -30,7 +29,6 @@ public class AssignedWorkService : IAssignedWorkService
     private readonly IAssignedWorkAnswerRepository _assignedWorkAnswerRepository;
     private readonly IAssignedWorkCommentRepository _assignedWorkCommentRepository;
     private readonly ICourseWorkAssignmentRepository _workAssignmentRepository;
-    private readonly IWorkTaskRepository _workTaskRepository;
     private readonly IMentorAssignmentRepository _mentorAssignmentRepository;
     private readonly IUserRepository _userRepository;
     private readonly ITaskCheckService _taskCheckService;
@@ -48,7 +46,6 @@ public class AssignedWorkService : IAssignedWorkService
         IUserRepository userRepository,
         ITaskCheckService taskCheckService,
         ICurrentUser currentUser,
-        IWorkTaskRepository workTaskRepository,
         IMapper mapper,
         IEventPublisher events,
         ICacheRepository cache
@@ -62,7 +59,6 @@ public class AssignedWorkService : IAssignedWorkService
         _userRepository = userRepository;
         _taskCheckService = taskCheckService;
         _currentUser = currentUser;
-        _workTaskRepository = workTaskRepository;
         _mapper = mapper;
         _events = events;
         _cache = cache;
@@ -97,13 +93,10 @@ public class AssignedWorkService : IAssignedWorkService
             userId
         );
 
-        // TODO: add maxScore to a WorkModel and use here
-        var maxScore = await _workTaskRepository.GetWorkMaxScoreAsync(workAssignment.WorkId);
-
         var newAssignedWork = AssignedWorkModel.CreateNew(
             workAssignment,
             userId,
-            maxScore,
+            workAssignment.Work.MaxScore,
             mentor?.Id,
             attemptCount + 1
         );

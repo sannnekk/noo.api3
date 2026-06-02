@@ -30,6 +30,11 @@ public class WorkModel : BaseModel
     [Column("description", TypeName = DbDataTypes.Varchar255)]
     public string? Description { get; set; }
 
+    [Required]
+    [Range(0, int.MaxValue)]
+    [Column("max_score", TypeName = DbDataTypes.SmallIntUnsigned)]
+    public int MaxScore { get; set; }
+
     [Column("subject_id", TypeName = DbDataTypes.Ulid)]
     [ForeignKey(nameof(Subject))]
     public Ulid? SubjectId { get; set; }
