@@ -99,11 +99,11 @@ public class CourseService : ICourseService
     public async Task SoftDeleteAsync(Ulid courseId)
     {
         var course = await _courseRepository.GetByIdAsync(courseId);
+
         if (course == null)
             return;
 
         course.IsDeleted = true;
-        _courseRepository.Update(course);
     }
 
     public async Task UpdateAsync(Ulid courseId, JsonPatchDocument<UpdateCourseDTO> courseUpdateDto)

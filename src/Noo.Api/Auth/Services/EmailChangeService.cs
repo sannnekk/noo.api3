@@ -50,7 +50,7 @@ public class EmailChangeService : IEmailChangeService
         var user = await _userRepository.GetByIdAsync(userId) ?? throw new NotFoundException();
 
         user.Email = newEmail;
-        _userRepository.Update(user);
+
         _tokenService.DeleteTokens(user.Id, TokenType.EmailChange);
     }
 }

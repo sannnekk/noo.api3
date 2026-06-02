@@ -115,7 +115,6 @@ public class EmailChangeServiceTests
 
         var h = new Harness();
         h.Users.Setup(s => s.GetByIdAsync(user.Id)).ReturnsAsync(user);
-        h.Users.Setup(s => s.Update(It.Is<UserModel>(u => u.Id == user.Id && u.Email == "new@example.com"))).Verifiable();
         h.Token.Setup(t => t.DeleteTokens(user.Id, TokenType.EmailChange)).Verifiable();
 
         var svc = h.Build();

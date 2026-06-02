@@ -23,7 +23,8 @@ public class MediaService : IMediaService
         IMediaRepository media,
         IUserRepository users,
         IMediaAccessEvaluator access,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser
+    )
     {
         _s3 = s3;
         _media = media;
@@ -37,7 +38,8 @@ public class MediaService : IMediaService
         string fileName,
         string contentType,
         Ulid? entityId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (string.IsNullOrWhiteSpace(fileName))
         {
@@ -54,8 +56,7 @@ public class MediaService : IMediaService
             throw new UnauthorizedException();
         }
 
-        var owner = await _users.GetByIdAsync(ownerId)
-            ?? throw new UnauthorizedException();
+        var owner = await _users.GetByIdAsync(ownerId) ?? throw new UnauthorizedException();
 
         var mediaId = Ulid.NewUlid();
         var extension = ExtractExtension(fileName);
@@ -68,21 +69,28 @@ public class MediaService : IMediaService
             ["category"] = category.ToSlug(),
         };
 
-        var upload = await _s3.CreatePresignedUploadAsync(key, contentType, tags, cancellationToken: cancellationToken);
+        var upload = await _s3.CreatePresignedUploadAsync(
+            key,
+            contentType,
+            tags,
+            cancellationToken: cancellationToken
+        );
 
-        _media.Add(new MediaModel
-        {
-            Id = mediaId,
-            Path = key,
-            Name = mediaId.ToString() + (extension.Length > 0 ? "." + extension : string.Empty),
-            ActualName = fileName,
-            Extension = extension,
-            Size = 0,
-            Category = category,
-            Status = MediaStatus.Pending,
-            EntityId = entityId,
-            OwnerId = ownerId,
-        });
+        _media.Add(
+            new MediaModel
+            {
+                Id = mediaId,
+                Path = key,
+                Name = mediaId.ToString() + (extension.Length > 0 ? "." + extension : string.Empty),
+                ActualName = fileName,
+                Extension = extension,
+                Size = 0,
+                Category = category,
+                Status = MediaStatus.Pending,
+                EntityId = entityId,
+                OwnerId = ownerId,
+            }
+        );
 
         return new UploadTicket(mediaId, upload);
     }
@@ -91,10 +99,11 @@ public class MediaService : IMediaService
         Ulid mediaId,
         long size,
         string? etag = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var media = await _media.GetByIdAsync(mediaId)
-            ?? throw new NotFoundException("Media not found");
+        var media =
+            await _media.GetByIdAsync(mediaId) ?? throw new NotFoundException("Media not found");
 
         EnsureOwnerOrAdmin(media);
 
@@ -110,26 +119,33 @@ public class MediaService : IMediaService
             media.Hash = etag.Trim('"');
         }
 
-        _media.Update(media);
-
-        media.Url = await _s3.CreatePresignedDownloadAsync(media.Path, cancellationToken: cancellationToken);
+        media.Url = await _s3.CreatePresignedDownloadAsync(
+            media.Path,
+            cancellationToken: cancellationToken
+        );
         return media;
     }
 
-    public async Task<string> GetDownloadUrlAsync(Ulid mediaId, CancellationToken cancellationToken = default)
+    public async Task<string> GetDownloadUrlAsync(
+        Ulid mediaId,
+        CancellationToken cancellationToken = default
+    )
     {
-        var media = await _media.GetByIdAsync(mediaId)
-            ?? throw new NotFoundException("Media not found");
+        var media =
+            await _media.GetByIdAsync(mediaId) ?? throw new NotFoundException("Media not found");
 
         await _access.EnsureCanAccessAsync(media, cancellationToken);
 
-        return await _s3.CreatePresignedDownloadAsync(media.Path, cancellationToken: cancellationToken);
+        return await _s3.CreatePresignedDownloadAsync(
+            media.Path,
+            cancellationToken: cancellationToken
+        );
     }
 
     public async Task DeleteAsync(Ulid mediaId, CancellationToken cancellationToken = default)
     {
-        var media = await _media.GetByIdAsync(mediaId)
-            ?? throw new NotFoundException("Media not found");
+        var media =
+            await _media.GetByIdAsync(mediaId) ?? throw new NotFoundException("Media not found");
 
         EnsureOwnerOrAdmin(media);
 
@@ -153,7 +169,12 @@ public class MediaService : IMediaService
         }
     }
 
-    private static string BuildKey(MediaCategory category, Ulid ownerId, Ulid mediaId, string extension)
+    private static string BuildKey(
+        MediaCategory category,
+        Ulid ownerId,
+        Ulid mediaId,
+        string extension
+    )
     {
         var suffix = extension.Length > 0 ? "." + extension : string.Empty;
         return $"{category.ToSlug()}/{ownerId}/{mediaId}{suffix}";
@@ -162,8 +183,6 @@ public class MediaService : IMediaService
     private static string ExtractExtension(string fileName)
     {
         var raw = Path.GetExtension(fileName);
-        return string.IsNullOrEmpty(raw)
-            ? string.Empty
-            : raw.TrimStart('.').ToLowerInvariant();
+        return string.IsNullOrEmpty(raw) ? string.Empty : raw.TrimStart('.').ToLowerInvariant();
     }
 }

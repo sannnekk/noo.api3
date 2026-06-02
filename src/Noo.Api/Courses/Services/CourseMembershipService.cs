@@ -78,7 +78,5 @@ public class CourseMembershipService : ICourseMembershipService
             return;
 
         membership.IsActive = false;
-
-        _courseMembershipRepository.Update(membership);
     }
 }

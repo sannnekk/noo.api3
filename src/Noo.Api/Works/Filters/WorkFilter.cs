@@ -19,7 +19,9 @@ public class WorkFilter : PaginationFilterBase
     [ToLowerContainsComparison]
     public string? Search { get; set; }
 
-    // 3) Per‑field filters still just properties
     public WorkType? Type { get; set; }
+
     public Ulid? SubjectId { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
 }

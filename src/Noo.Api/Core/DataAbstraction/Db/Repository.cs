@@ -37,11 +37,6 @@ public class Repository<T> : IRepository<T>
         return Context.GetDbSet<T>().AnyAsync(e => e.Id == id);
     }
 
-    public void Update(T entity)
-    {
-        Context.GetDbSet<T>().Update(entity);
-    }
-
     public void Delete(T entity)
     {
         Context.GetDbSet<T>().Remove(entity);

@@ -11,5 +11,7 @@ public interface IMentorAssignmentRepository : IRepository<MentorAssignmentModel
         Ulid? subjectId = null
     );
 
+    public Task<MentorAssignmentModel?> GetByStudentAndSubjectAsync(Ulid mentorId, Ulid subjectId);
+
     public Task<UserModel?> GetMentorAsync(Ulid studentId, Ulid subjectId);
 }

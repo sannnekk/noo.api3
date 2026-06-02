@@ -28,6 +28,5 @@ public class UserSettingsService : IUserSettingsService
         var userSettingsModel = await _userSettingsRepository.GetOrCreateAsync(userId);
 
         _mapper.Map(userSettings, userSettingsModel);
-        _userSettingsRepository.Update(userSettingsModel);
     }
 }

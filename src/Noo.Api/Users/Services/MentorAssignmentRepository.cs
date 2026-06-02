@@ -32,6 +32,13 @@ public class MentorAssignmentRepository
             );
     }
 
+    public Task<MentorAssignmentModel?> GetByStudentAndSubjectAsync(Ulid studentId, Ulid subjectId)
+    {
+        return Context
+            .GetDbSet<MentorAssignmentModel>()
+            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.SubjectId == subjectId);
+    }
+
     public async Task<UserModel?> GetMentorAsync(Ulid studentId, Ulid subjectId)
     {
         var assignment = await Context

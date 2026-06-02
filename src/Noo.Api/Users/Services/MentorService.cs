@@ -18,13 +18,16 @@ public class MentorService : IMentorService
 
     public async Task<Ulid> AssignMentorAsync(Ulid studentId, Ulid mentorId, Ulid subjectId)
     {
-        var existingAssignment = await _mentorAssignmentRepository.GetAsync(
+        var existingAssignment = await _mentorAssignmentRepository.GetByStudentAndSubjectAsync(
             studentId,
-            mentorId,
             subjectId
         );
 
-        if (existingAssignment == null)
+        if (existingAssignment != null && existingAssignment.MentorId != mentorId)
+        {
+            existingAssignment.MentorId = mentorId;
+        }
+        else if (existingAssignment == null)
         {
             existingAssignment = new MentorAssignmentModel
             {

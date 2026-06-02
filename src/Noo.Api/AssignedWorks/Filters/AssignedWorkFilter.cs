@@ -1,8 +1,8 @@
 using AutoFilterer.Attributes;
 using AutoFilterer.Types;
 using Noo.Api.AssignedWorks.Models;
-using Noo.Api.Works.Types;
 using Noo.Api.AssignedWorks.Types;
+using Noo.Api.Works.Types;
 
 namespace Noo.Api.AssignedWorks.Filters;
 
@@ -16,7 +16,6 @@ public class AssignedWorkFilter : PaginationFilterBase
 {
     // 2) Global Search: one field that compares to multiple props
     [CompareTo(nameof(AssignedWorkModel.Title))]
-    [CompareTo(nameof(AssignedWorkModel.Type))]
     [ToLowerContainsComparison]
     public string? Search { get; set; }
 

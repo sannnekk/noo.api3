@@ -72,8 +72,6 @@ public class UserService : IUserService
         }
 
         user.Role = newRole;
-
-        _userRepository.Update(user);
     }
 
     public Ulid CreateUser(UserCreationPayload payload)
@@ -153,8 +151,6 @@ public class UserService : IUserService
         }
 
         user.Email = newEmail;
-
-        _userRepository.Update(user);
     }
 
     public async Task UpdateUserPasswordAsync(Ulid id, string newPasswordHash)
@@ -167,8 +163,6 @@ public class UserService : IUserService
         }
 
         user.PasswordHash = newPasswordHash;
-
-        _userRepository.Update(user);
     }
 
     public Task<bool> UserExistsAsync(string? username, string? email)
@@ -196,7 +190,5 @@ public class UserService : IUserService
         }
 
         user.IsVerified = true;
-
-        _userRepository.Update(user);
     }
 }

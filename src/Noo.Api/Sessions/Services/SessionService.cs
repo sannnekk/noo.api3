@@ -57,7 +57,6 @@ public class SessionService : ISessionService
         existing.IpAddress = incoming.IpAddress;
         existing.DeviceId = incoming.DeviceId ?? existing.DeviceId;
 
-        _sessionRepository.Update(existing);
         return existing.Id;
     }
 
