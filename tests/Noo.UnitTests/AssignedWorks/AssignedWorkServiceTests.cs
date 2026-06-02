@@ -8,6 +8,7 @@ using Noo.Api.AssignedWorks.Services;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Utils.Richtext.Delta;
@@ -39,7 +40,12 @@ public class AssignedWorkServiceTests
     {
         var ctx = TestHelpers.CreateInMemoryDb();
         var uowMock = TestHelpers.CreateUowMock(ctx);
-        var currentUser = new Mock<ICurrentUser>();
+        var currentUser = new Mock<ICurrentUser>
+        {
+            // Run ICurrentUser's default interface methods (RequireUserId/RequireUserRole)
+            // against the mocked properties instead of returning stubbed defaults.
+            CallBase = true
+        };
         userId ??= Ulid.NewUlid();
         currentUser.SetupGet(c => c.UserId).Returns(userId);
         currentUser.SetupGet(c => c.UserRole).Returns(role);
@@ -53,6 +59,7 @@ public class AssignedWorkServiceTests
         var assignedWorkCommentRepo = new AssignedWorkCommentRepository(ctx);
         var courseWorkAssignmentRepo = new Mock<ICourseWorkAssignmentRepository>();
         var mentorAssignmentRepo = new Mock<IMentorAssignmentRepository>();
+        var userRepo = new UserRepository(ctx);
         var workTaskRepo = new WorkTaskRepository(ctx);
         var svc = new AssignedWorkService(
             assignedWorkRepo,
@@ -60,6 +67,8 @@ public class AssignedWorkServiceTests
             assignedWorkCommentRepo,
             courseWorkAssignmentRepo.Object,
             mentorAssignmentRepo.Object,
+            userRepo,
+            new TaskCheckService(),
             currentUser.Object,
             workTaskRepo,
             mapper,
@@ -185,6 +194,72 @@ public class AssignedWorkServiceTests
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
         var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id);
         await Assert.ThrowsAsync<AssignedWorkNotSolvedException>(() => svc.MarkAsCheckedAsync(aw.Id));
+    }
+
+    [Fact]
+    public async Task AddHelperMentor_Throws_When_Mentor_Does_Not_Exist()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student);
+        var mainMentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mainMentor);
+        ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(mainMentor.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, mainMentor.Id);
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            svc.AddHelperMentorAsync(aw.Id, new AddHelperMentorOptionsDTO { MentorId = Ulid.NewUlid() }));
+    }
+
+    [Fact]
+    public async Task AddHelperMentor_Throws_When_Target_Is_Not_A_Mentor()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student);
+        var mainMentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mainMentor);
+        var notAMentor = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(notAMentor);
+        ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(mainMentor.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, mainMentor.Id);
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            svc.AddHelperMentorAsync(aw.Id, new AddHelperMentorOptionsDTO { MentorId = notAMentor.Id }));
+    }
+
+    [Fact]
+    public async Task MarkAsSolved_Marks_All_Answers_As_Submitted()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, mainMentorId: Ulid.NewUlid());
+        ctx.GetDbSet<AssignedWorkAnswerModel>().AddRange(
+            new AssignedWorkAnswerModel { AssignedWorkId = aw.Id, TaskId = Ulid.NewUlid(), Status = AssignedWorkAnswerStatus.NotSubmitted },
+            new AssignedWorkAnswerModel { AssignedWorkId = aw.Id, TaskId = Ulid.NewUlid(), Status = AssignedWorkAnswerStatus.NotSubmitted });
+        ctx.SaveChanges();
+
+        await svc.MarkAsSolvedAsync(aw.Id);
+
+        var answers = ctx.GetDbSet<AssignedWorkAnswerModel>().Where(a => a.AssignedWorkId == aw.Id).ToList();
+        Assert.All(answers, a => Assert.Equal(AssignedWorkAnswerStatus.Submitted, a.Status));
+    }
+
+    [Fact]
+    public async Task MarkAsChecked_Marks_All_Answers_As_Checked()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
+        var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
+        var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id, solveStatus: AssignedWorkSolveStatus.Solved);
+        aw.SolvedAt = DateTime.UtcNow;
+        ctx.GetDbSet<AssignedWorkAnswerModel>().AddRange(
+            new AssignedWorkAnswerModel { AssignedWorkId = aw.Id, TaskId = Ulid.NewUlid(), Status = AssignedWorkAnswerStatus.Submitted },
+            new AssignedWorkAnswerModel { AssignedWorkId = aw.Id, TaskId = Ulid.NewUlid(), Status = AssignedWorkAnswerStatus.Submitted });
+        ctx.SaveChanges();
+
+        await svc.MarkAsCheckedAsync(aw.Id);
+
+        var answers = ctx.GetDbSet<AssignedWorkAnswerModel>().Where(a => a.AssignedWorkId == aw.Id).ToList();
+        Assert.All(answers, a => Assert.Equal(AssignedWorkAnswerStatus.Checked, a.Status));
     }
 
     [Fact]

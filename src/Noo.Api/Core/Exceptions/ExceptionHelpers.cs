@@ -14,6 +14,14 @@ public static class ExceptionHelpers
         }
     }
 
+    public static void ThrowInvalidOperationIfNull([NotNull] this object? obj)
+    {
+        if (obj == null)
+        {
+            throw new InvalidOperationException();
+        }
+    }
+
     public static void ThrowValidationExceptionIfInvalid(this ModelStateDictionary modelState)
     {
         var errors = modelState

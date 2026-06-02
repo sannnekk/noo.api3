@@ -146,11 +146,13 @@ public class AssignedWorkModel : BaseModel
 
     #endregion
 
-    public bool IsChecked() => CheckedAt.HasValue;
+    public bool IsChecked => CheckedAt.HasValue;
 
-    public bool IsSolved() => SolvedAt.HasValue;
+    public bool IsSolved => SolvedAt.HasValue;
 
-    public bool IsRemakeable() => IsChecked() && Type == WorkType.Test;
+    public bool IsRemakeable => IsChecked && Type == WorkType.Test;
+
+    public bool CanBeDeleted => !IsSolved;
 
     public static AssignedWorkModel CreateNew(
         CourseWorkAssignmentModel workAssignment,

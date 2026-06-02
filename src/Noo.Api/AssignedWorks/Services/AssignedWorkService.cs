@@ -32,6 +32,8 @@ public class AssignedWorkService : IAssignedWorkService
     private readonly ICourseWorkAssignmentRepository _workAssignmentRepository;
     private readonly IWorkTaskRepository _workTaskRepository;
     private readonly IMentorAssignmentRepository _mentorAssignmentRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly ITaskCheckService _taskCheckService;
     private readonly ICurrentUser _currentUser;
     private readonly IMapper _mapper;
     private readonly IEventPublisher _events;
@@ -43,6 +45,8 @@ public class AssignedWorkService : IAssignedWorkService
         IAssignedWorkCommentRepository assignedWorkCommentRepository,
         ICourseWorkAssignmentRepository workAssignmentRepository,
         IMentorAssignmentRepository mentorAssignmentRepository,
+        IUserRepository userRepository,
+        ITaskCheckService taskCheckService,
         ICurrentUser currentUser,
         IWorkTaskRepository workTaskRepository,
         IMapper mapper,
@@ -55,6 +59,8 @@ public class AssignedWorkService : IAssignedWorkService
         _assignedWorkCommentRepository = assignedWorkCommentRepository;
         _workAssignmentRepository = workAssignmentRepository;
         _mentorAssignmentRepository = mentorAssignmentRepository;
+        _userRepository = userRepository;
+        _taskCheckService = taskCheckService;
         _currentUser = currentUser;
         _workTaskRepository = workTaskRepository;
         _mapper = mapper;
@@ -66,10 +72,7 @@ public class AssignedWorkService : IAssignedWorkService
 
     public async Task<Ulid> CreateAsync(Ulid workAssignmentId)
     {
-        if (!_currentUser.UserId.HasValue)
-        {
-            throw new InvalidOperationException("Current user ID is not set.");
-        }
+        var userId = _currentUser.RequireUserId();
 
         var workAssignment = await _workAssignmentRepository.GetWithWorkAsync(workAssignmentId);
 
@@ -82,7 +85,7 @@ public class AssignedWorkService : IAssignedWorkService
         if (workAssignment.Work.NeedsMentor)
         {
             mentor = await _mentorAssignmentRepository.GetMentorAsync(
-                _currentUser.UserId.Value,
+                userId,
                 workAssignment.Work.SubjectId.Value
             );
 
@@ -91,14 +94,15 @@ public class AssignedWorkService : IAssignedWorkService
 
         var attemptCount = await _assignedWorkRepository.GetCurrentAttemptAsync(
             workAssignmentId,
-            _currentUser.UserId.Value
+            userId
         );
 
+        // TODO: add maxScore to a WorkModel and use here
         var maxScore = await _workTaskRepository.GetWorkMaxScoreAsync(workAssignment.WorkId);
 
         var newAssignedWork = AssignedWorkModel.CreateNew(
             workAssignment,
-            _currentUser.UserId.Value,
+            userId,
             maxScore,
             mentor?.Id,
             attemptCount + 1
@@ -120,12 +124,15 @@ public class AssignedWorkService : IAssignedWorkService
             || assignedWork.HelperMentorId == options.MentorId
         )
         {
-            return; // Mentor is already the main mentor, no need to add as helper
+            return;
         }
 
-        // TODO: check if mentor exists
+        if (!await _userRepository.MentorExistsAsync(options.MentorId))
+        {
+            throw new NotFoundException();
+        }
 
-        if (assignedWork.IsChecked())
+        if (assignedWork.IsChecked)
         {
             throw new AssignedWorkAlreadyCheckedException();
         }
@@ -135,14 +142,17 @@ public class AssignedWorkService : IAssignedWorkService
 
     public async Task DeleteAsync(Ulid assignedWorkId)
     {
-        // TODO: refactor -> aw.CanBeDeleted()
-        if (
-            await _assignedWorkRepository.IsWorkSolveStatusAsync(
-                assignedWorkId,
-                AssignedWorkSolveStatus.NotSolved,
-                AssignedWorkSolveStatus.InProgress
-            )
-        )
+        var assignedWork = await _assignedWorkRepository.GetAsync(
+            assignedWorkId,
+            _currentUser.UserId
+        );
+
+        if (assignedWork == null)
+        {
+            return;
+        }
+
+        if (assignedWork.CanBeDeleted)
         {
             _assignedWorkRepository.DeleteById(assignedWorkId);
         }
@@ -183,53 +193,43 @@ public class AssignedWorkService : IAssignedWorkService
 
     public Task<List<AssignedWorkModel>> GetByWorkAssignmentAsync(Ulid workAssignmentId)
     {
-        if (!_currentUser.UserId.HasValue)
-        {
-            throw new InvalidOperationException("Current user ID is not set.");
-        }
+        var userId = _currentUser.RequireUserId();
 
-        return _assignedWorkRepository.GetByWorkAssignmentAsync(
-            workAssignmentId,
-            _currentUser.UserId.Value
-        );
+        return _assignedWorkRepository.GetByWorkAssignmentAsync(workAssignmentId, userId);
     }
 
     public Task<SearchResult<AssignedWorkModel>> GetAssignedWorksAsync(AssignedWorkFilter filter)
     {
-        if (!_currentUser.UserRole.HasValue)
-        {
-            throw new InvalidOperationException("Current user ID is not set.");
-        }
+        var role = _currentUser.RequireUserRole();
 
-        var specification = new AssignedWorkSearchSpecification(_currentUser.UserRole.Value);
+        var specification = new AssignedWorkSearchSpecification(role);
         return _assignedWorkRepository.SearchAsync(filter, [specification]);
     }
 
     public async Task MarkAsCheckedAsync(Ulid assignedWorkId)
     {
-        if (!_currentUser.UserId.HasValue)
-        {
-            throw new InvalidOperationException("Current user ID is not set.");
-        }
+        var userId = _currentUser.RequireUserId();
 
-        var assignedWork = await _assignedWorkRepository.GetAsync(
+        var assignedWork = await _assignedWorkRepository.GetWithAnswersAsync(
             assignedWorkId,
-            _currentUser.UserId
+            userId
         );
 
-        if (assignedWork == null)
-        {
-            throw new NotFoundException();
-        }
+        assignedWork.ThrowNotFoundIfNull();
 
-        if (!assignedWork.IsSolved())
+        if (!assignedWork.IsSolved)
         {
             throw new AssignedWorkNotSolvedException();
         }
 
-        if (assignedWork.IsChecked())
+        if (assignedWork.IsChecked)
         {
             throw new AssignedWorkAlreadyCheckedException();
+        }
+
+        foreach (var answer in assignedWork.Answers)
+        {
+            answer.Status = AssignedWorkAnswerStatus.Checked;
         }
 
         assignedWork.CheckedAt = Clock.Now;
@@ -238,21 +238,33 @@ public class AssignedWorkService : IAssignedWorkService
 
     public async Task MarkAsSolvedAsync(Ulid assignedWorkId)
     {
-        var assignedWork = await _assignedWorkRepository.GetAsync(
-            assignedWorkId,
-            _currentUser.UserId
+        var assignedWork = await _assignedWorkRepository.GetWithAnswersAndTasksAsync(
+            assignedWorkId
         );
 
-        if (assignedWork == null)
+        assignedWork.ThrowNotFoundIfNull();
+
+        if (_currentUser.UserId != assignedWork.StudentId)
         {
             throw new NotFoundException();
         }
 
-        if (assignedWork.IsSolved())
+        if (assignedWork.IsSolved)
         {
             throw new AssignedWorkAlreadySolvedException();
         }
 
+        foreach (var answer in assignedWork.Answers)
+        {
+            answer.Status = AssignedWorkAnswerStatus.Submitted;
+        }
+
+        var score = _taskCheckService.CheckTasks(
+            assignedWork.Answers,
+            assignedWork.Work?.Tasks ?? []
+        );
+
+        assignedWork.Score = score;
         assignedWork.SolvedAt = Clock.Now;
         assignedWork.SolveStatus = AssignedWorkSolveStatus.Solved;
 
@@ -268,12 +280,9 @@ public class AssignedWorkService : IAssignedWorkService
             _currentUser.UserId
         );
 
-        if (assignedWork == null)
-        {
-            throw new NotFoundException();
-        }
+        assignedWork.ThrowNotFoundIfNull();
 
-        if (!assignedWork.IsRemakeable())
+        if (!assignedWork.IsRemakeable)
         {
             throw new AssignedWorkNotRemakeableException();
         }
@@ -301,25 +310,21 @@ public class AssignedWorkService : IAssignedWorkService
             _currentUser.UserId
         );
 
-        if (assignedWork == null)
-        {
-            throw new NotFoundException();
-        }
+        assignedWork.ThrowNotFoundIfNull();
 
         if (
             assignedWork.MainMentorId == options.MentorId
             || assignedWork.HelperMentorId == options.MentorId
         )
         {
-            return; // Mentor is already the main mentor, no need to replace
+            return; // Mentor is already assigned to this work, nothing to replace
         }
 
-        if (assignedWork.IsChecked())
+        if (assignedWork.IsChecked)
         {
             throw new AssignedWorkAlreadyCheckedException();
         }
 
-        var OldMentorId = assignedWork.MainMentorId;
         assignedWork.MainMentorId = options.MentorId;
     }
 
@@ -330,12 +335,9 @@ public class AssignedWorkService : IAssignedWorkService
             _currentUser.UserId
         );
 
-        if (assignedWork == null)
-        {
-            throw new NotFoundException();
-        }
+        assignedWork.ThrowNotFoundIfNull();
 
-        if (!assignedWork.IsChecked())
+        if (!assignedWork.IsChecked)
         {
             throw new AssignedWorkNotCheckedException();
         }
@@ -351,12 +353,9 @@ public class AssignedWorkService : IAssignedWorkService
             _currentUser.UserId
         );
 
-        if (assignedWork == null)
-        {
-            throw new NotFoundException();
-        }
+        assignedWork.ThrowNotFoundIfNull();
 
-        if (!assignedWork.IsSolved())
+        if (!assignedWork.IsSolved)
         {
             throw new AssignedWorkNotSolvedException();
         }
@@ -371,7 +370,7 @@ public class AssignedWorkService : IAssignedWorkService
 
     public async Task<Ulid> SaveAnswerAsync(Ulid assignedWorkId, UpsertAssignedWorkAnswerDTO dto)
     {
-        // its an already existing answer
+        // It's an update to an existing answer.
         if (dto.Id.HasValue)
         {
             var existing = await _assignedWorkAnswerRepository.GetByIdAsync(dto.Id.Value);
@@ -415,49 +414,34 @@ public class AssignedWorkService : IAssignedWorkService
         ShiftAssignedWorkDeadlineOptionsDTO options
     )
     {
-        if (!_currentUser.UserId.HasValue)
-        {
-            throw new InvalidOperationException("Current user ID is not set.");
-        }
+        var userId = _currentUser.RequireUserId();
 
-        var assignedWork = await _assignedWorkRepository.GetAsync(
-            assignedWorkId,
-            _currentUser.UserId
-        );
+        var assignedWork = await _assignedWorkRepository.GetAsync(assignedWorkId, userId);
 
-        if (assignedWork == null)
-        {
-            throw new NotFoundException();
-        }
+        assignedWork.ThrowNotFoundIfNull();
 
-        if (_currentUser.UserRole == UserRoles.Student)
+        switch (_currentUser.UserRole)
         {
-            AssertCorrectStudentDeadlineShift(assignedWork, options.NewDeadline);
-            assignedWork.SolveDeadlineAt = options.NewDeadline;
-        }
-        else if (_currentUser.UserRole == UserRoles.Mentor)
-        {
-            AssertCorrectMentorDeadlineShift(assignedWork, options.NewDeadline);
-            assignedWork.CheckDeadlineAt = options.NewDeadline;
+            case UserRoles.Student:
+                AssertCorrectStudentDeadlineShift(assignedWork, options.NewDeadline);
+                assignedWork.SolveDeadlineAt = options.NewDeadline;
+                break;
+            case UserRoles.Mentor:
+                AssertCorrectMentorDeadlineShift(assignedWork, options.NewDeadline);
+                assignedWork.CheckDeadlineAt = options.NewDeadline;
+                break;
+            default:
+                throw new ForbiddenException();
         }
     }
 
     public async Task ArchiveAsync(Ulid assignedWorkId)
     {
-        if (!_currentUser.UserId.HasValue)
-        {
-            throw new InvalidOperationException("Current user ID is not set.");
-        }
+        var userId = _currentUser.RequireUserId();
 
-        var assignedWork = await _assignedWorkRepository.GetAsync(
-            assignedWorkId,
-            _currentUser.UserId
-        );
+        var assignedWork = await _assignedWorkRepository.GetAsync(assignedWorkId, userId);
 
-        if (assignedWork == null)
-        {
-            throw new NotFoundException();
-        }
+        assignedWork.ThrowNotFoundIfNull();
 
         switch (_currentUser.UserRole)
         {
@@ -484,10 +468,7 @@ public class AssignedWorkService : IAssignedWorkService
             _currentUser.UserId
         );
 
-        if (assignedWork == null)
-        {
-            throw new NotFoundException();
-        }
+        assignedWork.ThrowNotFoundIfNull();
 
         switch (_currentUser.UserRole)
         {
@@ -517,7 +498,7 @@ public class AssignedWorkService : IAssignedWorkService
             throw new IncorrectDeadlineShiftException();
         }
 
-        if (assignedWork.IsSolved())
+        if (assignedWork.IsSolved)
         {
             throw new AssignedWorkAlreadySolvedException();
         }
@@ -533,7 +514,7 @@ public class AssignedWorkService : IAssignedWorkService
             throw new IncorrectDeadlineShiftException();
         }
 
-        if (assignedWork.IsChecked())
+        if (assignedWork.IsChecked)
         {
             throw new AssignedWorkAlreadyCheckedException();
         }

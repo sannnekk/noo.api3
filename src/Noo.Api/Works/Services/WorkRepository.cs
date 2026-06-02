@@ -17,6 +17,7 @@ public class WorkRepository : Repository<WorkModel>, IWorkRepository
 
         return repository
             .Include(x => x.Tasks!.OrderBy(task => task.Order))
+            .AsSplitQuery()
             .FirstOrDefaultAsync(x => x.Id == id);
     }
 }

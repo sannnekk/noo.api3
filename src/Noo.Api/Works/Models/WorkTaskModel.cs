@@ -56,4 +56,11 @@ public class WorkTaskModel : OrderedModel
     public WorkModel? Work { get; set; }
 
     #endregion
+
+    public bool IsAutomaticallyCheckable =>
+        Type switch
+        {
+            WorkTaskType.Word => true,
+            _ => false,
+        };
 }

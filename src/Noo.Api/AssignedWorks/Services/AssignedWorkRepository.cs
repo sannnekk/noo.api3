@@ -90,6 +90,39 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
             .FirstOrDefaultAsync();
     }
 
+    public Task<AssignedWorkModel?> GetWithAnswersAsync(Ulid assignedWorkId, Ulid? userId)
+    {
+        if (userId == null)
+        {
+            return Task.FromResult<AssignedWorkModel?>(null);
+        }
+
+        return Context
+            .Set<AssignedWorkModel>()
+            .Where(aw =>
+                aw.Id == assignedWorkId
+                && (
+                    aw.StudentId == userId
+                    || aw.MainMentorId == userId
+                    || aw.HelperMentorId == userId
+                )
+            )
+            .Include(aw => aw.Answers)
+            .FirstOrDefaultAsync();
+    }
+
+    public Task<AssignedWorkModel?> GetWithAnswersAndTasksAsync(Ulid assignedWorkId)
+    {
+        return Context
+            .Set<AssignedWorkModel>()
+            .Where(aw => aw.Id == assignedWorkId)
+            .Include(aw => aw.Answers)
+            .Include(aw => aw.Work)
+                .ThenInclude(w => w!.Tasks)
+            .AsSplitQuery() //! To avoid Cartesian product issues, DO NOT REMOVE
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<bool> IsMentorOwnWorkAsync(Ulid assignedWorkId, Ulid userId)
     {
         var assignedWork = await Context

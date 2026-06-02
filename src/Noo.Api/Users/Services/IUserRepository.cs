@@ -7,6 +7,7 @@ namespace Noo.Api.Users.Services;
 public interface IUserRepository : IRepository<UserModel>
 {
     public Task<bool> ExistsByUsernameOrEmailAsync(string? username, string? email);
+    public Task<bool> MentorExistsAsync(Ulid mentorId);
     public Task<UserModel?> GetByUsernameOrEmailAsync(string usernameOrEmail);
     public Task<bool> IsBlockedAsync(Ulid id);
     public Task BlockUserAsync(Ulid id);

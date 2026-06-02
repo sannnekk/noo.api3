@@ -31,6 +31,18 @@ public interface IAssignedWorkRepository : IRepository<AssignedWorkModel>
         params AssignedWorkSolveStatus[] statuses
     );
     public Task<AssignedWorkModel?> GetWholeAsync(Ulid assignedWorkId);
+
+    /// <summary>
+    /// Tracked load (for mutation) of the assigned work together with its answers,
+    /// restricted to works the given user participates in as student or mentor.
+    /// </summary>
+    public Task<AssignedWorkModel?> GetWithAnswersAsync(Ulid assignedWorkId, Ulid? userId);
+
+    /// <summary>
+    /// Tracked load (for mutation) of the assigned work together with its answers
+    /// and the work's tasks. Used by the solve flow to run the automatic check.
+    /// </summary>
+    public Task<AssignedWorkModel?> GetWithAnswersAndTasksAsync(Ulid assignedWorkId);
     public Task<AssignedWorkModel?> GetWithStudentAsync(Ulid assignedWorkId);
     public Task<int> GetCountAsync(
         Expression<Func<AssignedWorkModel, bool>> predicate,
