@@ -15,7 +15,10 @@ public static class CorsPolicyExtension
             {
                 builder.WithOrigins(appConfig.AllowedOrigins)
                     .AllowAnyMethod()
-                    .AllowAnyHeader();
+                    .AllowAnyHeader()
+                    // Required so the browser sends/stores the httpOnly refresh-token cookie
+                    // on cross-origin requests to /auth/refresh.
+                    .AllowCredentials();
             });
         });
     }

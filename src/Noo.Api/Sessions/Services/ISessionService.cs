@@ -10,4 +10,5 @@ public interface ISessionService
     public void DeleteAllSessions(Ulid userId);
     public void DeleteSession(Ulid sessionId, Ulid userId);
     public void DeleteCurrentSession(Ulid sessionId, Ulid userId);
+    public void DeleteSessionById(Ulid sessionId);
 }

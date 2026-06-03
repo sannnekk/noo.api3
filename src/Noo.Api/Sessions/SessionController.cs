@@ -1,6 +1,7 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Noo.Api.Auth;
 using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
 using Noo.Api.Core.Security.Authorization;
@@ -21,15 +22,19 @@ public class SessionController : ApiController
 
     private readonly IOnlineService _onlineService;
 
+    private readonly IWebHostEnvironment _environment;
+
     public SessionController(
         ISessionService sessionService,
         IOnlineService onlineService,
+        IWebHostEnvironment environment,
         IMapper mapper
     )
         : base(mapper)
     {
         _sessionService = sessionService;
         _onlineService = onlineService;
+        _environment = environment;
     }
 
     /// <summary>
@@ -91,7 +96,9 @@ public class SessionController : ApiController
         var userId = User.GetId();
         var sessionId = User.GetSessionId();
 
+        // Deleting the session cascade-deletes its refresh tokens; also drop the cookie.
         _sessionService.DeleteCurrentSession(sessionId, userId);
+        Response.ClearRefreshToken(!_environment.IsDevelopment());
 
         return SendResponse();
     }

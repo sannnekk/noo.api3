@@ -4,7 +4,9 @@ namespace Noo.Api.Auth.Services;
 
 public interface IAuthService
 {
-    public Task<LoginResponseDTO> LoginAsync(LoginDTO request);
+    public Task<AuthTokensResult> LoginAsync(LoginDTO request);
+
+    public Task<RefreshResult> RefreshAsync(string? rawRefreshToken);
 
     public Task RegisterAsync(RegisterDTO request);
 

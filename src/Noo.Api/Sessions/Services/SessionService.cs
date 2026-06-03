@@ -83,6 +83,11 @@ public class SessionService : ISessionService
         _sessionRepository.DeleteSession(sessionId, userId);
     }
 
+    public void DeleteSessionById(Ulid sessionId)
+    {
+        _sessionRepository.DeleteById(sessionId);
+    }
+
     public Task<IEnumerable<SessionModel>> GetSessionsAsync(Ulid userId)
     {
         return _sessionRepository.GetManyOfUserAsync(userId);

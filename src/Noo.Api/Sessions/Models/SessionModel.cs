@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+using Noo.Api.Auth.Models;
 using Noo.Api.Core.DataAbstraction;
 using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
@@ -50,6 +52,10 @@ public class SessionModel : BaseModel
 
     [InverseProperty(nameof(UserModel.Sessions))]
     public UserModel User { get; set; } = default!;
+
+    [InverseProperty(nameof(RefreshTokenModel.Session))]
+    [DeleteBehavior(DeleteBehavior.Cascade)]
+    public ICollection<RefreshTokenModel> RefreshTokens { get; set; } = [];
 
     #endregion
 }

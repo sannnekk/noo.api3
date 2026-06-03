@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Noo.Api.Auth.Models;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils;
 using Noo.Api.Sessions.Models;
@@ -30,6 +31,12 @@ public class SessionCleanupWorker : BackgroundService
                 var cutoff = Clock.Now.AddDays(-_options.SessionRetentionDays);
                 await db.Set<SessionModel>()
                     .Where(s => (s.LastRequestAt ?? s.UpdatedAt ?? s.CreatedAt) < cutoff)
+                    .ExecuteDeleteAsync(stoppingToken);
+
+                // Drop refresh tokens that have outlived their own expiry. (Tokens of a
+                // deleted session are already removed via the FK cascade.)
+                await db.Set<RefreshTokenModel>()
+                    .Where(t => t.ExpiresAt < Clock.Now)
                     .ExecuteDeleteAsync(stoppingToken);
             }
             catch

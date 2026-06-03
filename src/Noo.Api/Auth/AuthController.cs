@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Noo.Api.Auth.DTO;
 using Noo.Api.Auth.Services;
+using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
 using Noo.Api.Core.Utils.Versioning;
@@ -23,11 +24,16 @@ public class AuthController : ApiController
 {
     private readonly IAuthService _authService;
 
-    public AuthController(IAuthService authService, IMapper mapper)
+    private readonly IWebHostEnvironment _environment;
+
+    public AuthController(IAuthService authService, IWebHostEnvironment environment, IMapper mapper)
         : base(mapper)
     {
         _authService = authService;
+        _environment = environment;
     }
+
+    private bool CookieSecure => !_environment.IsDevelopment();
 
     /// <summary>
     /// Logs in a user with the provided credentials.
@@ -46,7 +52,42 @@ public class AuthController : ApiController
     {
         var result = await _authService.LoginAsync(request);
 
-        return SendResponse(result);
+        Response.SetRefreshToken(result.RefreshToken, result.RefreshTokenExpiresAt, CookieSecure);
+
+        return SendResponse(result.Response);
+    }
+
+    /// <summary>
+    /// Exchanges the httpOnly refresh-token cookie for a new access token,
+    /// rotating the refresh token. Returns 401 if the refresh token is missing,
+    /// expired, or has already been used (in which case the session is revoked).
+    /// </summary>
+    [HttpPost("refresh")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [AllowAnonymous]
+    [Produces(
+        typeof(ApiResponseDTO<LoginResponseDTO>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status401Unauthorized
+    )]
+    public async Task<IActionResult> RefreshAsync()
+    {
+        var rawRefreshToken = Request.Cookies[RefreshCookie.Name];
+        var result = await _authService.RefreshAsync(rawRefreshToken);
+
+        if (!result.Succeeded)
+        {
+            Response.ClearRefreshToken(CookieSecure);
+
+            return StatusCode(
+                StatusCodes.Status401Unauthorized,
+                new ErrorApiResponseDTO(new UnauthorizedException().Serialize())
+            );
+        }
+
+        Response.SetRefreshToken(result.RefreshToken!, result.RefreshTokenExpiresAt, CookieSecure);
+
+        return SendResponse(result.Response!);
     }
 
     /// <summary>

@@ -35,9 +35,10 @@ public class AuthServiceTests
             AllowedOrigins = new[] { "*" }
         }));
         public Mock<ISessionService> Sessions { get; } = new();
+        public Mock<IRefreshTokenService> Refresh { get; } = new();
         public IHttpContextAccessor Ctx { get; } = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
 
-        public AuthService Build() => new(Token.Object, Email.Object, Url.Object, EmailChange.Object, Users.Object, Hash, Sessions.Object, Ctx);
+        public AuthService Build() => new(Token.Object, Refresh.Object, Email.Object, Url.Object, EmailChange.Object, Users.Object, Hash, Sessions.Object, Ctx);
     }
 
     [Fact]
@@ -69,15 +70,18 @@ public class AuthServiceTests
         h.Users.Setup(s => s.GetUserByUsernameOrEmailAsync(user.Username)).ReturnsAsync(user);
         h.Sessions.Setup(s => s.CreateSessionIfNotExistsAsync(It.IsAny<HttpContext>(), user.Id)).ReturnsAsync(Ulid.NewUlid());
         h.Token.Setup(t => t.GenerateAccessToken(It.IsAny<AccessTokenPayload>())).Returns(("token", DateTime.UtcNow.AddDays(1)));
+        h.Refresh.Setup(r => r.IssueRefreshToken(It.IsAny<Ulid>())).Returns(("refresh", DateTime.UtcNow.AddDays(30)));
         var svc = h.Build();
 
-        var resp = await svc.LoginAsync(new LoginDTO
+        var result = await svc.LoginAsync(new LoginDTO
         {
             UsernameOrEmail = user.Username,
             Password = pwd
         });
 
+        var resp = result.Response;
         Assert.False(string.IsNullOrWhiteSpace(resp.AccessToken));
+        Assert.False(string.IsNullOrWhiteSpace(result.RefreshToken));
         Assert.Equal(user.Id, resp.UserInfo.Id);
         Assert.Equal(user.Username, resp.UserInfo.Username);
         Assert.Equal(user.Email, resp.UserInfo.Email);
