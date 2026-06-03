@@ -17,6 +17,7 @@ public class UserSettingsMapperProfile : Profile
             .ForMember(dest => dest.User, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.BackgroundImage, opt => opt.Ignore())
             // Only map theme when provided to preserve existing value on partial update
             .ForMember(dest => dest.Theme, opt => opt.Condition(src => src.Theme.HasValue))
             // Only map font size when provided

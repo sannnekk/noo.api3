@@ -4,5 +4,5 @@ public enum UserTheme
 {
     Light,
     Dark,
-    SystemDefault
+    System,
 }

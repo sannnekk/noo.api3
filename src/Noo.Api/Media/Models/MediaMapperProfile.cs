@@ -19,6 +19,7 @@ public class MediaMapperProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.CourseMaterialContents, opt => opt.Ignore())
+            .ForMember(dest => dest.UserSettingsWithBackgroundImage, opt => opt.Ignore())
             .ForMember(dest => dest.Hash, opt => opt.Ignore());
     }
 }

@@ -11,6 +11,6 @@ public record UserSettingsUpdateDTO
     [JsonPropertyName("fontSize")]
     public FontSize? FontSize { get; init; }
 
-    //[JsonPropertyName("backgroundImageMediaId")]
-    //public Ulid? BackgroundImageMediaId { get; init; }
+    [JsonPropertyName("backgroundImageId")]
+    public Ulid? BackgroundImageId { get; init; }
 }

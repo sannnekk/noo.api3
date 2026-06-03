@@ -68,10 +68,7 @@ public class CourseService : ICourseService
 
     public async Task<CourseModel?> GetByIdAsync(Ulid id, bool includeInactive)
     {
-        var course = await _courseRepository.GetWithChapterTreeAsync(
-            id,
-            true /* includeInactive */
-        );
+        var course = await _courseRepository.GetWithChapterTreeAsync(id, includeInactive: true);
 
         await _mediaUrlEnricher.EnrichAsync(course);
         return course;

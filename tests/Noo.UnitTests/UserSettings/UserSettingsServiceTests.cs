@@ -1,5 +1,7 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Moq;
+using Noo.Api.Media.Services;
 using Noo.Api.UserSettings.DTO;
 using Noo.Api.UserSettings.Models;
 using Noo.Api.UserSettings.Services;
@@ -12,9 +14,18 @@ public class UserSettingsServiceTests
 {
     private static IMapper CreateMapper()
     {
-        var config = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<UserSettingsMapperProfile>());
+        var config = MapperTestUtils.CreateMapperConfig(cfg =>
+        {
+            cfg.AddProfile<UserSettingsMapperProfile>();
+            cfg.AddProfile<Noo.Api.Media.Models.MediaMapperProfile>();
+        });
         config.AssertConfigurationIsValid();
         return config.CreateMapper();
+    }
+
+    private static IMediaUrlEnricher CreateMediaUrlEnricher()
+    {
+        return new Mock<IMediaUrlEnricher>().Object;
     }
 
     [Fact]
@@ -25,7 +36,7 @@ public class UserSettingsServiceTests
         var mapper = CreateMapper();
         var userSettingsRepo = new UserSettingsRepository(uow.Context);
 
-        var service = new UserSettingsService(mapper, userSettingsRepo);
+        var service = new UserSettingsService(mapper, userSettingsRepo, CreateMediaUrlEnricher());
         var userId = Ulid.NewUlid();
 
         var settings = await service.GetUserSettingsAsync(userId);
@@ -44,7 +55,7 @@ public class UserSettingsServiceTests
         var uow = TestHelpers.CreateUowMock(context);
         var mapper = CreateMapper();
         var userSettingsRepo = new UserSettingsRepository(uow.Object.Context);
-        var service = new UserSettingsService(mapper, userSettingsRepo);
+        var service = new UserSettingsService(mapper, userSettingsRepo, CreateMediaUrlEnricher());
 
         var userId = Ulid.NewUlid();
 
@@ -63,7 +74,7 @@ public class UserSettingsServiceTests
         using var verifyCtx = TestHelpers.CreateInMemoryDb(dbName);
         var saved = await verifyCtx.GetDbSet<UserSettingsModel>().FirstOrDefaultAsync(s => s.UserId == userId);
 
-        Assert.Equal("Dark", saved!.Theme);
+        Assert.Equal(UserTheme.Dark, saved!.Theme);
         Assert.Equal("Large", saved.FontSize);
     }
 
@@ -74,10 +85,10 @@ public class UserSettingsServiceTests
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
         var userSettingsRepo = new UserSettingsRepository(uow.Context);
-        var service = new UserSettingsService(mapper, userSettingsRepo);
+        var service = new UserSettingsService(mapper, userSettingsRepo, CreateMediaUrlEnricher());
 
         var userId = Ulid.NewUlid();
-        var entity = new UserSettingsModel { Id = Ulid.NewUlid(), UserId = userId, Theme = "Light", FontSize = "Small" };
+        var entity = new UserSettingsModel { Id = Ulid.NewUlid(), UserId = userId, Theme = UserTheme.Light, FontSize = "Small" };
         context.GetDbSet<UserSettingsModel>().Add(entity);
         await context.SaveChangesAsync();
 
@@ -89,7 +100,7 @@ public class UserSettingsServiceTests
         var after = await service.GetUserSettingsAsync(userId);
         Assert.Equal(before, after.Id);
         Assert.Equal(createdAt, after.CreatedAt);
-        Assert.Equal("Dark", after.Theme);
+        Assert.Equal(UserTheme.Dark, after.Theme);
         // Mapper preserves unspecified fields due to conditional mapping
         Assert.Equal("Small", after.FontSize);
     }

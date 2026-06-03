@@ -12,7 +12,11 @@ public class UserSettingsMapperProfileTests
 
     public UserSettingsMapperProfileTests()
     {
-        var config = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<UserSettingsMapperProfile>());
+        var config = MapperTestUtils.CreateMapperConfig(cfg =>
+        {
+            cfg.AddProfile<UserSettingsMapperProfile>();
+            cfg.AddProfile<Noo.Api.Media.Models.MediaMapperProfile>();
+        });
         config.AssertConfigurationIsValid();
         _mapper = config.CreateMapper();
     }
@@ -24,7 +28,7 @@ public class UserSettingsMapperProfileTests
         {
             Id = Ulid.NewUlid(),
             UserId = Ulid.NewUlid(),
-            Theme = "Dark",
+            Theme = UserTheme.Dark,
             FontSize = "Large",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -48,7 +52,7 @@ public class UserSettingsMapperProfileTests
         {
             Id = originalId,
             UserId = originalUserId,
-            Theme = "Light",
+            Theme = UserTheme.Light,
             FontSize = "Small",
             CreatedAt = originalCreated,
             UpdatedAt = originalUpdated
@@ -62,7 +66,7 @@ public class UserSettingsMapperProfileTests
 
         var mapped = _mapper.Map(update, model);
 
-        Assert.Equal("Dark", mapped.Theme);
+        Assert.Equal(UserTheme.Dark, mapped.Theme);
         Assert.Equal("Large", mapped.FontSize);
         Assert.Equal(originalId, mapped.Id);
         Assert.Equal(originalUserId, mapped.UserId);

@@ -7,6 +7,7 @@ using Noo.Api.Courses.Models;
 using Noo.Api.Media.Types;
 using Noo.Api.NooTube.Models;
 using Noo.Api.Users.Models;
+using Noo.Api.UserSettings.Models;
 using IndexAttribute = Microsoft.EntityFrameworkCore.IndexAttribute;
 
 namespace Noo.Api.Media.Models;
@@ -61,7 +62,7 @@ public class MediaModel : OrderedModel
     public MediaStatus Status { get; set; } = MediaStatus.Pending;
 
     /// <summary>
-    /// Optional id of the entity this media is attached to (e.g. a course id for a course attachment).
+    /// Optional id of the entity this media is attached to
     /// </summary>
     [Column("entity_id", TypeName = DbDataTypes.Ulid)]
     public Ulid? EntityId { get; set; }
@@ -86,6 +87,8 @@ public class MediaModel : OrderedModel
     public UserAvatarModel? UserAvatar { get; set; }
 
     public ICollection<CourseMaterialContentModel>? CourseMaterialContents { get; set; }
+
+    public UserSettingsModel? UserSettingsWithBackgroundImage { get; set; }
 
     #endregion
 }
