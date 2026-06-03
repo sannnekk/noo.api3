@@ -19,10 +19,38 @@ public class SessionController : ApiController
 {
     private readonly ISessionService _sessionService;
 
-    public SessionController(ISessionService sessionService, IMapper mapper)
+    private readonly IOnlineService _onlineService;
+
+    public SessionController(
+        ISessionService sessionService,
+        IOnlineService onlineService,
+        IMapper mapper
+    )
         : base(mapper)
     {
         _sessionService = sessionService;
+        _onlineService = onlineService;
+    }
+
+    /// <summary>
+    /// Gets users online information
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpGet("{userId}/online")]
+    [Authorize(Policy = SessionPolicies.CanGetOnlineInfo)]
+    [Produces(
+        typeof(ApiResponseDTO<OnlineInfoDTO>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> GetOnlineInfoAsync([FromRoute] Ulid userId)
+    {
+        var onlineInfo = await _onlineService.GetOnlineInfoAsync(userId);
+
+        return SendResponse(onlineInfo);
     }
 
     /// <summary>

@@ -4,16 +4,18 @@ services.sh — start the local dev services for noo-api.
 
 Brings up everything the API expects on localhost:
   • MySQL          (verified, not started — should be a system service)
+  • Redis          (cache, :6379)
   • Mailpit        (SMTP :1025, web UI :8025)
   • MinIO          (S3-compatible, API :9000, console :9001)
   • Aspire Dash    (OpenTelemetry UI :18888, OTLP/gRPC :4317, OTLP/HTTP :4318)
 
-S3 credentials and bucket name are read from
+S3 credentials/bucket and the Redis port are read from
 src/Noo.Api/appsettings.Development.json so the script stays in sync
 with the app config.
 
 Usage:
     ./services.sh             # run in foreground, Ctrl+C stops everything
+    ./services.sh --no-redis  # skip Redis
     ./services.sh --no-minio  # skip MinIO
     ./services.sh --no-mail   # skip mailpit
     ./services.sh --no-otel   # skip Aspire Dashboard
@@ -46,11 +48,13 @@ APPSETTINGS = ROOT / "src" / "Noo.Api" / "appsettings.Development.json"
 LOCAL_BIN = Path.home() / ".local" / "bin"
 DATA_DIR = Path.home() / ".local" / "share" / "noo-services"
 MINIO_DATA = DATA_DIR / "minio-data"
+REDIS_DATA = DATA_DIR / "redis-data"
 LOG_DIR = DATA_DIR / "logs"
 
 MINIO_API_PORT = 9000
 MINIO_CONSOLE_PORT = 9001
 MYSQL_PORT = 3306
+REDIS_PORT = 6379  # overridden by appsettings Cache.ConnectionString
 
 ASPIRE_DASHBOARD_UI_PORT = 18888
 ASPIRE_OTLP_GRPC_PORT = 4317
@@ -152,6 +156,20 @@ def load_s3_config() -> dict:
         fail(f"S3 config missing keys: {', '.join(missing)}")
         sys.exit(1)
     return s3
+
+def load_redis_port() -> int:
+    """Parse the Redis port from appsettings Cache.ConnectionString (host:port)."""
+    if not APPSETTINGS.exists():
+        return REDIS_PORT
+    cleaned = _strip_jsonc_comments(APPSETTINGS.read_text(encoding="utf-8"))
+    cache = json.loads(cleaned).get("Cache") or {}
+    conn = (cache.get("ConnectionString") or "").split(",")[0].strip()
+    if ":" in conn:
+        try:
+            return int(conn.rsplit(":", 1)[1])
+        except ValueError:
+            pass
+    return REDIS_PORT
 
 def port_open(host: str, port: int, timeout: float = 0.5) -> bool:
     try:
@@ -287,6 +305,15 @@ def ensure_mailpit() -> str:
     fail("install: https://mailpit.axllent.org/docs/install/")
     sys.exit(1)
 
+def ensure_redis() -> str:
+    if path := which("redis-server"):
+        return path
+    if path := which("valkey-server"):  # Fedora ships valkey, a drop-in Redis fork
+        return path
+    fail("redis-server not found in PATH and no auto-installer here")
+    fail("install on Fedora:  sudo dnf install redis   (or valkey)")
+    sys.exit(1)
+
 def ensure_minio() -> str:
     if path := which("minio"):
         return path
@@ -332,6 +359,31 @@ def ensure_aspire_cli() -> str:
     sys.exit(1)
 
 # ─── service starters ────────────────────────────────────────────────────────
+
+def start_redis(port: int) -> None:
+    banner("Redis")
+    if port_open("127.0.0.1", port):
+        ok(f"already running on :{port}")
+        return
+    bin_path = ensure_redis()
+    REDIS_DATA.mkdir(parents=True, exist_ok=True)
+    spawn(
+        "redis",
+        C.RED,
+        [
+            bin_path,
+            "--port", str(port),
+            "--bind", "127.0.0.1",
+            "--dir", str(REDIS_DATA),
+            # ephemeral dev cache: keep it light, no AOF, lazy RDB snapshots only
+            "--appendonly", "no",
+            "--save", "",
+        ],
+    )
+    if wait_for_port("127.0.0.1", port, timeout=10):
+        ok(f"ready on :{port}")
+    else:
+        warn(f"redis didn't open :{port} within 10s — check the log above")
 
 def start_mailpit() -> None:
     banner("Mailpit")
@@ -435,23 +487,28 @@ def ensure_bucket(mc_path: str, s3: dict) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Start local dev services for noo-api.")
+    ap.add_argument("--no-redis", action="store_true", help="skip Redis")
     ap.add_argument("--no-minio", action="store_true", help="skip MinIO")
     ap.add_argument("--no-mail", action="store_true", help="skip mailpit")
     ap.add_argument("--no-otel", action="store_true", help="skip Aspire Dashboard")
     args = ap.parse_args()
 
     s3 = load_s3_config()
+    redis_port = load_redis_port()
 
     banner("noo-api dev services")
     info(f"project root  : {ROOT}")
     info(f"data dir      : {DATA_DIR}")
     info(f"logs          : {LOG_DIR}")
     info(f"S3 bucket     : {s3['BucketName']} (key: {s3['AccessKey']})")
+    info(f"Redis port    : {redis_port}")
 
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
     check_mysql()
+    if not args.no_redis:
+        start_redis(redis_port)
     if not args.no_mail:
         start_mailpit()
     if not args.no_minio:

@@ -2,6 +2,7 @@ using Moq;
 using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.Utils;
 using Noo.Api.Sessions;
 using Noo.Api.Sessions.Services;
 using Noo.UnitTests.Common;
@@ -80,7 +81,7 @@ public class OnlineServiceTests
     {
         var (svc, cache, _, _) = Create();
         var userId = Ulid.NewUlid();
-        var now = DateTime.UtcNow;
+        var now = Clock.Now;
         cache.Setup(c => c.GetAsync<DateTime?>(It.Is<string>(k => k == $"online:user:{userId}")))
             .ReturnsAsync(now);
 
@@ -93,7 +94,7 @@ public class OnlineServiceTests
     {
         var (svc, cache, _, config) = Create();
         var userId = Ulid.NewUlid();
-        var past = DateTime.UtcNow - config.OnlineTtl - TimeSpan.FromMinutes(1);
+        var past = Clock.Now - config.OnlineTtl - TimeSpan.FromMinutes(1);
         cache.Setup(c => c.GetAsync<DateTime?>(It.Is<string>(k => k == $"online:user:{userId}")))
             .ReturnsAsync(past);
 

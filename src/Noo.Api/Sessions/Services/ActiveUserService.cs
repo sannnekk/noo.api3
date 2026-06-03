@@ -1,5 +1,6 @@
 using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Microsoft.Extensions.Options;
 
@@ -33,7 +34,7 @@ public class ActiveUserService : IActiveUserService
 
     public Task SetUserActiveAsync(Ulid userId, UserRoles role)
     {
-        var now = DateTime.UtcNow;
+        var now = Clock.Now;
         var tasks = new List<Task>
         {
             _cache.SetAsync(ActiveUserKey(userId), now, _options.ActiveTtl)
@@ -48,7 +49,7 @@ public class ActiveUserService : IActiveUserService
     public async Task<bool> IsUserActiveAsync(Ulid userId)
     {
         var last = await GetLastActiveByUserAsync(userId);
-        return last.HasValue && DateTime.UtcNow - last.Value < _options.ActiveTtl;
+        return last.HasValue && Clock.Now - last.Value < _options.ActiveTtl;
     }
 
     public Task<DateTime?> GetLastActiveByUserAsync(Ulid userId)

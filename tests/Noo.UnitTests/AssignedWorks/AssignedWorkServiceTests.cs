@@ -16,7 +16,6 @@ using Noo.Api.Courses.Services;
 using Noo.Api.Users.Models;
 using Noo.Api.Users.Services;
 using Noo.Api.Works.Models;
-using Noo.Api.Works.Services;
 using Noo.Api.Works.Types;
 using Noo.UnitTests.Common;
 
@@ -60,7 +59,6 @@ public class AssignedWorkServiceTests
         var courseWorkAssignmentRepo = new Mock<ICourseWorkAssignmentRepository>();
         var mentorAssignmentRepo = new Mock<IMentorAssignmentRepository>();
         var userRepo = new UserRepository(ctx);
-        var workTaskRepo = new WorkTaskRepository(ctx);
         var svc = new AssignedWorkService(
             assignedWorkRepo,
             assignedWorkAnswerRepo,
@@ -70,7 +68,6 @@ public class AssignedWorkServiceTests
             userRepo,
             new TaskCheckService(),
             currentUser.Object,
-            workTaskRepo,
             mapper,
             publisher,
             new MemoryCacheRepository()

@@ -12,7 +12,11 @@ public class SessionActivityMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context, IOnlineService onlineService, IActiveUserService activeUserService)
+    public async Task InvokeAsync(
+        HttpContext context,
+        IOnlineService onlineService,
+        IActiveUserService activeUserService
+    )
     {
         await _next(context);
 

@@ -37,6 +37,12 @@ public class SessionRepository : Repository<SessionModel>, ISessionRepository
         return set.FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == userId);
     }
 
+    public Task<bool> ExistsAsync(Ulid sessionId, Ulid userId)
+    {
+        var set = Context.GetDbSet<SessionModel>();
+        return set.AnyAsync(s => s.Id == sessionId && s.UserId == userId);
+    }
+
     public Task<SessionModel?> GetByDeviceIdAsync(Ulid userId, string deviceId)
     {
         var set = Context.GetDbSet<SessionModel>();

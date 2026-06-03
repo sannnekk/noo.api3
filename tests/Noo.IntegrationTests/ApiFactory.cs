@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -57,6 +58,15 @@ public class ApiFactory : WebApplicationFactory<Program>
             });
 
             // JwtConfig is bound directly from configuration; we set it above via in-memory override
+
+            // Synthetic test tokens (see TestAuthClientExtensions) carry random session/user ids
+            // with no backing rows, so skip the production session-existence check that would
+            // otherwise reject every authenticated test request with 401.
+            services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+            {
+                options.Events ??= new JwtBearerEvents();
+                options.Events.OnTokenValidated = _ => Task.CompletedTask;
+            });
 
             // Replace real email client with a no-op fake to avoid external SMTP dependency
             services.RemoveAll<IEmailClient>();

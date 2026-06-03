@@ -1,8 +1,10 @@
+using Microsoft.Extensions.Options;
 using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
-using Microsoft.Extensions.Options;
+using Noo.Api.Sessions.DTO;
 
 namespace Noo.Api.Sessions.Services;
 
@@ -21,16 +23,30 @@ public class OnlineService : IOnlineService
     }
 
     private static string SessionKey(Ulid sessionId) => $"online:session:{sessionId}";
+
     private static string UserKey(Ulid userId) => $"online:user:{userId}";
+
     private static string OnlineUsersPattern => "online:user:*";
-    private static string OnlineRoleUserKey(UserRoles role, Ulid userId) => $"online:role:{role}:{userId}";
+
+    private static string OnlineRoleUserKey(UserRoles role, Ulid userId) =>
+        $"online:role:{role}:{userId}";
+
     private static string OnlineRolePattern(UserRoles role) => $"online:role:{role}:*";
 
-    public Task<DateTime?> GetLastOnlineBySessionAsync(Ulid sessionId)
-        => _cache.GetAsync<DateTime?>(SessionKey(sessionId));
+    public async Task<OnlineInfoDTO> GetOnlineInfoAsync(Ulid userId)
+    {
+        var lastOnline = await GetLastOnlineByUserAsync(userId);
+        var isOnline =
+            lastOnline.HasValue && Clock.Now - lastOnline.Value < _options.OnlineTtl;
 
-    public Task<DateTime?> GetLastOnlineByUserAsync(Ulid userId)
-        => _cache.GetAsync<DateTime?>(UserKey(userId));
+        return new OnlineInfoDTO { IsOnline = isOnline, LastOnlineAt = lastOnline };
+    }
+
+    public Task<DateTime?> GetLastOnlineBySessionAsync(Ulid sessionId) =>
+        _cache.GetAsync<DateTime?>(SessionKey(sessionId));
+
+    public Task<DateTime?> GetLastOnlineByUserAsync(Ulid userId) =>
+        _cache.GetAsync<DateTime?>(UserKey(userId));
 
     public Task<int> GetOnlineCountAsync(UserRoles? role = null)
     {
@@ -43,25 +59,22 @@ public class OnlineService : IOnlineService
 
     public Task SetSessionOnlineAsync(Ulid sessionId)
     {
-        var now = DateTime.UtcNow;
+        var now = Clock.Now;
         return _cache.SetAsync(SessionKey(sessionId), now, _options.OnlineTtl);
     }
 
     // Parameterless overload: only set the generic user online key; do NOT attribute to a role implicitly.
     public Task SetUserOnlineAsync(Ulid userId)
     {
-        var now = DateTime.UtcNow;
+        var now = Clock.Now;
         return _cache.SetAsync(UserKey(userId), now, _options.OnlineTtl);
     }
 
     public Task SetUserOnlineAsync(Ulid userId, UserRoles role)
     {
-        var now = DateTime.UtcNow;
+        var now = Clock.Now;
         // Keys: base user online + role-specific online. Active tracking handled by ActiveUserService.
-        var tasks = new List<Task>
-        {
-            _cache.SetAsync(UserKey(userId), now, _options.OnlineTtl)
-        };
+        var tasks = new List<Task> { _cache.SetAsync(UserKey(userId), now, _options.OnlineTtl) };
         // Add role-specific key if role provided (avoid enum default misuse by checking defined enum)
         if (Enum.IsDefined(typeof(UserRoles), role))
         {
@@ -73,7 +86,7 @@ public class OnlineService : IOnlineService
     public async Task<bool> IsUserOnlineAsync(Ulid userId)
     {
         var last = await GetLastOnlineByUserAsync(userId);
-        return last.HasValue && DateTime.UtcNow - last.Value < _options.OnlineTtl;
+        return last.HasValue && Clock.Now - last.Value < _options.OnlineTtl;
     }
 
     public Task<Dictionary<UserRoles, int>> GetOnlineCountByRolesAsync()
@@ -82,11 +95,12 @@ public class OnlineService : IOnlineService
             .Select(role => _cache.CountAsync(OnlineRolePattern(role)))
             .ToArray();
 
-        return Task.WhenAll(tasks).ContinueWith(t =>
-        {
-            var counts = t.Result;
-            return Enum.GetValues<UserRoles>()
-                .ToDictionary(role => role, role => counts[(int)role]);
-        });
+        return Task.WhenAll(tasks)
+            .ContinueWith(t =>
+            {
+                var counts = t.Result;
+                return Enum.GetValues<UserRoles>()
+                    .ToDictionary(role => role, role => counts[(int)role]);
+            });
     }
 }

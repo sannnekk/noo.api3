@@ -60,6 +60,11 @@ public class SessionService : ISessionService
         return existing.Id;
     }
 
+    public Task<bool> SessionExistsAsync(Ulid sessionId, Ulid userId)
+    {
+        return _sessionRepository.ExistsAsync(sessionId, userId);
+    }
+
     public void DeleteAllSessions(Ulid userId)
     {
         _sessionRepository.DeleteAllSessions(userId);

@@ -1,4 +1,5 @@
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Sessions.DTO;
 
 namespace Noo.Api.Sessions.Services;
 
@@ -11,4 +12,5 @@ public interface IOnlineService
     public Task SetSessionOnlineAsync(Ulid sessionId);
     public Task SetUserOnlineAsync(Ulid userId, UserRoles role);
     public Task<bool> IsUserOnlineAsync(Ulid userId);
+    public Task<OnlineInfoDTO> GetOnlineInfoAsync(Ulid userId);
 }
