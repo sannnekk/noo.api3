@@ -12,4 +12,5 @@ public interface INotificationService
     public Task DeleteNotificationAsync(Ulid notificationId, Ulid userId);
     public Task<SearchResult<NotificationModel>> GetNotificationsAsync(Ulid userId, NotificationFilter filter);
     public Task MarkAsReadAsync(Ulid userId, Ulid notificationId);
+    public Task MarkAllAsReadAsync(Ulid userId);
 }

@@ -14,6 +14,14 @@ public struct FrontendLink
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public object? Params { get; set; }
 
+    public readonly string? ToUrl(string baseUrl) =>
+        Name switch
+        {
+            "assigned-works.detail" =>
+                $"${baseUrl}/asigned-works/{((dynamic?)Params)?.assignedWorkId ?? string.Empty}",
+            _ => null,
+        };
+
     internal static FrontendLink Deserialize(string v)
     {
         return JsonSerializer.Deserialize<FrontendLink>(v);

@@ -82,6 +82,11 @@ public class NotificationService : INotificationService
     {
         await _repository.MarkAsReadAsync(userId, notificationId);
     }
+
+    public async Task MarkAllAsReadAsync(Ulid userId)
+    {
+        await _repository.MarkAllAsReadAsync(userId);
+    }
 }
 
 public record NotificationCreatedEvent(

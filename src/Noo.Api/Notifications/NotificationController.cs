@@ -72,6 +72,26 @@ public class NotificationController : ApiController
     }
 
     /// <summary>
+    /// Mark all of the current user's notifications as read
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpPatch("mark-all-read")]
+    [Authorize(Policy = NotificationPolicies.CanReadNotifications)]
+    [Produces(
+        null, StatusCodes.Status204NoContent,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden
+    )]
+    public async Task<IActionResult> MarkAllAsReadAsync()
+    {
+        var userId = User.GetId();
+        await _notificationService.MarkAllAsReadAsync(userId);
+
+        return SendResponse();
+    }
+
+    /// <summary>
     /// Bulk create notiifcations
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]

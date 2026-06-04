@@ -27,6 +27,14 @@ public class NotificationRepository : Repository<NotificationModel>, INotificati
             .ExecuteUpdateAsync(s => s.SetProperty(y => y.IsRead, true));
     }
 
+    public async Task MarkAllAsReadAsync(Ulid userId)
+    {
+        var set = Context.GetDbSet<NotificationModel>();
+        await set
+            .Where(x => x.UserId == userId && !x.IsRead)
+            .ExecuteUpdateAsync(s => s.SetProperty(y => y.IsRead, true));
+    }
+
     public async Task DeleteForUserAsync(Ulid userId, Ulid notificationId)
     {
         var set = Context.GetDbSet<NotificationModel>();

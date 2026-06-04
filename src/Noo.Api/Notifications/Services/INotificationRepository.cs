@@ -8,6 +8,7 @@ public interface INotificationRepository : IRepository<NotificationModel>
 {
     public Task<SearchResult<NotificationModel>> GetForUserAsync(Ulid userId, NotificationFilter filter);
     public Task MarkAsReadAsync(Ulid userId, Ulid notificationId);
+    public Task MarkAllAsReadAsync(Ulid userId);
     public Task DeleteForUserAsync(Ulid userId, Ulid notificationId);
 }
 
