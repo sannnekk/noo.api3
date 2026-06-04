@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Noo.Api.Core.Utils.Richtext;
 using Noo.Api.Core.Validation.Attributes;
+using Noo.Api.Support.Types;
 
 namespace Noo.Api.Support.DTO;
 
@@ -10,6 +11,15 @@ public record SupportArticleDTO
     [Required]
     [JsonPropertyName("_entityName")]
     public string EntityName => "SupportArticle";
+
+    [Required]
+    [JsonPropertyName("slug")]
+    public string Slug { get; set; } = string.Empty;
+
+    [Required]
+    [JsonPropertyName("order")]
+    [Range(0, 255)]
+    public int Order { get; set; }
 
     [Required]
     [JsonPropertyName("id")]
@@ -29,8 +39,8 @@ public record SupportArticleDTO
     public bool IsActive { get; set; } = true;
 
     [Required]
-    [JsonPropertyName("categoryId")]
-    public Ulid CategoryId { get; set; }
+    [JsonPropertyName("category")]
+    public SupportCategory Category { get; set; }
 
     [Required]
     [JsonPropertyName("createdAt")]

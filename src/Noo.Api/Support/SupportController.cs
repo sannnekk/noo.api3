@@ -5,6 +5,7 @@ using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
 using Noo.Api.Core.Utils.Versioning;
 using Noo.Api.Support.DTO;
+using Noo.Api.Support.Filters;
 using Noo.Api.Support.Models;
 using Noo.Api.Support.Services;
 using SystemTextJsonPatch;
@@ -26,24 +27,27 @@ public class SupportController : ApiController
     }
 
     /// <summary>
-    /// Retrieves a tree of support categories.
+    /// Retrieves a list of all support articles by category
     /// </summary>
-    [HttpGet]
+    [HttpGet("article")]
     [MapToApiVersion(NooApiVersions.Current)]
     [AllowAnonymous]
-    [Produces(typeof(ApiResponseDTO<IEnumerable<SupportCategoryDTO>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetTreeAsync()
+    [Produces(
+        typeof(ApiResponseDTO<List<SupportArticleDTO>>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest
+    )]
+    public async Task<IActionResult> GetArticlesAsync([FromQuery] SupportArticleFilter filter)
     {
-        var response = await _supportService.GetCategoryTreeAsync();
-        return SendResponse<IEnumerable<SupportCategoryModel>, IEnumerable<SupportCategoryDTO>>(
-            response
-        );
+        var response = await _supportService.GetArticlesAsync(filter);
+
+        return SendResponse<SupportArticleModel, SupportArticleDTO>(response);
     }
 
     /// <summary>
-    /// Retrieves a support article by its ID.
+    /// Retrieves a support article by its slug
     /// </summary>
-    [HttpGet("article/{articleId}")]
+    [HttpGet("article/{articleSlug}")]
     [MapToApiVersion(NooApiVersions.Current)]
     [AllowAnonymous]
     [Produces(
@@ -51,9 +55,9 @@ public class SupportController : ApiController
         StatusCodes.Status200OK,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> GetArticleAsync([FromRoute] Ulid articleId)
+    public async Task<IActionResult> GetArticleAsync([FromRoute] string articleSlug)
     {
-        var response = await _supportService.GetArticleAsync(articleId);
+        var response = await _supportService.GetArticleAsync(articleSlug);
 
         return SendResponse<SupportArticleModel, SupportArticleDTO>(response);
     }
@@ -117,69 +121,6 @@ public class SupportController : ApiController
     public IActionResult DeleteArticle([FromRoute] Ulid articleId)
     {
         _supportService.DeleteArticle(articleId);
-
-        return SendResponse();
-    }
-
-    /// <summary>
-    /// Creates a new support category.
-    /// </summary>
-    [HttpPost("category")]
-    [MapToApiVersion(NooApiVersions.Current)]
-    [Authorize(Policy = SupportPolicies.CanCreateCategory)]
-    [Produces(
-        typeof(ApiResponseDTO<IdResponseDTO>),
-        StatusCodes.Status201Created,
-        StatusCodes.Status400BadRequest,
-        StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden
-    )]
-    public IActionResult CreateCategory([FromBody] CreateSupportCategoryDTO request)
-    {
-        var id = _supportService.CreateCategory(request);
-
-        return SendResponse(id);
-    }
-
-    /// <summary>
-    /// Updates a support category by its ID using a JSON Patch document.
-    /// </summary>
-    [HttpPatch("category/{categoryId}")]
-    [MapToApiVersion(NooApiVersions.Current)]
-    [Authorize(Policy = SupportPolicies.CanUpdateCategory)]
-    [Produces(
-        null,
-        StatusCodes.Status204NoContent,
-        StatusCodes.Status400BadRequest,
-        StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden,
-        StatusCodes.Status404NotFound
-    )]
-    public async Task<IActionResult> UpdateCategoryAsync(
-        [FromRoute] Ulid categoryId,
-        [FromBody] JsonPatchDocument<UpdateSupportCategoryDTO> request
-    )
-    {
-        await _supportService.UpdateCategoryAsync(categoryId, request);
-
-        return SendResponse();
-    }
-
-    /// <summary>
-    /// Deletes a support category by its ID.
-    /// </summary>
-    [HttpDelete("category/{categoryId}")]
-    [MapToApiVersion(NooApiVersions.Current)]
-    [Authorize(Policy = SupportPolicies.CanDeleteCategory)]
-    [Produces(
-        null,
-        StatusCodes.Status204NoContent,
-        StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden
-    )]
-    public IActionResult DeleteCategory([FromRoute] Ulid categoryId)
-    {
-        _supportService.DeleteCategory(categoryId);
 
         return SendResponse();
     }

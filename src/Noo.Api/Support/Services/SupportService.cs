@@ -1,8 +1,10 @@
 using AutoMapper;
+using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Support.DTO;
+using Noo.Api.Support.Filters;
 using Noo.Api.Support.Models;
 using SystemTextJsonPatch;
 
@@ -12,19 +14,16 @@ namespace Noo.Api.Support.Services;
 public class SupportService : ISupportService
 {
     private readonly ISupportArticleRepository _articleRepository;
-    private readonly ISupportCategoryRepository _categoryRepository;
     private readonly IJsonPatchUpdateService _jsonPatchUpdateService;
     private readonly IMapper _mapper;
 
     public SupportService(
         ISupportArticleRepository articleRepository,
-        ISupportCategoryRepository categoryRepository,
         IJsonPatchUpdateService jsonPatchUpdateService,
         IMapper mapper
     )
     {
         _articleRepository = articleRepository;
-        _categoryRepository = categoryRepository;
         _jsonPatchUpdateService = jsonPatchUpdateService;
         _mapper = mapper;
     }
@@ -38,33 +37,19 @@ public class SupportService : ISupportService
         return model.Id;
     }
 
-    public Ulid CreateCategory(CreateSupportCategoryDTO dto)
-    {
-        var model = _mapper.Map<SupportCategoryModel>(dto);
-
-        _categoryRepository.Add(model);
-
-        return model.Id;
-    }
-
     public void DeleteArticle(Ulid articleId)
     {
         _articleRepository.DeleteById(articleId);
     }
 
-    public void DeleteCategory(Ulid categoryId)
+    public Task<SearchResult<SupportArticleModel>> GetArticlesAsync(SupportArticleFilter filter)
     {
-        _categoryRepository.DeleteById(categoryId);
+        return _articleRepository.SearchAsync(filter);
     }
 
-    public Task<SupportArticleModel?> GetArticleAsync(Ulid articleId)
+    public Task<SupportArticleModel?> GetArticleAsync(string articleSlug)
     {
-        return _articleRepository.GetByIdAsync(articleId);
-    }
-
-    public Task<IEnumerable<SupportCategoryModel>> GetCategoryTreeAsync()
-    {
-        return _categoryRepository.GetCategoryTreeAsync(false);
+        return _articleRepository.GetBySlugAsync(articleSlug);
     }
 
     public async Task UpdateArticleAsync(
@@ -73,18 +58,6 @@ public class SupportService : ISupportService
     )
     {
         var model = await _articleRepository.GetByIdAsync(articleId);
-
-        model.ThrowNotFoundIfNull();
-
-        _jsonPatchUpdateService.ApplyPatch(model, dto);
-    }
-
-    public async Task UpdateCategoryAsync(
-        Ulid categoryId,
-        JsonPatchDocument<UpdateSupportCategoryDTO> dto
-    )
-    {
-        var model = await _categoryRepository.GetByIdAsync(categoryId);
 
         model.ThrowNotFoundIfNull();
 

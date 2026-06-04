@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Noo.Api.Core.Utils.Richtext;
 using Noo.Api.Core.Validation.Attributes;
+using Noo.Api.Support.Types;
 
 namespace Noo.Api.Support.DTO;
 
@@ -24,6 +25,6 @@ public record CreateSupportArticleDTO
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
 
-    [JsonPropertyName("categoryId")]
-    public Ulid CategoryId { get; set; }
+    [JsonPropertyName("category")]
+    public SupportCategory Category { get; set; }
 }
