@@ -4,7 +4,7 @@ namespace Noo.Api.AssignedWorks.Services;
 
 public interface IAssignedWorkHistoryService
 {
-    public Task<IEnumerable<AssignedWorkStatusHistoryModel>> GetHistoryAsync(Ulid assignedWorkId);
+    public Task<IEnumerable<AssignedWorkHistoryModel>> GetHistoryAsync(Ulid assignedWorkId);
 
-    public void PushEvent(AssignedWorkStatusHistoryModel @event);
+    public void PushEvent(AssignedWorkHistoryModel @event);
 }

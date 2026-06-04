@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Noo.Api.Core.DataAbstraction.Db;
 
@@ -11,9 +12,11 @@ using Noo.Api.Core.DataAbstraction.Db;
 namespace Noo.Api.Migrations
 {
     [DbContext(typeof(NooDbContext))]
-    partial class NooDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260603224400_NotificationLinkToJson")]
+    partial class NotificationLinkToJson
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -194,55 +197,6 @@ namespace Noo.Api.Migrations
                     b.ToTable("assigned_work_comment");
                 });
 
-            modelBuilder.Entity("Noo.Api.AssignedWorks.Models.AssignedWorkHistoryModel", b =>
-                {
-                    b.Property<byte[]>("Id")
-                        .HasColumnType("BINARY(16)")
-                        .HasColumnName("id");
-
-                    b.Property<byte[]>("AssignedWorkId")
-                        .IsRequired()
-                        .HasColumnType("BINARY(16)")
-                        .HasColumnName("assigned_work_id");
-
-                    b.Property<DateTime>("ChangedAt")
-                        .HasColumnType("DATETIME(0)")
-                        .HasColumnName("changed_at");
-
-                    b.Property<byte[]>("ChangedById")
-                        .HasColumnType("BINARY(16)")
-                        .HasColumnName("changed_by_id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TIMESTAMP(6)")
-                        .HasColumnName("created_at");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("ENUM('Created', 'StartedSolving', 'SolveDeadlineShifted', 'Solved', 'StartedChecking', 'CheckDeadlineShifted', 'Checked', 'SentOnRecheck', 'SentOnResolve', 'HelperMentorAdded', 'MainMentorChanged')")
-                        .HasColumnName("type");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .ValueGeneratedOnUpdate()
-                        .HasColumnType("TIMESTAMP(6)")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("Value")
-                        .HasColumnType("json")
-                        .HasColumnName("value");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AssignedWorkId");
-
-                    b.HasIndex("ChangedById");
-
-                    b.ToTable("assigned_work_history");
-                });
-
             modelBuilder.Entity("Noo.Api.AssignedWorks.Models.AssignedWorkModel", b =>
                 {
                     b.Property<byte[]>("Id")
@@ -393,6 +347,55 @@ namespace Noo.Api.Migrations
                     b.HasIndex("WorkId");
 
                     b.ToTable("assigned_work");
+                });
+
+            modelBuilder.Entity("Noo.Api.AssignedWorks.Models.AssignedWorkStatusHistoryModel", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("id");
+
+                    b.Property<byte[]>("AssignedWorkId")
+                        .IsRequired()
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("assigned_work_id");
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("DATETIME(0)")
+                        .HasColumnName("changed_at");
+
+                    b.Property<byte[]>("ChangedById")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("changed_by_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TIMESTAMP(6)")
+                        .HasColumnName("created_at");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("ENUM('StartedSolving', 'SolveDeadlineShifted', 'Solved', 'StartedChecking', 'CheckDeadlineShifted', 'Checked', 'SentOnRecheck', 'SentOnResolve')")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("TIMESTAMP(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("json")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedWorkId");
+
+                    b.HasIndex("ChangedById");
+
+                    b.ToTable("assigned_work_status_history");
                 });
 
             modelBuilder.Entity("Noo.Api.Auth.Models.RefreshTokenModel", b =>
@@ -2195,24 +2198,6 @@ namespace Noo.Api.Migrations
                     b.Navigation("Task");
                 });
 
-            modelBuilder.Entity("Noo.Api.AssignedWorks.Models.AssignedWorkHistoryModel", b =>
-                {
-                    b.HasOne("Noo.Api.AssignedWorks.Models.AssignedWorkModel", "AssignedWork")
-                        .WithMany("History")
-                        .HasForeignKey("AssignedWorkId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Noo.Api.Users.Models.UserModel", "ChangedBy")
-                        .WithMany("AssignedWorkHistoryChanges")
-                        .HasForeignKey("ChangedById")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("AssignedWork");
-
-                    b.Navigation("ChangedBy");
-                });
-
             modelBuilder.Entity("Noo.Api.AssignedWorks.Models.AssignedWorkModel", b =>
                 {
                     b.HasOne("Noo.Api.Courses.Models.CourseWorkAssignmentModel", "CourseWorkAssignment")
@@ -2271,6 +2256,24 @@ namespace Noo.Api.Migrations
                     b.Navigation("StudentComment");
 
                     b.Navigation("Work");
+                });
+
+            modelBuilder.Entity("Noo.Api.AssignedWorks.Models.AssignedWorkStatusHistoryModel", b =>
+                {
+                    b.HasOne("Noo.Api.AssignedWorks.Models.AssignedWorkModel", "AssignedWork")
+                        .WithMany("StatusHistory")
+                        .HasForeignKey("AssignedWorkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Noo.Api.Users.Models.UserModel", "ChangedBy")
+                        .WithMany("AssignedWorkHistoryChanges")
+                        .HasForeignKey("ChangedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AssignedWork");
+
+                    b.Navigation("ChangedBy");
                 });
 
             modelBuilder.Entity("Noo.Api.Auth.Models.RefreshTokenModel", b =>
@@ -2693,7 +2696,7 @@ namespace Noo.Api.Migrations
 
                     b.Navigation("Events");
 
-                    b.Navigation("History");
+                    b.Navigation("StatusHistory");
                 });
 
             modelBuilder.Entity("Noo.Api.Courses.Models.CourseChapterModel", b =>

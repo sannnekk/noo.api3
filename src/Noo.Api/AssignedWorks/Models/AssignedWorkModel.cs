@@ -140,7 +140,7 @@ public class AssignedWorkModel : BaseModel
 
     public ICollection<AssignedWorkAnswerModel> Answers { get; set; } = [];
 
-    public ICollection<AssignedWorkStatusHistoryModel> StatusHistory { get; set; } = [];
+    public ICollection<AssignedWorkHistoryModel> History { get; set; } = [];
 
     public ICollection<CalendarEventModel> Events { get; set; } = [];
 
@@ -153,6 +153,9 @@ public class AssignedWorkModel : BaseModel
     public bool IsRemakeable => IsChecked && Type == WorkType.Test;
 
     public bool CanBeDeleted => !IsSolved;
+
+    public int PercentegeScore =>
+        MaxScore > 0 && Score.HasValue ? (int)Math.Round((double)Score.Value / MaxScore * 100) : 0;
 
     public static AssignedWorkModel CreateNew(
         CourseWorkAssignmentModel workAssignment,

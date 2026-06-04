@@ -8,28 +8,25 @@ using Noo.Api.Notifications.Services;
 
 namespace Noo.Api.AssignedWorks.Events;
 
-public sealed record AssignedWorkSolvedEvent(Ulid AssignedWorkId, Ulid StudentId) : IDomainEvent;
+public sealed record CheckedEvent(Ulid AssignedWorkId, Ulid MentorId) : IDomainEvent;
 
-/// <summary>
-/// Adds an entry into the assigned work history when a work is solved.
-/// </summary>
-public sealed class AssignedWorkSolvedHistoryHandler : IEventHandler<AssignedWorkSolvedEvent>
+public sealed class CheckedHistoryHandler : IEventHandler<CheckedEvent>
 {
     private readonly IAssignedWorkHistoryRepository _historyRepository;
 
-    public AssignedWorkSolvedHistoryHandler(IAssignedWorkHistoryRepository historyRepository)
+    public CheckedHistoryHandler(IAssignedWorkHistoryRepository historyRepository)
     {
         _historyRepository = historyRepository;
     }
 
-    public Task HandleAsync(AssignedWorkSolvedEvent @event, CancellationToken ct = default)
+    public Task HandleAsync(CheckedEvent @event, CancellationToken ct = default)
     {
         _historyRepository.Add(
-            new AssignedWorkStatusHistoryModel
+            new AssignedWorkHistoryModel
             {
                 AssignedWorkId = @event.AssignedWorkId,
-                ChangedById = @event.StudentId,
-                Type = AssignedWorkStatusHistoryType.Solved,
+                ChangedById = @event.MentorId,
+                Type = AssignedWorkHistoryType.Checked,
                 ChangedAt = Clock.Now,
             }
         );
@@ -38,16 +35,13 @@ public sealed class AssignedWorkSolvedHistoryHandler : IEventHandler<AssignedWor
     }
 }
 
-/// <summary>
-/// Notifies the student and mentors when a work is solved.
-/// </summary>
-public sealed class AssignedWorkSolvedNotificationHandler : IEventHandler<AssignedWorkSolvedEvent>
+public sealed class CheckedNotificationHandler : IEventHandler<CheckedEvent>
 {
     private readonly INotificationService _notificationService;
     private readonly IAssignedWorkRepository _assignedWorkRepository;
     private readonly IAssignedWorkLinkGenerator _linkGenerator;
 
-    public AssignedWorkSolvedNotificationHandler(
+    public CheckedNotificationHandler(
         INotificationService notificationService,
         IAssignedWorkRepository assignedWorkRepository,
         IAssignedWorkLinkGenerator linkGenerator
@@ -58,7 +52,7 @@ public sealed class AssignedWorkSolvedNotificationHandler : IEventHandler<Assign
         _linkGenerator = linkGenerator;
     }
 
-    public async Task HandleAsync(AssignedWorkSolvedEvent @event, CancellationToken ct = default)
+    public async Task HandleAsync(CheckedEvent @event, CancellationToken ct = default)
     {
         var assignedWork = await _assignedWorkRepository.GetByIdAsync(@event.AssignedWorkId);
 
@@ -80,9 +74,10 @@ public sealed class AssignedWorkSolvedNotificationHandler : IEventHandler<Assign
             new BulkCreateNotificationsDTO
             {
                 UserIds = recipientIds,
-                Type = "assigned_work.solved",
-                Title = "Работа сдана",
-                Message = $"Работа \"{assignedWork.Title}\" была сдана и ожидает проверки.",
+                Type = "assigned_work.checked",
+                Title = "Работа проверена",
+                Message =
+                    $"Работа \"{assignedWork.Title}\" проверена, балл: {assignedWork.Score}/{assignedWork.MaxScore} ({assignedWork.PercentegeScore}).",
                 Link = _linkGenerator.GenerateViewLink(assignedWork.Id),
                 LinkText = "Перейти к работе",
             }

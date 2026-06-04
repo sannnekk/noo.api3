@@ -5,6 +5,7 @@ using Noo.Api.AssignedWorks.Services;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.Utils;
 using Noo.Api.Notifications.DTO;
 using Noo.Api.Notifications.Services;
 using Noo.Api.Users.Models;
@@ -20,39 +21,70 @@ public class AssignedWorkSolvedHistoryHandlerTests
     {
         using var ctx = TestHelpers.CreateInMemoryDb();
         var historyRepo = new AssignedWorkHistoryRepository(ctx);
-        var handler = new AssignedWorkSolvedHistoryHandler(historyRepo);
+        var handler = new SolvedHistoryHandler(historyRepo);
 
         var assignedWorkId = Ulid.NewUlid();
         var studentId = Ulid.NewUlid();
 
-        await handler.HandleAsync(new AssignedWorkSolvedEvent(assignedWorkId, studentId), CancellationToken.None);
+        await handler.HandleAsync(
+            new SolvedEvent(assignedWorkId, studentId),
+            CancellationToken.None
+        );
         await ctx.SaveChangesAsync();
 
         var history = (await historyRepo.GetHistoryAsync(assignedWorkId)).ToList();
         var entry = Assert.Single(history);
-        Assert.Equal(AssignedWorkStatusHistoryType.Solved, entry.Type);
+        Assert.Equal(AssignedWorkHistoryType.Solved, entry.Type);
         Assert.Equal(studentId, entry.ChangedById);
     }
 }
 
 public class AssignedWorkSolvedNotificationHandlerTests
 {
-    private static (AssignedWorkSolvedNotificationHandler handler, NooDbContext ctx, Mock<INotificationService> notifications, Mock<IAssignedWorkLinkGenerator> linkGen) Create()
+    private static (
+        SolvedNotificationHandler handler,
+        NooDbContext ctx,
+        Mock<INotificationService> notifications,
+        Mock<IAssignedWorkLinkGenerator> linkGen
+    ) Create()
     {
         var ctx = TestHelpers.CreateInMemoryDb();
         var notifications = new Mock<INotificationService>();
         var linkGen = new Mock<IAssignedWorkLinkGenerator>();
-        linkGen.Setup(l => l.GenerateViewLink(It.IsAny<Ulid>())).Returns("link");
+        linkGen
+            .Setup(l => l.GenerateViewLink(It.IsAny<Ulid>()))
+            .Returns(new FrontendLink { Name = "link" });
         var repo = new AssignedWorkRepository(ctx);
-        var handler = new AssignedWorkSolvedNotificationHandler(notifications.Object, repo, linkGen.Object);
+        var handler = new SolvedNotificationHandler(notifications.Object, repo, linkGen.Object);
         return (handler, ctx, notifications, linkGen);
     }
 
     private static AssignedWorkModel Seed(NooDbContext ctx, bool withHelper)
     {
-        var student = new UserModel { Name = "S", Username = $"stu_{Guid.NewGuid():N}", Email = $"{Guid.NewGuid():N}@e.com", PasswordHash = "p", Role = UserRoles.Student };
-        var mentor = new UserModel { Name = "M", Username = $"men_{Guid.NewGuid():N}", Email = $"{Guid.NewGuid():N}@e.com", PasswordHash = "p", Role = UserRoles.Mentor };
-        var helper = new UserModel { Name = "H", Username = $"hel_{Guid.NewGuid():N}", Email = $"{Guid.NewGuid():N}@e.com", PasswordHash = "p", Role = UserRoles.Mentor };
+        var student = new UserModel
+        {
+            Name = "S",
+            Username = $"stu_{Guid.NewGuid():N}",
+            Email = $"{Guid.NewGuid():N}@e.com",
+            PasswordHash = "p",
+            Role = UserRoles.Student,
+        };
+        var mentor = new UserModel
+        {
+            Name = "M",
+            Username = $"men_{Guid.NewGuid():N}",
+            Email = $"{Guid.NewGuid():N}@e.com",
+            PasswordHash = "p",
+            Role = UserRoles.Mentor,
+        };
+        var helper = new UserModel
+        {
+            Name = "H",
+            Username = $"hel_{Guid.NewGuid():N}",
+            Email = $"{Guid.NewGuid():N}@e.com",
+            PasswordHash = "p",
+            Role = UserRoles.Mentor,
+        };
         ctx.GetDbSet<UserModel>().AddRange(student, mentor, helper);
 
         var aw = new AssignedWorkModel
@@ -84,7 +116,7 @@ public class AssignedWorkSolvedNotificationHandlerTests
             .Callback<BulkCreateNotificationsDTO>(dto => captured = dto)
             .Returns(Task.CompletedTask);
 
-        await handler.HandleAsync(new AssignedWorkSolvedEvent(aw.Id, aw.StudentId), CancellationToken.None);
+        await handler.HandleAsync(new SolvedEvent(aw.Id, aw.StudentId), CancellationToken.None);
 
         Assert.NotNull(captured);
         var recipients = new HashSet<Ulid>(captured!.UserIds);
@@ -107,7 +139,7 @@ public class AssignedWorkSolvedNotificationHandlerTests
             .Callback<BulkCreateNotificationsDTO>(dto => captured = dto)
             .Returns(Task.CompletedTask);
 
-        await handler.HandleAsync(new AssignedWorkSolvedEvent(aw.Id, aw.StudentId), CancellationToken.None);
+        await handler.HandleAsync(new SolvedEvent(aw.Id, aw.StudentId), CancellationToken.None);
 
         Assert.NotNull(captured);
         var recipients = new HashSet<Ulid>(captured!.UserIds);
@@ -121,8 +153,14 @@ public class AssignedWorkSolvedNotificationHandlerTests
     {
         var (handler, _, notifications, _) = Create();
 
-        await handler.HandleAsync(new AssignedWorkSolvedEvent(Ulid.NewUlid(), Ulid.NewUlid()), CancellationToken.None);
+        await handler.HandleAsync(
+            new SolvedEvent(Ulid.NewUlid(), Ulid.NewUlid()),
+            CancellationToken.None
+        );
 
-        notifications.Verify(n => n.BulkCreateNotificationsAsync(It.IsAny<BulkCreateNotificationsDTO>()), Times.Never);
+        notifications.Verify(
+            n => n.BulkCreateNotificationsAsync(It.IsAny<BulkCreateNotificationsDTO>()),
+            Times.Never
+        );
     }
 }

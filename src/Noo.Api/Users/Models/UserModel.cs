@@ -109,8 +109,7 @@ public class UserModel : BaseModel
 
     public ICollection<NooTubeVideoReactionModel> NooTubeVideoReactions { get; set; } = [];
 
-    public ICollection<AssignedWorkStatusHistoryModel> AssignedWorkHistoryChanges { get; set; } =
-    [];
+    public ICollection<AssignedWorkHistoryModel> AssignedWorkHistoryChanges { get; set; } = [];
 
     // Mentor / Student assignments
     [InverseProperty(nameof(MentorAssignmentModel.Student))]

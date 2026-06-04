@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Noo.Api.Core.Utils;
 
 namespace Noo.Api.Notifications.DTO;
 
@@ -20,7 +21,7 @@ public record CreateNotificationDTO
     public bool IsBanner { get; init; }
 
     [JsonPropertyName("link")]
-    public string? Link { get; init; }
+    public FrontendLink? Link { get; init; }
 
     [JsonPropertyName("linkText")]
     public string? LinkText { get; init; }

@@ -103,6 +103,8 @@ public class AssignedWorkService : IAssignedWorkService
 
         _assignedWorkRepository.Add(newAssignedWork);
 
+        await _events.PublishAsync(new CreatedEvent(newAssignedWork.Id));
+
         return newAssignedWork.Id;
     }
 
@@ -131,6 +133,14 @@ public class AssignedWorkService : IAssignedWorkService
         }
 
         assignedWork.HelperMentorId = options.MentorId;
+
+        await _events.PublishAsync(
+            new HelperMentorAddedEvent(
+                assignedWork.Id,
+                options.MentorId,
+                _currentUser.RequireUserId()
+            )
+        );
     }
 
     public async Task DeleteAsync(Ulid assignedWorkId)
@@ -227,6 +237,8 @@ public class AssignedWorkService : IAssignedWorkService
 
         assignedWork.CheckedAt = Clock.Now;
         assignedWork.CheckStatus = AssignedWorkCheckStatus.Checked;
+
+        await _events.PublishAsync(new CheckedEvent(assignedWork.Id, userId));
     }
 
     public async Task MarkAsSolvedAsync(Ulid assignedWorkId)
@@ -261,9 +273,7 @@ public class AssignedWorkService : IAssignedWorkService
         assignedWork.SolvedAt = Clock.Now;
         assignedWork.SolveStatus = AssignedWorkSolveStatus.Solved;
 
-        await _events.PublishAsync(
-            new AssignedWorkSolvedEvent(assignedWork.Id, assignedWork.StudentId)
-        );
+        await _events.PublishAsync(new SolvedEvent(assignedWork.Id, assignedWork.StudentId));
     }
 
     public async Task<Ulid> RemakeAsync(Ulid assignedWorkId, RemakeAssignedWorkOptionsDTO options)
@@ -318,7 +328,17 @@ public class AssignedWorkService : IAssignedWorkService
             throw new AssignedWorkAlreadyCheckedException();
         }
 
+        var previousMainMentorId = assignedWork.MainMentorId;
         assignedWork.MainMentorId = options.MentorId;
+
+        await _events.PublishAsync(
+            new MainMentorChangedEvent(
+                assignedWork.Id,
+                options.MentorId,
+                previousMainMentorId,
+                _currentUser.RequireUserId()
+            )
+        );
     }
 
     public async Task ReturnToCheckAsync(Ulid assignedWorkId)
@@ -337,6 +357,10 @@ public class AssignedWorkService : IAssignedWorkService
 
         assignedWork.CheckedAt = null;
         assignedWork.CheckStatus = AssignedWorkCheckStatus.NotChecked;
+
+        await _events.PublishAsync(
+            new SentOnRecheckEvent(assignedWork.Id, _currentUser.RequireUserId())
+        );
     }
 
     public async Task ReturnToSolveAsync(Ulid assignedWorkId)
@@ -359,11 +383,17 @@ public class AssignedWorkService : IAssignedWorkService
 
         assignedWork.SolvedAt = null;
         assignedWork.SolveStatus = AssignedWorkSolveStatus.InProgress;
+
+        await _events.PublishAsync(
+            new SentOnResolveEvent(assignedWork.Id, _currentUser.RequireUserId())
+        );
     }
 
     public async Task<Ulid> SaveAnswerAsync(Ulid assignedWorkId, UpsertAssignedWorkAnswerDTO dto)
     {
-        // It's an update to an existing answer.
+        Ulid answerId;
+
+        // It's an update to an existing answer (e.g. a student editing or a mentor commenting).
         if (dto.Id.HasValue)
         {
             var existing = await _assignedWorkAnswerRepository.GetByIdAsync(dto.Id.Value);
@@ -376,13 +406,16 @@ public class AssignedWorkService : IAssignedWorkService
             }
 
             _mapper.Map(dto, existing);
-            return existing.Id;
+            answerId = existing.Id;
         }
+        else
+        {
+            var answer = _mapper.Map<AssignedWorkAnswerModel>(dto);
 
-        var answer = _mapper.Map<AssignedWorkAnswerModel>(dto);
-
-        answer.AssignedWorkId = assignedWorkId;
-        _assignedWorkAnswerRepository.Add(answer);
+            answer.AssignedWorkId = assignedWorkId;
+            _assignedWorkAnswerRepository.Add(answer);
+            answerId = answer.Id;
+        }
 
         var assignedWork = await _assignedWorkRepository.GetAsync(
             assignedWorkId,
@@ -390,9 +423,33 @@ public class AssignedWorkService : IAssignedWorkService
         );
 
         assignedWork.ThrowNotFoundIfNull();
-        assignedWork.SolveStatus = AssignedWorkSolveStatus.InProgress;
 
-        return answer.Id;
+        // Saving an answer is the implicit "started" signal: a student saving their answer starts
+        // solving, a mentor saving a comment/score starts checking. The event fires only on the
+        // first transition out of the not-started state.
+        switch (_currentUser.UserRole)
+        {
+            case UserRoles.Student:
+                if (assignedWork.SolveStatus == AssignedWorkSolveStatus.NotSolved)
+                {
+                    assignedWork.SolveStatus = AssignedWorkSolveStatus.InProgress;
+                    await _events.PublishAsync(
+                        new StartedSolvingEvent(assignedWork.Id, assignedWork.StudentId)
+                    );
+                }
+                break;
+            case UserRoles.Mentor:
+                if (assignedWork.CheckStatus == AssignedWorkCheckStatus.NotChecked)
+                {
+                    assignedWork.CheckStatus = AssignedWorkCheckStatus.InProgress;
+                    await _events.PublishAsync(
+                        new StartedCheckingEvent(assignedWork.Id, _currentUser.RequireUserId())
+                    );
+                }
+                break;
+        }
+
+        return answerId;
     }
 
     public Ulid SaveComment(Ulid assignedWorkId, UpsertAssignedWorkCommentDTO comment)
@@ -426,6 +483,18 @@ public class AssignedWorkService : IAssignedWorkService
             default:
                 throw new ForbiddenException();
         }
+
+        await _events.PublishAsync(
+            new DeadlineShiftedEvent(
+                assignedWork.Id,
+                new ShiftDeadlinePayload
+                {
+                    NewDeadlineAt = options.NewDeadline,
+                    ShiftedByRole = _currentUser.RequireUserRole(),
+                    ShiftedById = userId,
+                }
+            )
+        );
     }
 
     public async Task ArchiveAsync(Ulid assignedWorkId)

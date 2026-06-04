@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.DataAbstraction;
 using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
+using Noo.Api.Core.Utils;
+using Noo.Api.Core.Utils.Json;
 using Noo.Api.Users.Models;
 
 namespace Noo.Api.Notifications.Models;
@@ -39,9 +41,8 @@ public class NotificationModel : BaseModel
     [Required]
     public bool IsBanner { get; set; }
 
-    [Column("link", TypeName = DbDataTypes.Varchar255)]
-    [MaxLength(255)]
-    public string? Link { get; set; }
+    [JsonColumn("link", Converter = typeof(FrontendLinkConverter))]
+    public FrontendLink? Link { get; set; }
 
     [Column("link_text", TypeName = DbDataTypes.Varchar63)]
     [MaxLength(63)]

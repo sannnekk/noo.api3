@@ -9,11 +9,11 @@ using Noo.Api.Users.Models;
 
 namespace Noo.Api.AssignedWorks.Models;
 
-[Model("assigned_work_status_history")]
-public class AssignedWorkStatusHistoryModel : BaseModel
+[Model("assigned_work_history")]
+public class AssignedWorkHistoryModel : BaseModel
 {
-    [Column("type", TypeName = AssignedWorkEnumDbDataTypes.AssignedWorkStatusHistoryType)]
-    public AssignedWorkStatusHistoryType Type { get; set; } = default!;
+    [Column("type", TypeName = AssignedWorkEnumDbDataTypes.AssignedWorkHistoryType)]
+    public AssignedWorkHistoryType Type { get; set; } = default!;
 
     [Column("changed_at", TypeName = DbDataTypes.DateTimeWithoutTZ)]
     public DateTime ChangedAt { get; set; }
@@ -31,7 +31,7 @@ public class AssignedWorkStatusHistoryModel : BaseModel
 
     #region Navigation Properties
 
-    [InverseProperty(nameof(AssignedWorkModel.StatusHistory))]
+    [InverseProperty(nameof(AssignedWorkModel.History))]
     [DeleteBehavior(DeleteBehavior.Cascade)]
     public AssignedWorkModel AssignedWork { get; set; } = default!;
 

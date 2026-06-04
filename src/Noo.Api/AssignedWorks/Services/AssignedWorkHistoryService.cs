@@ -19,12 +19,12 @@ public class AssignedWorkHistoryService : IAssignedWorkHistoryService
         _assignedWorkHistoryRepository = assignedWorkHistoryRepository;
     }
 
-    public Task<IEnumerable<AssignedWorkStatusHistoryModel>> GetHistoryAsync(Ulid assignedWorkId)
+    public Task<IEnumerable<AssignedWorkHistoryModel>> GetHistoryAsync(Ulid assignedWorkId)
     {
         return _assignedWorkHistoryRepository.GetHistoryAsync(assignedWorkId);
     }
 
-    public void PushEvent(AssignedWorkStatusHistoryModel @event)
+    public void PushEvent(AssignedWorkHistoryModel @event)
     {
         _assignedWorkHistoryRepository.Add(@event);
     }

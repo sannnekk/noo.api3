@@ -1,7 +1,8 @@
 namespace Noo.Api.AssignedWorks.Types;
 
-public enum AssignedWorkStatusHistoryType
+public enum AssignedWorkHistoryType
 {
+    Created,
     StartedSolving,
     SolveDeadlineShifted,
     Solved,
@@ -11,6 +12,5 @@ public enum AssignedWorkStatusHistoryType
     SentOnRecheck,
     SentOnResolve,
     HelperMentorAdded,
-    HelperMentorRemoved,
-    MainMentorChanged
+    MainMentorChanged,
 }

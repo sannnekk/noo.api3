@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Noo.Api.Core.System.Events;
+using Noo.Api.Core.Utils;
 using Noo.Api.Notifications.DTO;
 using Noo.Api.Notifications.Filters;
 using Noo.Api.Notifications.Models;
@@ -34,7 +35,7 @@ public class NotificationServiceTests
             Title = "Hello",
             Message = "World",
             IsBanner = false,
-            Link = "https://example",
+            Link = new FrontendLink { Name = "example" },
             LinkText = "open",
             Channels = new[] { NotificationChannelType.Http }
         };

@@ -3,8 +3,8 @@ using Noo.Api.Core.DataAbstraction.Db;
 
 namespace Noo.Api.AssignedWorks.Services;
 
-public interface IAssignedWorkHistoryRepository : IRepository<AssignedWorkStatusHistoryModel>
+public interface IAssignedWorkHistoryRepository : IRepository<AssignedWorkHistoryModel>
 {
-    public Task<IEnumerable<AssignedWorkStatusHistoryModel>> GetHistoryAsync(Ulid assignedWorkId);
+    public Task<IEnumerable<AssignedWorkHistoryModel>> GetHistoryAsync(Ulid assignedWorkId);
 }
 
