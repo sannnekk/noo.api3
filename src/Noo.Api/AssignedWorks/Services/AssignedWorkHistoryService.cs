@@ -1,4 +1,6 @@
+using Noo.Api.AssignedWorks.Filters;
 using Noo.Api.AssignedWorks.Models;
+using Noo.Api.AssignedWorks.Specifications;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils.DI;
 
@@ -8,24 +10,19 @@ namespace Noo.Api.AssignedWorks.Services;
 public class AssignedWorkHistoryService : IAssignedWorkHistoryService
 {
     private readonly IAssignedWorkHistoryRepository _assignedWorkHistoryRepository;
-    private readonly IUnitOfWork _unitOfWork;
 
-    public AssignedWorkHistoryService(
-        IUnitOfWork unitOfWork,
-        IAssignedWorkHistoryRepository assignedWorkHistoryRepository
-    )
+    public AssignedWorkHistoryService(IAssignedWorkHistoryRepository assignedWorkHistoryRepository)
     {
-        _unitOfWork = unitOfWork;
         _assignedWorkHistoryRepository = assignedWorkHistoryRepository;
     }
 
-    public Task<IEnumerable<AssignedWorkHistoryModel>> GetHistoryAsync(Ulid assignedWorkId)
+    public Task<SearchResult<AssignedWorkHistoryModel>> GetHistoryAsync(
+        Ulid assignedWorkId,
+        AssignedWorkHistoryFilter filter
+    )
     {
-        return _assignedWorkHistoryRepository.GetHistoryAsync(assignedWorkId);
-    }
+        filter.AssignedWorkId = assignedWorkId;
 
-    public void PushEvent(AssignedWorkHistoryModel @event)
-    {
-        _assignedWorkHistoryRepository.Add(@event);
+        return _assignedWorkHistoryRepository.SearchAsync(filter, [new HistorySpecification()]);
     }
 }

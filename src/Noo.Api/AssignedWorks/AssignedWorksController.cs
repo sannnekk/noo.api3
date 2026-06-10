@@ -20,9 +20,16 @@ public class AssignedWorkController : ApiController
 {
     private readonly IAssignedWorkService _assignedWorkService;
 
-    public AssignedWorkController(IAssignedWorkService assignedWorkService, IMapper mapper)
+    private readonly IAssignedWorkHistoryService _assignedWorkHistoryService;
+
+    public AssignedWorkController(
+        IAssignedWorkService assignedWorkService,
+        IAssignedWorkHistoryService historyService,
+        IMapper mapper
+    )
         : base(mapper)
     {
+        _assignedWorkHistoryService = historyService;
         _assignedWorkService = assignedWorkService;
     }
 
@@ -102,6 +109,30 @@ public class AssignedWorkController : ApiController
         var id = await _assignedWorkService.CreateAsync(workAssignmentId);
 
         return SendResponse(id);
+    }
+
+    /// <summary>
+    /// Gets the assigned work history entries, paginated
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpGet("{assignedWorkId}/history")]
+    [Authorize(Policy = AssignedWorkPolicies.CanGetAssignedWork)]
+    [Produces(
+        typeof(ApiResponseDTO<IEnumerable<AssignedWorkHistoryDTO>>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> GetAssignedWorkHistoryAsync(
+        [FromRoute] Ulid assignedWorkId,
+        [FromQuery] AssignedWorkHistoryFilter filter
+    )
+    {
+        var result = await _assignedWorkHistoryService.GetHistoryAsync(assignedWorkId, filter);
+
+        return SendResponse<AssignedWorkHistoryModel, AssignedWorkHistoryDTO>(result);
     }
 
     /// <summary>

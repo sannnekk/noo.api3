@@ -1,10 +1,13 @@
+using Noo.Api.AssignedWorks.Filters;
 using Noo.Api.AssignedWorks.Models;
+using Noo.Api.Core.DataAbstraction.Db;
 
 namespace Noo.Api.AssignedWorks.Services;
 
 public interface IAssignedWorkHistoryService
 {
-    public Task<IEnumerable<AssignedWorkHistoryModel>> GetHistoryAsync(Ulid assignedWorkId);
-
-    public void PushEvent(AssignedWorkHistoryModel @event);
+    public Task<SearchResult<AssignedWorkHistoryModel>> GetHistoryAsync(
+        Ulid assignedWorkId,
+        AssignedWorkHistoryFilter filter
+    );
 }

@@ -32,7 +32,9 @@ public class AssignedWorkSolvedHistoryHandlerTests
         );
         await ctx.SaveChangesAsync();
 
-        var history = (await historyRepo.GetHistoryAsync(assignedWorkId)).ToList();
+        var history = ctx.GetDbSet<AssignedWorkHistoryModel>()
+            .Where(x => x.AssignedWorkId == assignedWorkId)
+            .ToList();
         var entry = Assert.Single(history);
         Assert.Equal(AssignedWorkHistoryType.Solved, entry.Type);
         Assert.Equal(studentId, entry.ChangedById);

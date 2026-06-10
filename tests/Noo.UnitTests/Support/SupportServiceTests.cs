@@ -3,10 +3,12 @@ using Microsoft.Extensions.Options;
 using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Request.Patching;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Support.DTO;
 using Noo.Api.Support.Models;
 using Noo.Api.Support.Services;
+using Noo.Api.Support.Types;
 using Noo.UnitTests.Common;
 
 namespace Noo.UnitTests.Support;
@@ -37,36 +39,10 @@ public class SupportServiceTests
         var mapper = mapperCfg.CreateMapper();
 
         var articleRepo = new SupportArticleRepository(ctx);
-        var categoryRepo = new SupportCategoryRepository(ctx);
         var jsonPatchService = new JsonPatchUpdateService(mapper);
 
-        var svc = new SupportService(articleRepo, categoryRepo, jsonPatchService, mapper);
+        var svc = new SupportService(articleRepo, jsonPatchService, mapper);
         return (svc, ctx);
-    }
-
-    [Fact]
-    public async Task CreateCategory_CreatesAndReturnsId()
-    {
-        var (svc, ctx) = CreateService();
-
-        var dto = new CreateSupportCategoryDTO
-        {
-            Name = "Getting Started",
-            Order = 1,
-            IsPinned = true,
-            IsActive = true,
-            ParentId = null
-        };
-
-        var id = svc.CreateCategory(dto);
-
-        var saved = await ctx.GetDbSet<SupportCategoryModel>().FindAsync(id);
-        Assert.NotNull(saved);
-        Assert.Equal("Getting Started", saved!.Name);
-        Assert.True(saved.IsPinned);
-        Assert.True(saved.IsActive);
-        Assert.Equal(1, saved.Order);
-        Assert.Null(saved.ParentId);
     }
 
     [Fact]
@@ -74,17 +50,13 @@ public class SupportServiceTests
     {
         var (svc, ctx) = CreateService();
 
-        var cat = new SupportCategoryModel { Name = "FAQ", Order = 1, IsActive = true };
-        ctx.Add(cat);
-        await ctx.SaveChangesAsync();
-
         var dto = new CreateSupportArticleDTO
         {
             Title = "How to use Noo",
             Order = 1,
             Content = DeltaRichText.FromString("hello"),
             IsActive = true,
-            CategoryId = cat.Id
+            Category = SupportCategory.Works
         };
 
         var id = svc.CreateArticle(dto);
@@ -92,36 +64,19 @@ public class SupportServiceTests
         var saved = await ctx.GetDbSet<SupportArticleModel>().FindAsync(id);
         Assert.NotNull(saved);
         Assert.Equal("How to use Noo", saved!.Title);
-        Assert.Equal(cat.Id, saved.CategoryId);
+        Assert.Equal(SupportCategory.Works, saved.Category);
+        Assert.Equal(Slug.Generate("How to use Noo"), saved.Slug);
         Assert.True(saved.IsActive);
         Assert.Equal(1, saved.Order);
         Assert.False(saved.Content.IsEmpty());
     }
 
     [Fact]
-    public async Task DeleteCategory_RemovesEntity()
-    {
-        var (svc, ctx) = CreateService();
-        var cat = new SupportCategoryModel { Name = "Old", Order = 10 };
-        ctx.Add(cat);
-        await ctx.SaveChangesAsync();
-        // Detach so Repository.DeleteById's "new T { Id = id }" does not conflict with tracking
-        ctx.Entry(cat).State = EntityState.Detached;
-
-        svc.DeleteCategory(cat.Id);
-        await ctx.SaveChangesAsync();
-
-        var exists = await ctx.GetDbSet<SupportCategoryModel>().FindAsync(cat.Id);
-        Assert.Null(exists);
-    }
-
-    [Fact]
     public async Task DeleteArticle_RemovesEntity()
     {
         var (svc, ctx) = CreateService();
-        var cat = new SupportCategoryModel { Name = "FAQ", Order = 1 };
-        var art = new SupportArticleModel { Title = "TBD", Order = 1, Category = cat, CategoryId = cat.Id };
-        ctx.AddRange(cat, art);
+        var art = new SupportArticleModel { Title = "TBD", Slug = "tbd", Order = 1, Category = SupportCategory.Courses };
+        ctx.Add(art);
         await ctx.SaveChangesAsync();
         // Detach so Repository.DeleteById's "new T { Id = id }" does not conflict with tracking
         ctx.Entry(art).State = EntityState.Detached;
@@ -137,42 +92,31 @@ public class SupportServiceTests
     public async Task GetArticleAsync_ReturnsArticle_WhenExists()
     {
         var (svc, ctx) = CreateService();
-        var cat = new SupportCategoryModel { Name = "FAQ", Order = 1 };
-        var art = new SupportArticleModel { Title = "Welcome", Order = 1, Category = cat, CategoryId = cat.Id };
-        ctx.AddRange(cat, art);
+        var art = new SupportArticleModel { Title = "Welcome", Slug = "welcome", Order = 1, Category = SupportCategory.Courses };
+        ctx.Add(art);
         await ctx.SaveChangesAsync();
 
-        var result = await svc.GetArticleAsync(art.Id);
+        var result = await svc.GetArticleAsync(art.Slug);
         Assert.NotNull(result);
         Assert.Equal("Welcome", result!.Title);
     }
 
     [Fact]
-    public async Task GetCategoryTreeAsync_ReturnsOnlyActiveRoots_WithChildren()
+    public async Task GetArticleAsync_ReturnsNull_WhenMissing()
     {
-        var (svc, ctx) = CreateService();
-        var root1 = new SupportCategoryModel { Name = "Root A", Order = 1, IsActive = true };
-        var child1 = new SupportCategoryModel { Name = "Child A1", Order = 1, IsActive = true, Parent = root1, ParentId = root1.Id };
-        var root2 = new SupportCategoryModel { Name = "Root B", Order = 2, IsActive = false };
-        ctx.AddRange(root1, child1, root2);
-        await ctx.SaveChangesAsync();
+        var (svc, _) = CreateService();
 
-        var tree = await svc.GetCategoryTreeAsync();
-        var roots = tree.ToList();
+        var result = await svc.GetArticleAsync("does-not-exist");
 
-        Assert.Single(roots);
-        Assert.Equal("Root A", roots[0].Name);
-        Assert.Single(roots[0].Children);
-        Assert.Equal("Child A1", roots[0].Children.First().Name);
+        Assert.Null(result);
     }
 
     [Fact]
     public async Task UpdateArticleAsync_UpdatesSuccessfully()
     {
         var (svc, ctx) = CreateService();
-        var cat = new SupportCategoryModel { Name = "Cat", Order = 1, IsActive = true };
-        var art = new SupportArticleModel { Title = "Old title", Order = 1, Category = cat, CategoryId = cat.Id };
-        ctx.AddRange(cat, art);
+        var art = new SupportArticleModel { Title = "Old title", Slug = "old-title", Order = 1, Category = SupportCategory.Courses };
+        ctx.Add(art);
         await ctx.SaveChangesAsync();
 
         var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportArticleDTO>()
@@ -186,34 +130,9 @@ public class SupportServiceTests
     }
 
     [Fact]
-    public async Task UpdateCategoryAsync_UpdatesSuccessfully()
-    {
-        var (svc, ctx) = CreateService();
-        var root = new SupportCategoryModel { Name = "Root", Order = 1, IsActive = true, IsPinned = false };
-        ctx.Add(root);
-        await ctx.SaveChangesAsync();
-
-        var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportCategoryDTO>()
-            .Replace(c => c.Name, "Root Updated")
-            .Replace(c => c.IsPinned, true);
-        await svc.UpdateCategoryAsync(root.Id, patch);
-
-        var updated = await ctx.GetDbSet<SupportCategoryModel>().FindAsync(root.Id);
-        Assert.Equal("Root Updated", updated!.Name);
-        Assert.True(updated.IsPinned);
-    }
-
-    [Fact]
     public async Task UpdateArticleAsync_NotFound_Throws()
     {
         var (svc, _) = CreateService();
         await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(() => svc.UpdateArticleAsync(Ulid.NewUlid(), new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportArticleDTO>()));
-    }
-
-    [Fact]
-    public async Task UpdateCategoryAsync_NotFound_Throws()
-    {
-        var (svc, _) = CreateService();
-        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(() => svc.UpdateCategoryAsync(Ulid.NewUlid(), new SystemTextJsonPatch.JsonPatchDocument<UpdateSupportCategoryDTO>()));
     }
 }

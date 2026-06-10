@@ -1,8 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
+using Noo.Api.AssignedWorks.Models;
+using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Sessions.Models;
 using Noo.Api.Users.Models;
 using Noo.Api.Core.Utils.UserAgent;
+using Noo.Api.Works.Types;
 
 namespace Noo.IntegrationTests;
 
@@ -47,5 +50,46 @@ public static class TestDataHelpers
         var db = scope.ServiceProvider.GetRequiredService<NooDbContext>();
         var set = db.GetDbSet<SessionModel>();
         return set.Any(s => s.Id == sessionId);
+    }
+
+    public static async Task<Ulid> CreateAssignedWorkAsync(ApiFactory factory, Ulid studentId, Ulid mentorId)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NooDbContext>();
+
+        var model = new AssignedWorkModel
+        {
+            Title = $"AW-{Guid.NewGuid():N}",
+            Type = WorkType.Test,
+            Attempt = 1,
+            StudentId = studentId,
+            MainMentorId = mentorId,
+            MaxScore = 10,
+            SolveDeadlineAt = DateTime.UtcNow.AddDays(1),
+            CheckDeadlineAt = DateTime.UtcNow.AddDays(2),
+        };
+
+        db.GetDbSet<AssignedWorkModel>().Add(model);
+        await db.SaveChangesAsync();
+        return model.Id;
+    }
+
+    public static async Task AddHistoryEntryAsync(
+        ApiFactory factory,
+        Ulid assignedWorkId,
+        AssignedWorkHistoryType type,
+        Ulid? changedById = null)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NooDbContext>();
+
+        db.GetDbSet<AssignedWorkHistoryModel>().Add(new AssignedWorkHistoryModel
+        {
+            AssignedWorkId = assignedWorkId,
+            Type = type,
+            ChangedAt = DateTime.UtcNow,
+            ChangedById = changedById,
+        });
+        await db.SaveChangesAsync();
     }
 }
