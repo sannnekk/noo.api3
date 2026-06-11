@@ -387,11 +387,11 @@ public class CourseNestedPatchTests : IClassFixture<ApiFactory>
         var contentId = (await createResp.Content
             .ReadFromJsonAsync<ApiResponseDTO<IdResponseDTO>>(JsonOptions))!.Data!.Id;
 
-        // Replace the insert text in place. This mutates the existing rich text instance,
+        // Replace the text node in place. This mutates the existing rich text instance,
         // which EF Core only detects with a structural value comparer on the converter.
         const string patchJson = """
             [
-              { "op": "replace", "path": "/content/ops/0/insert", "value": "patched" }
+              { "op": "replace", "path": "/content/content/0/content/0/text", "value": "patched" }
             ]
             """;
         (await PatchAsync(client.AsTeacher(), $"/course/material-content/{contentId}", patchJson))

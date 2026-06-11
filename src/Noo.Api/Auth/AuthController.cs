@@ -7,6 +7,7 @@ using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
 using Noo.Api.Core.Utils.Versioning;
+using Noo.Api.Media;
 using ProducesAttribute = Noo.Api.Core.Documentation.ProducesAttribute;
 
 namespace Noo.Api.Auth;
@@ -53,6 +54,11 @@ public class AuthController : ApiController
         var result = await _authService.LoginAsync(request);
 
         Response.SetRefreshToken(result.RefreshToken, result.RefreshTokenExpiresAt, CookieSecure);
+        Response.SetMediaToken(
+            result.Response.AccessToken,
+            result.Response.ExpiresAt,
+            CookieSecure
+        );
 
         return SendResponse(result.Response);
     }
@@ -78,6 +84,7 @@ public class AuthController : ApiController
         if (!result.Succeeded)
         {
             Response.ClearRefreshToken(CookieSecure);
+            Response.ClearMediaToken(CookieSecure);
 
             return StatusCode(
                 StatusCodes.Status401Unauthorized,
@@ -86,6 +93,11 @@ public class AuthController : ApiController
         }
 
         Response.SetRefreshToken(result.RefreshToken!, result.RefreshTokenExpiresAt, CookieSecure);
+        Response.SetMediaToken(
+            result.Response!.AccessToken,
+            result.Response!.ExpiresAt,
+            CookieSecure
+        );
 
         return SendResponse(result.Response!);
     }

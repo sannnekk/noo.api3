@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Noo.Api.Core.Request;
@@ -10,9 +11,11 @@ using ProducesAttribute = Noo.Api.Core.Documentation.ProducesAttribute;
 
 namespace Noo.Api.Media;
 
+// Authorization is declared per-action, not on the controller: the /raw endpoint
+// must also accept the cookie scheme, which a controller-level [Authorize] (default
+// bearer, AND-combined with the action) would otherwise veto for cookie-only requests.
 [ApiVersion(NooApiVersions.Current)]
 [ApiController]
-[Authorize]
 [Route("media")]
 public class MediaController : ApiController
 {
@@ -28,6 +31,7 @@ public class MediaController : ApiController
     /// Issue a presigned upload URL plus the headers the client must include on the PUT.
     /// </summary>
     [HttpPost("upload-url")]
+    [Authorize]
     [MapToApiVersion(NooApiVersions.Current)]
     [Produces(
         typeof(ApiResponseDTO<UploadTicketDTO>),
@@ -66,6 +70,7 @@ public class MediaController : ApiController
     /// Returns a presigned GET URL for the uploaded object.
     /// </summary>
     [HttpPost("{mediaId:ulid}/complete")]
+    [Authorize]
     [MapToApiVersion(NooApiVersions.Current)]
     [Produces(
         typeof(ApiResponseDTO<MediaDTO>),
@@ -96,6 +101,7 @@ public class MediaController : ApiController
     /// registered for this media's category.
     /// </summary>
     [HttpGet("{mediaId:ulid}/download-url")]
+    [Authorize]
     [MapToApiVersion(NooApiVersions.Current)]
     [Produces(
         typeof(ApiResponseDTO<DownloadUrlDTO>),
@@ -117,6 +123,7 @@ public class MediaController : ApiController
     /// Delete the file from S3 and remove the DB record. Owner or admin only.
     /// </summary>
     [HttpDelete("{mediaId:ulid}")]
+    [Authorize]
     [MapToApiVersion(NooApiVersions.Current)]
     [Produces(
         null,
@@ -132,5 +139,38 @@ public class MediaController : ApiController
     {
         await _mediaService.DeleteAsync(mediaId, cancellationToken);
         return SendResponse();
+    }
+
+    /// <summary>
+    /// Stable, embeddable URL for a media file. Enforces the same access rules as
+    /// <see cref="GetDownloadUrlAsync"/>, then 302-redirects to a freshly presigned
+    /// download URL. The redirect is never cached, so each load resolves a valid URL.
+    /// </summary>
+    /// <remarks>
+    /// Accepts the bearer header (for API/Swagger callers) or the httpOnly media
+    /// cookie, which the browser attaches to plain <c>&lt;img&gt;</c> requests.
+    /// </remarks>
+    [HttpGet("{mediaId:ulid}/raw")]
+    [Authorize(
+        AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme + "," + MediaCookie.Scheme
+    )]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Produces(
+        null,
+        StatusCodes.Status302Found,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> GetRawAsync(
+        [FromRoute] Ulid mediaId,
+        CancellationToken cancellationToken
+    )
+    {
+        var url = await _mediaService.GetDownloadUrlAsync(mediaId, cancellationToken);
+
+        Response.Headers.CacheControl = "no-store";
+
+        return Redirect(url);
     }
 }

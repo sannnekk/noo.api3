@@ -4,6 +4,7 @@ using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.Initialization.Configuration;
 using Noo.Api.Core.Security.Authentication;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Media;
 using Noo.Api.Sessions.Services;
 
 namespace Noo.Api.Core.Initialization.ServiceCollection;
@@ -49,7 +50,33 @@ public static class AuthenticationExtension
                         OnTokenValidated = ValidateSessionExistsAsync,
                     };
                 }
+            )
+            // Same JWT validation, but the token is read from the httpOnly media cookie
+            // instead of the Authorization header, so that plain <img> requests to
+            // /media/{id}/raw can authenticate. Opt-in per route via
+            // [Authorize(AuthenticationSchemes = MediaCookie.Scheme)].
+            .AddJwtBearer(
+                MediaCookie.Scheme,
+                options =>
+                {
+                    options.TokenValidationParameters = GetTokenValidationParameters(jwtConfig);
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnMessageReceived = ReadTokenFromMediaCookieAsync,
+                        OnTokenValidated = ValidateSessionExistsAsync,
+                    };
+                }
             );
+    }
+
+    private static Task ReadTokenFromMediaCookieAsync(MessageReceivedContext context)
+    {
+        if (context.Request.Cookies.TryGetValue(MediaCookie.Name, out var token))
+        {
+            context.Token = token;
+        }
+
+        return Task.CompletedTask;
     }
 
     private static async Task ValidateSessionExistsAsync(TokenValidatedContext context)
