@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Noo.Api.Core.Security.Authorization;
 
 namespace Noo.Api.Auth.DTO;
 
@@ -14,6 +15,10 @@ public record LoginResponseDTO
     public DateTime ExpiresAt { get; set; }
 
     [Required]
-    [JsonPropertyName("userInfo")]
-    public UserInfoDTO UserInfo { get; set; } = new();
+    [JsonPropertyName("userId")]
+    public Ulid UserId { get; set; }
+
+    [Required]
+    [JsonPropertyName("userRole")]
+    public UserRoles UserRole { get; init; }
 }

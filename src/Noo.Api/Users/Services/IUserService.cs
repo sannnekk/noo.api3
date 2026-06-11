@@ -24,4 +24,8 @@ public interface IUserService
     public Task UnblockUserAsync(Ulid id);
     public Task DeleteUserAsync(string password);
     public Task UpdateUserAsync(Ulid id, JsonPatchDocument<UpdateUserDTO> patchUserDto);
+    public Task UpdateUserAvatarAsync(
+        Ulid userId,
+        JsonPatchDocument<UpdateUserAvatarDTO> updateUserAvatarDto
+    );
 }

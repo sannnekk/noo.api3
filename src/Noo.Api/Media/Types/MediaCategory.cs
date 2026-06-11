@@ -15,4 +15,5 @@ public enum MediaCategory
     AssignedWorkStudentCommentRichText,
     AssignedWorkMentorCommentRichText,
     HelpRichText,
+    SnippetRichText,
 }

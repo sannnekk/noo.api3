@@ -14,17 +14,20 @@ public static class AutoMapperExtension
         {
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
 
-            var config = new MapperConfiguration(cfg =>
-            {
-                cfg.AddGlobalIgnore("EntityName");
-
-                foreach (var profile in profiles)
+            var config = new MapperConfiguration(
+                cfg =>
                 {
-                    cfg.AddProfile(profile);
-                }
+                    cfg.AddGlobalIgnore("EntityName");
 
-                cfg.AddMoscowEndOfDayNormalization();
-            }, loggerFactory);
+                    foreach (var profile in profiles)
+                    {
+                        cfg.AddProfile(profile);
+                    }
+
+                    cfg.AddMoscowEndOfDayNormalization();
+                },
+                loggerFactory
+            );
 
             config.AssertConfigurationIsValid();
             return config;
@@ -41,8 +44,13 @@ public static class AutoMapperExtension
     {
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
-        return assemblies.SelectMany(a => a.GetTypes())
-            .Where(t => t.IsClass && !t.IsAbstract && t.GetCustomAttributes(typeof(AutoMapperProfileAttribute), false).Length != 0)
+        return assemblies
+            .SelectMany(a => a.GetTypes())
+            .Where(t =>
+                t.IsClass
+                && !t.IsAbstract
+                && t.GetCustomAttributes(typeof(AutoMapperProfileAttribute), false).Length != 0
+            )
             .ToList();
     }
 }

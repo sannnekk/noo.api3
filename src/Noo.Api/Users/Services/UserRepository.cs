@@ -9,8 +9,17 @@ namespace Noo.Api.Users.Services;
 [RegisterScoped(typeof(IUserRepository))]
 public class UserRepository : Repository<UserModel>, IUserRepository
 {
-    public UserRepository(NooDbContext context) : base(context)
+    public UserRepository(NooDbContext context)
+        : base(context) { }
+
+    public Task<UserModel?> GetWithAvatarAsync(Ulid id)
     {
+        var repository = Context.GetDbSet<UserModel>();
+
+        return repository
+            .Include(x => x.Avatar)
+                .ThenInclude(a => a!.Media)
+            .FirstOrDefaultAsync(x => x.Id == id);
     }
 
     public Task<UserModel?> GetByUsernameOrEmailAsync(string usernameOrEmail)
@@ -48,10 +57,7 @@ public class UserRepository : Repository<UserModel>, IUserRepository
     {
         var repository = Context.GetDbSet<UserModel>();
 
-        return repository
-            .Where(x => x.Id == id)
-            .Select(x => x.IsBlocked)
-            .FirstOrDefaultAsync();
+        return repository.Where(x => x.Id == id).Select(x => x.IsBlocked).FirstOrDefaultAsync();
     }
 
     public async Task BlockUserAsync(Ulid id)
@@ -76,12 +82,13 @@ public class UserRepository : Repository<UserModel>, IUserRepository
     {
         var repository = Context.GetDbSet<UserModel>();
 
-        return repository
-            .Where(x => x.Id == mentorId && x.Role == UserRoles.Mentor)
-            .AnyAsync();
+        return repository.Where(x => x.Id == mentorId && x.Role == UserRoles.Mentor).AnyAsync();
     }
 
-    public Task<Dictionary<UserRoles, int>> GetTotalUsersByRolesAsync(DateTime fromDate, DateTime toDate)
+    public Task<Dictionary<UserRoles, int>> GetTotalUsersByRolesAsync(
+        DateTime fromDate,
+        DateTime toDate
+    )
     {
         var repository = Context.GetDbSet<UserModel>();
 
@@ -91,7 +98,10 @@ public class UserRepository : Repository<UserModel>, IUserRepository
             .ToDictionaryAsync(g => g.Key, g => g.Count());
     }
 
-    public Task<Dictionary<DateTime, int>> GetRegistrationsByDateRangeAsync(DateTime fromDate, DateTime toDate)
+    public Task<Dictionary<DateTime, int>> GetRegistrationsByDateRangeAsync(
+        DateTime fromDate,
+        DateTime toDate
+    )
     {
         var repository = Context.GetDbSet<UserModel>();
 
@@ -105,9 +115,6 @@ public class UserRepository : Repository<UserModel>, IUserRepository
     {
         var repository = Context.GetDbSet<UserModel>();
 
-        return repository
-            .Where(x => x.Role == role)
-            .AsNoTracking()
-            .ToListAsync();
+        return repository.Where(x => x.Role == role).AsNoTracking().ToListAsync();
     }
 }

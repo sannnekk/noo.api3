@@ -5,6 +5,7 @@ using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Media.Services;
 using Noo.Api.Users.DTO;
 using Noo.Api.Users.Filters;
 using Noo.Api.Users.Models;
@@ -68,16 +69,20 @@ public class UserServiceTests
         IMapper mapper,
         Mock<ICurrentUser>? currentUser = null,
         Mock<IHashService>? hashService = null,
-        Mock<IEmailChangeService>? emailChangeService = null
+        Mock<IEmailChangeService>? emailChangeService = null,
+        Mock<IUserAvatarRepository>? userAvatarRepository = null,
+        Mock<IMediaUrlEnricher>? mediaUrlEnricher = null
     )
     {
         return new UserService(
             userRepo,
+            (userAvatarRepository ?? new Mock<IUserAvatarRepository>()).Object,
             patchUpdateService,
             mapper,
             (currentUser ?? new Mock<ICurrentUser>()).Object,
             (hashService ?? new Mock<IHashService>()).Object,
-            (emailChangeService ?? new Mock<IEmailChangeService>()).Object
+            (emailChangeService ?? new Mock<IEmailChangeService>()).Object,
+            (mediaUrlEnricher ?? new Mock<IMediaUrlEnricher>()).Object
         );
     }
 
@@ -144,8 +149,7 @@ public class UserServiceTests
             var verifyUserRepo = new UserRepository(verifyContext);
             var verifyPatchUpdateService = new JsonPatchUpdateService(mapper);
             var verifyService = CreateService(verifyUserRepo, verifyPatchUpdateService, mapper);
-            var afterDelete = await verifyService.GetUserByIdAsync(id);
-            Assert.Null(afterDelete);
+            await Assert.ThrowsAsync<NotFoundException>(() => verifyService.GetUserByIdAsync(id));
         }
     }
 

@@ -21,4 +21,5 @@ public interface IUserRepository : IRepository<UserModel>
         DateTime toDate
     );
     public Task<List<UserModel>> GetUsersByRoleAsync(UserRoles role);
+    public Task<UserModel?> GetWithAvatarAsync(Ulid id);
 }

@@ -149,14 +149,8 @@ public class AuthService : IAuthService
         {
             AccessToken = token,
             ExpiresAt = expiresAt,
-            UserInfo = new UserInfoDTO
-            {
-                Id = user.Id,
-                Email = user.Email,
-                Name = user.Name,
-                Username = user.Username,
-                Role = user.Role,
-            },
+            UserId = user.Id,
+            UserRole = user.Role,
         };
     }
 
@@ -239,7 +233,8 @@ public class AuthService : IAuthService
 
         if (tokenType == TokenType.EmailVerification && string.IsNullOrEmpty(newEmail))
         {
-            var user = await _userService.GetUserByIdAsync(userId.Value)
+            var user =
+                await _userService.GetUserByIdAsync(userId.Value)
                 ?? throw new UnauthorizedException();
 
             user.IsVerified = true;

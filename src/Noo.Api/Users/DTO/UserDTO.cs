@@ -39,6 +39,9 @@ public record UserDTO
     [JsonPropertyName("role")]
     public UserRoles Role { get; set; } = UserRoles.Student;
 
+    [JsonPropertyName("avatar")]
+    public UserAvatarDTO? Avatar { get; set; }
+
     [JsonIgnore]
     public string PasswordHash { get; set; } = string.Empty;
 

@@ -5,12 +5,13 @@ using Noo.Api.Core.DataAbstraction;
 using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
 using Noo.Api.Media.Models;
+using Noo.Api.Media.Services;
 using Noo.Api.Users.Types;
 
 namespace Noo.Api.Users.Models;
 
 [Model("user_avatar")]
-public class UserAvatarModel : BaseModel
+public class UserAvatarModel : BaseModel, IHasPresignedMedia
 {
     [Column("avatar_type", TypeName = UserEnumDbDataTypes.UserAvatarType)]
     [Required]
@@ -40,4 +41,9 @@ public class UserAvatarModel : BaseModel
     public UserModel User { get; set; } = null!;
 
     #endregion
+
+    public IEnumerable<MediaModel?> GetMediaForPresigning()
+    {
+        yield return Media;
+    }
 }

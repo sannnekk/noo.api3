@@ -82,10 +82,8 @@ public class AuthServiceTests
         var resp = result.Response;
         Assert.False(string.IsNullOrWhiteSpace(resp.AccessToken));
         Assert.False(string.IsNullOrWhiteSpace(result.RefreshToken));
-        Assert.Equal(user.Id, resp.UserInfo.Id);
-        Assert.Equal(user.Username, resp.UserInfo.Username);
-        Assert.Equal(user.Email, resp.UserInfo.Email);
-        Assert.Equal(user.Name, resp.UserInfo.Name);
+        Assert.Equal(user.Id, resp.UserId);
+        Assert.Equal(user.Role, resp.UserRole);
 
         // Ensure session creation was attempted for the user
         h.Sessions.Verify(s => s.CreateSessionIfNotExistsAsync(It.IsAny<HttpContext>(), user.Id), Times.Once);

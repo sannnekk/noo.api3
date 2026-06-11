@@ -7,9 +7,11 @@ using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
+using Noo.Api.Media.Services;
 using Noo.Api.Users.DTO;
 using Noo.Api.Users.Filters;
 using Noo.Api.Users.Models;
+using Noo.Api.Users.Specifications;
 using Noo.Api.Users.Types;
 using SystemTextJsonPatch;
 
@@ -19,6 +21,8 @@ namespace Noo.Api.Users.Services;
 public class UserService : IUserService
 {
     private readonly IUserRepository _userRepository;
+
+    private readonly IUserAvatarRepository _userAvatarRepository;
 
     private readonly IMapper _mapper;
 
@@ -30,21 +34,27 @@ public class UserService : IUserService
 
     private readonly IEmailChangeService _emailChangeService;
 
+    private readonly IMediaUrlEnricher _mediaUrlEnricher;
+
     public UserService(
         IUserRepository userRepository,
+        IUserAvatarRepository userAvatarRepository,
         IJsonPatchUpdateService patchUpdateService,
         IMapper mapper,
         ICurrentUser currentUser,
         IHashService hashService,
-        IEmailChangeService emailChangeService
+        IEmailChangeService emailChangeService,
+        IMediaUrlEnricher mediaUrlEnricher
     )
     {
         _userRepository = userRepository;
+        _userAvatarRepository = userAvatarRepository;
         _patchUpdateService = patchUpdateService;
         _mapper = mapper;
         _currentUser = currentUser;
         _hashService = hashService;
         _emailChangeService = emailChangeService;
+        _mediaUrlEnricher = mediaUrlEnricher;
     }
 
     public async Task BlockUserAsync(Ulid id)
@@ -98,9 +108,15 @@ public class UserService : IUserService
         _userRepository.DeleteById(currentUserId);
     }
 
-    public Task<UserModel?> GetUserByIdAsync(Ulid id)
+    public async Task<UserModel?> GetUserByIdAsync(Ulid id)
     {
-        return _userRepository.GetByIdAsync(id);
+        var user = await _userRepository.GetWithAvatarAsync(id);
+
+        user.ThrowNotFoundIfNull();
+
+        await _mediaUrlEnricher.EnrichAsync(user.Avatar);
+
+        return user;
     }
 
     public Task<UserModel?> GetUserByUsernameOrEmailAsync(string usernameOrEmail)
@@ -108,9 +124,15 @@ public class UserService : IUserService
         return _userRepository.GetByUsernameOrEmailAsync(usernameOrEmail);
     }
 
-    public Task<SearchResult<UserModel>> GetUsersAsync(UserFilter filter)
+    public async Task<SearchResult<UserModel>> GetUsersAsync(UserFilter filter)
     {
-        return _userRepository.SearchAsync(filter);
+        var result = await _userRepository.SearchAsync(filter, [new UserWithAvatarSpecification()]);
+
+        await _mediaUrlEnricher.EnrichAsync(
+            result.Items.Select(u => u.Avatar).Where(a => a != null).Select(a => a!)
+        );
+
+        return result;
     }
 
     public Task<bool> IsBlockedAsync(Ulid id)
@@ -125,7 +147,7 @@ public class UserService : IUserService
 
     public async Task UpdateUserAsync(Ulid id, JsonPatchDocument<UpdateUserDTO> patchUserDto)
     {
-        var user = await _userRepository.GetByIdAsync(id) ?? throw new NotFoundException();
+        var user = await _userRepository.GetByIdAsync(id);
 
         user.ThrowNotFoundIfNull();
 
@@ -139,6 +161,29 @@ public class UserService : IUserService
         }
 
         _patchUpdateService.ApplyPatch(user, patchUserDto);
+    }
+
+    public async Task UpdateUserAvatarAsync(
+        Ulid userId,
+        JsonPatchDocument<UpdateUserAvatarDTO> patchAvatarDto
+    )
+    {
+        var userAvatar = await _userAvatarRepository.GetUserAvatarByUserIdAsync(userId);
+
+        if (userAvatar is null)
+        {
+            userAvatar = new UserAvatarModel { UserId = userId };
+            _userAvatarRepository.Add(userAvatar);
+        }
+
+        var avatarType = patchAvatarDto.GetValue(u => u.AvatarType);
+
+        if (avatarType == UserAvatarType.Telegram)
+        {
+            // TODO: validate telegram hash
+        }
+
+        _patchUpdateService.ApplyPatch(userAvatar, patchAvatarDto);
     }
 
     public async Task UpdateUserEmailAsync(Ulid id, string newEmail)

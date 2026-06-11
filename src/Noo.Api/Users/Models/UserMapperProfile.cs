@@ -71,5 +71,17 @@ public class UserMapperProfile : Profile
 
         // mentor assignment
         CreateMap<MentorAssignmentModel, MentorAssignmentDTO>();
+
+        // user avatar
+        CreateMap<UserAvatarModel, UserAvatarDTO>();
+        CreateMap<UserAvatarModel, UpdateUserAvatarDTO>()
+            .ForMember(dest => dest.TelegramHash, opt => opt.Ignore());
+        CreateMap<UpdateUserAvatarDTO, UserAvatarModel>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.User, opt => opt.Ignore())
+            .ForMember(dest => dest.Media, opt => opt.Ignore())
+            .ForMember(dest => dest.UserId, opt => opt.Ignore());
     }
 }

@@ -95,6 +95,30 @@ public class UserController : ApiController
     }
 
     /// <summary>
+    /// Updates a user's avatar by their unique identifier.
+    /// </summary>
+    [HttpPatch("{userId}/avatar")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = UserPolicies.CanPatchUser)]
+    [Produces(
+        null,
+        StatusCodes.Status204NoContent,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> UpdateUserAvatarAsync(
+        [FromRoute] Ulid userId,
+        [FromBody] JsonPatchDocument<UpdateUserAvatarDTO> updateUserAvatarDto
+    )
+    {
+        await _userService.UpdateUserAvatarAsync(userId, updateUserAvatarDto);
+
+        return SendResponse();
+    }
+
+    /// <summary>
     /// Changes the role of a user by their unique identifier.
     /// Only possible to change role if the user is a student, otherwise it will throw a conflict error.
     /// </summary>
