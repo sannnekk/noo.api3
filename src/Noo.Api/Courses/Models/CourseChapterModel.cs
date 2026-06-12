@@ -24,6 +24,9 @@ public class CourseChapterModel : OrderedModel
     [Required]
     public bool IsActive { get; set; }
 
+    [Column("publish_at", TypeName = DbDataTypes.DateTimeWithoutTZ)]
+    public DateTime? PublishAt { get; set; }
+
     [Column("course_id", TypeName = DbDataTypes.Ulid)]
     [Required]
     [ForeignKey(nameof(Course))]

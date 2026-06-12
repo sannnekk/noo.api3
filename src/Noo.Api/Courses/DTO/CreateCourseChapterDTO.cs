@@ -23,6 +23,9 @@ public record CreateCourseChapterDTO
     [Required]
     public bool IsActive { get; init; }
 
+    [JsonPropertyName("publishAt")]
+    public DateTime? PublishAt { get; init; }
+
     [JsonPropertyName("subChapters")]
     public IEnumerable<CreateCourseChapterDTO> SubChapters { get; init; } = [];
 

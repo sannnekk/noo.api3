@@ -23,6 +23,9 @@ public record UpdateCourseChapterDTO
     [JsonPropertyName("isActive")]
     public bool? IsActive { get; init; }
 
+    [JsonPropertyName("publishAt")]
+    public DateTime? PublishAt { get; init; }
+
     [JsonPropertyName("parentChapterId")]
     public Ulid? ParentChapterId { get; init; }
 
