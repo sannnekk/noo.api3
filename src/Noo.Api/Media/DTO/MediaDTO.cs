@@ -4,11 +4,16 @@ using Noo.Api.Media.Types;
 
 namespace Noo.Api.Media.DTO;
 
-public record MediaDTO
+public record MediaDTO : IHasPresignedMedia
 {
     [Required]
     [JsonPropertyName("_entityName")]
     public string EntityName => "Media";
+
+    public IEnumerable<MediaDTO?> GetMediaForPresigning()
+    {
+        return [this];
+    }
 
     [Required]
     [JsonPropertyName("id")]

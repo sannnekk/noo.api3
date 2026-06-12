@@ -9,7 +9,6 @@ using Noo.Api.Courses.Filters;
 using Noo.Api.Courses.Models;
 using Noo.Api.Courses.QuerySpecifications;
 using Noo.Api.Media.Models;
-using Noo.Api.Media.Services;
 using Noo.Api.NooTube.Models;
 using SystemTextJsonPatch;
 
@@ -23,7 +22,6 @@ public class CourseService : ICourseService
     private readonly ICurrentUser _currentUser;
     private readonly IMapper _mapper;
     private readonly IJsonPatchUpdateService _jsonPatchUpdateService;
-    private readonly IMediaUrlEnricher _mediaUrlEnricher;
     private readonly IEntityReferenceFactory _entityReferences;
 
     public CourseService(
@@ -32,7 +30,6 @@ public class CourseService : ICourseService
         ICurrentUser currentUser,
         IMapper mapper,
         IJsonPatchUpdateService jsonPatchUpdateService,
-        IMediaUrlEnricher mediaUrlEnricher,
         IEntityReferenceFactory entityReferences
     )
     {
@@ -41,7 +38,6 @@ public class CourseService : ICourseService
         _currentUser = currentUser;
         _mapper = mapper;
         _jsonPatchUpdateService = jsonPatchUpdateService;
-        _mediaUrlEnricher = mediaUrlEnricher;
         _entityReferences = entityReferences;
     }
 
@@ -70,7 +66,6 @@ public class CourseService : ICourseService
     {
         var course = await _courseRepository.GetWithChapterTreeAsync(id, includeInactive: true);
 
-        await _mediaUrlEnricher.EnrichAsync(course);
         return course;
     }
 
@@ -78,7 +73,6 @@ public class CourseService : ICourseService
     {
         var content = await _courseContentRepository.GetAsync(contentId);
 
-        await _mediaUrlEnricher.EnrichAsync(content);
         return content;
     }
 
@@ -89,7 +83,6 @@ public class CourseService : ICourseService
             [new CourseSpecification(_currentUser.UserRole, _currentUser.UserId)]
         );
 
-        await _mediaUrlEnricher.EnrichAsync(result.Items);
         return result;
     }
 

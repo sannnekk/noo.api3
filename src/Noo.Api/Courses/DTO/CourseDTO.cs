@@ -5,11 +5,16 @@ using Noo.Api.Subjects.DTO;
 
 namespace Noo.Api.Courses.DTO;
 
-public record CourseDTO
+public record CourseDTO : IHasPresignedMedia
 {
     [Required]
     [JsonPropertyName("_entityName")]
     public string EntityName => "Course";
+
+    public IEnumerable<MediaDTO?> GetMediaForPresigning()
+    {
+        return PresignedMedia.Collect(Thumbnail);
+    }
 
     [Required]
     [JsonPropertyName("id")]

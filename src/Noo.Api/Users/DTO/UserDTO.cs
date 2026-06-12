@@ -1,14 +1,20 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Media.DTO;
 
 namespace Noo.Api.Users.DTO;
 
-public record UserDTO
+public record UserDTO : IHasPresignedMedia
 {
     [Required]
     [JsonPropertyName("_entityName")]
     public string EntityName => "User";
+
+    public IEnumerable<MediaDTO?> GetMediaForPresigning()
+    {
+        return PresignedMedia.Collect(Avatar);
+    }
 
     [Required]
     [JsonPropertyName("id")]

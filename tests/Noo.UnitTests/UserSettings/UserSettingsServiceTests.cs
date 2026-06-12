@@ -1,7 +1,5 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using Moq;
-using Noo.Api.Media.Services;
 using Noo.Api.UserSettings.DTO;
 using Noo.Api.UserSettings.Models;
 using Noo.Api.UserSettings.Services;
@@ -23,11 +21,6 @@ public class UserSettingsServiceTests
         return config.CreateMapper();
     }
 
-    private static IMediaUrlEnricher CreateMediaUrlEnricher()
-    {
-        return new Mock<IMediaUrlEnricher>().Object;
-    }
-
     [Fact]
     public async Task GetUserSettings_Creates_When_Missing()
     {
@@ -36,7 +29,7 @@ public class UserSettingsServiceTests
         var mapper = CreateMapper();
         var userSettingsRepo = new UserSettingsRepository(uow.Context);
 
-        var service = new UserSettingsService(mapper, userSettingsRepo, CreateMediaUrlEnricher());
+        var service = new UserSettingsService(mapper, userSettingsRepo);
         var userId = Ulid.NewUlid();
 
         var settings = await service.GetUserSettingsAsync(userId);
@@ -55,7 +48,7 @@ public class UserSettingsServiceTests
         var uow = TestHelpers.CreateUowMock(context);
         var mapper = CreateMapper();
         var userSettingsRepo = new UserSettingsRepository(uow.Object.Context);
-        var service = new UserSettingsService(mapper, userSettingsRepo, CreateMediaUrlEnricher());
+        var service = new UserSettingsService(mapper, userSettingsRepo);
 
         var userId = Ulid.NewUlid();
 
@@ -85,7 +78,7 @@ public class UserSettingsServiceTests
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mapper = CreateMapper();
         var userSettingsRepo = new UserSettingsRepository(uow.Context);
-        var service = new UserSettingsService(mapper, userSettingsRepo, CreateMediaUrlEnricher());
+        var service = new UserSettingsService(mapper, userSettingsRepo);
 
         var userId = Ulid.NewUlid();
         var entity = new UserSettingsModel { Id = Ulid.NewUlid(), UserId = userId, Theme = UserTheme.Light, FontSize = "Small" };

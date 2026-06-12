@@ -7,7 +7,6 @@ using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
-using Noo.Api.Media.Services;
 using Noo.Api.Users.DTO;
 using Noo.Api.Users.Filters;
 using Noo.Api.Users.Models;
@@ -34,8 +33,6 @@ public class UserService : IUserService
 
     private readonly IEmailChangeService _emailChangeService;
 
-    private readonly IMediaUrlEnricher _mediaUrlEnricher;
-
     public UserService(
         IUserRepository userRepository,
         IUserAvatarRepository userAvatarRepository,
@@ -43,8 +40,7 @@ public class UserService : IUserService
         IMapper mapper,
         ICurrentUser currentUser,
         IHashService hashService,
-        IEmailChangeService emailChangeService,
-        IMediaUrlEnricher mediaUrlEnricher
+        IEmailChangeService emailChangeService
     )
     {
         _userRepository = userRepository;
@@ -54,7 +50,6 @@ public class UserService : IUserService
         _currentUser = currentUser;
         _hashService = hashService;
         _emailChangeService = emailChangeService;
-        _mediaUrlEnricher = mediaUrlEnricher;
     }
 
     public async Task BlockUserAsync(Ulid id)
@@ -114,8 +109,6 @@ public class UserService : IUserService
 
         user.ThrowNotFoundIfNull();
 
-        await _mediaUrlEnricher.EnrichAsync(user.Avatar);
-
         return user;
     }
 
@@ -127,10 +120,6 @@ public class UserService : IUserService
     public async Task<SearchResult<UserModel>> GetUsersAsync(UserFilter filter)
     {
         var result = await _userRepository.SearchAsync(filter, [new UserWithAvatarSpecification()]);
-
-        await _mediaUrlEnricher.EnrichAsync(
-            result.Items.Select(u => u.Avatar).Where(a => a != null).Select(a => a!)
-        );
 
         return result;
     }

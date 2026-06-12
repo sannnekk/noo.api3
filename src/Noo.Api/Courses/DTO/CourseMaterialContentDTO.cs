@@ -7,11 +7,16 @@ using Noo.Api.Polls.DTO;
 
 namespace Noo.Api.Courses.DTO;
 
-public record CourseMaterialContentDTO
+public record CourseMaterialContentDTO : IHasPresignedMedia
 {
     [Required]
     [JsonPropertyName("_entityName")]
     public string EntityName => "CourseMaterialContent";
+
+    public IEnumerable<MediaDTO?> GetMediaForPresigning()
+    {
+        return PresignedMedia.Collect(Medias, NooTubeVideos);
+    }
 
     [Required]
     [JsonPropertyName("id")]

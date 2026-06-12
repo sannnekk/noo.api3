@@ -5,14 +5,13 @@ using Noo.Api.Core.DataAbstraction;
 using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
 using Noo.Api.Media.Models;
-using Noo.Api.Media.Services;
 using Noo.Api.Users.Models;
 using Noo.Api.UserSettings.Types;
 
 namespace Noo.Api.UserSettings.Models;
 
 [Model("user_settings")]
-public class UserSettingsModel : BaseModel, IHasPresignedMedia
+public class UserSettingsModel : BaseModel
 {
     [Column("user_id", TypeName = DbDataTypes.Ulid)]
     [ForeignKey(nameof(User))]
@@ -40,9 +39,4 @@ public class UserSettingsModel : BaseModel, IHasPresignedMedia
     public MediaModel? BackgroundImage { get; set; }
 
     #endregion
-
-    public IEnumerable<MediaModel?> GetMediaForPresigning()
-    {
-        yield return BackgroundImage;
-    }
 }

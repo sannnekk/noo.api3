@@ -4,7 +4,7 @@ using Noo.Api.UserSettings.Types;
 
 namespace Noo.Api.UserSettings.DTO;
 
-public record UserSettingsDTO
+public record UserSettingsDTO : IHasPresignedMedia
 {
     [JsonPropertyName("theme")]
     public UserTheme? Theme { get; init; }
@@ -14,4 +14,9 @@ public record UserSettingsDTO
 
     [JsonPropertyName("backgroundImage")]
     public MediaDTO? BackgroundImage { get; init; }
+
+    public IEnumerable<MediaDTO?> GetMediaForPresigning()
+    {
+        return PresignedMedia.Collect(BackgroundImage);
+    }
 }

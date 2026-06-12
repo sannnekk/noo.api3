@@ -5,7 +5,6 @@ using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
-using Noo.Api.Media.Services;
 using Noo.Api.Users.DTO;
 using Noo.Api.Users.Filters;
 using Noo.Api.Users.Models;
@@ -70,8 +69,7 @@ public class UserServiceTests
         Mock<ICurrentUser>? currentUser = null,
         Mock<IHashService>? hashService = null,
         Mock<IEmailChangeService>? emailChangeService = null,
-        Mock<IUserAvatarRepository>? userAvatarRepository = null,
-        Mock<IMediaUrlEnricher>? mediaUrlEnricher = null
+        Mock<IUserAvatarRepository>? userAvatarRepository = null
     )
     {
         return new UserService(
@@ -81,8 +79,7 @@ public class UserServiceTests
             mapper,
             (currentUser ?? new Mock<ICurrentUser>()).Object,
             (hashService ?? new Mock<IHashService>()).Object,
-            (emailChangeService ?? new Mock<IEmailChangeService>()).Object,
-            (mediaUrlEnricher ?? new Mock<IMediaUrlEnricher>()).Object
+            (emailChangeService ?? new Mock<IEmailChangeService>()).Object
         );
     }
 

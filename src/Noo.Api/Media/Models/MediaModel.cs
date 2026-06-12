@@ -71,13 +71,6 @@ public class MediaModel : OrderedModel
     [Column("owner_id", TypeName = DbDataTypes.Ulid)]
     public Ulid OwnerId { get; set; }
 
-    /// <summary>
-    /// Presigned download URL. Not persisted; populated by <c>IMediaUrlEnricher</c>
-    /// before the model is mapped to a DTO.
-    /// </summary>
-    [NotMapped]
-    public string Url { get; set; } = string.Empty;
-
     #region Navigation Properties
 
     public ICollection<CourseModel> Courses { get; set; } = [];

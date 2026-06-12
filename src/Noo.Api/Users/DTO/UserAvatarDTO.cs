@@ -5,11 +5,16 @@ using Noo.Api.Users.Types;
 
 namespace Noo.Api.Users.DTO;
 
-public record UserAvatarDTO
+public record UserAvatarDTO : IHasPresignedMedia
 {
     [Required]
     [JsonPropertyName("_entityName")]
     public string EntityName => "user_avatar";
+
+    public IEnumerable<MediaDTO?> GetMediaForPresigning()
+    {
+        return PresignedMedia.Collect(Media);
+    }
 
     [Required]
     [JsonPropertyName("id")]

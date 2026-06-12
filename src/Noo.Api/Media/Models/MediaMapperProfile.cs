@@ -9,7 +9,8 @@ public class MediaMapperProfile : Profile
 {
     public MediaMapperProfile()
     {
-        CreateMap<MediaModel, MediaDTO>();
+        CreateMap<MediaModel, MediaDTO>()
+            .ForMember(dest => dest.Url, opt => opt.Ignore());
 
         CreateMap<MediaDTO, MediaModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())

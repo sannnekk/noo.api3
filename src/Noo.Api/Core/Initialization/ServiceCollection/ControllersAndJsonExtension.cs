@@ -4,6 +4,7 @@ using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
 using Noo.Api.Core.Utils.Json;
+using Noo.Api.Media.Filters;
 
 namespace Noo.Api.Core.Initialization.ServiceCollection;
 
@@ -12,7 +13,11 @@ public static class ControllersAndJsonExtension
     public static void AddNooControllersAndConfigureJson(this IServiceCollection services)
     {
         services
-            .AddControllers(options => options.Filters.Add<UnitOfWorkFilter>())
+            .AddControllers(options =>
+            {
+                options.Filters.Add<UnitOfWorkFilter>();
+                options.Filters.Add<MediaPresigningResultFilter>();
+            })
             .AddMvcOptions(options =>
             {
                 options.ModelBinderProviders.Insert(

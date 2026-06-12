@@ -14,6 +14,7 @@ using Noo.Api.Core.DataAbstraction.Cache;
 using Microsoft.Extensions.Options;
 using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.System.Email;
+using Noo.Api.Core.Storage;
 
 namespace Noo.IntegrationTests;
 
@@ -71,6 +72,10 @@ public class ApiFactory : WebApplicationFactory<Program>
             // Replace real email client with a no-op fake to avoid external SMTP dependency
             services.RemoveAll<IEmailClient>();
             services.AddSingleton<IEmailClient, FakeEmailClient>();
+
+            // Replace S3 with a deterministic fake so the presigning filter never touches AWS
+            services.RemoveAll<IS3Storage>();
+            services.AddSingleton<IS3Storage, FakeS3Storage>();
             // 0) Remove any mysql registrations
             services.RemoveAll<NooDbContext>();
             services.RemoveAll<DbContextOptions<NooDbContext>>();
@@ -155,4 +160,24 @@ internal sealed class FakeEmailClient : IEmailClient
     public void Dispose()
     {
     }
+}
+
+internal sealed class FakeS3Storage : IS3Storage
+{
+    public const string DownloadUrlPrefix = "https://signed.test/";
+
+    public Task<string> CreatePresignedDownloadAsync(string key, TimeSpan? expiration = null, CancellationToken cancellationToken = default)
+        => Task.FromResult($"{DownloadUrlPrefix}{key}");
+
+    public Task<S3PresignedUpload> CreatePresignedUploadAsync(string key, string contentType, IReadOnlyDictionary<string, string>? tags = null, TimeSpan? expiration = null, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
+    public Task DeleteAsync(string key, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
+        => Task.FromResult(true);
+
+    public Task<S3ObjectMetadata?> GetMetadataAsync(string key, CancellationToken cancellationToken = default)
+        => Task.FromResult<S3ObjectMetadata?>(null);
 }

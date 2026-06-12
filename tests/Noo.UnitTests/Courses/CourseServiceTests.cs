@@ -7,8 +7,6 @@ using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Filters;
 using Noo.Api.Courses.Models;
 using Noo.Api.Courses.Services;
-using Noo.Api.Media.Models;
-using Noo.Api.Media.Services;
 using Noo.Api.Subjects.Models;
 using Noo.UnitTests.Common;
 using SystemTextJsonPatch;
@@ -17,14 +15,6 @@ namespace Noo.UnitTests.Courses;
 
 public class CourseServiceTests
 {
-    private sealed class NoOpMediaUrlEnricher : IMediaUrlEnricher
-    {
-        public Task EnrichAsync(MediaModel? media, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task EnrichAsync(IEnumerable<MediaModel?>? media, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task EnrichAsync<T>(T? entity, CancellationToken cancellationToken = default) where T : class, IHasPresignedMedia => Task.CompletedTask;
-        public Task EnrichAsync<T>(IEnumerable<T>? entities, CancellationToken cancellationToken = default) where T : class, IHasPresignedMedia => Task.CompletedTask;
-    }
-
     private static IMapper CreateMapper() => MapperTestUtils.CreateAppMapper();
 
     private static ICurrentUser MakeUser(UserRoles role)
@@ -74,7 +64,6 @@ public class CourseServiceTests
                 currentUser,
                 mapper,
                 jsonPatch,
-                new NoOpMediaUrlEnricher(),
                 new EntityReferenceFactory(ctx)
             );
 
@@ -96,7 +85,6 @@ public class CourseServiceTests
                 MakeUser(UserRoles.Admin),
                 mapper,
                 jsonPatch,
-                new NoOpMediaUrlEnricher(),
                 new EntityReferenceFactory(verifyCtx)
             );
 
@@ -132,7 +120,6 @@ public class CourseServiceTests
             MakeUser(UserRoles.Admin),
             mapper,
             jsonPatch,
-            new NoOpMediaUrlEnricher(),
             new EntityReferenceFactory(ctx)
         );
         var adminSearch = await adminService.SearchAsync(
@@ -148,7 +135,6 @@ public class CourseServiceTests
             student,
             mapper,
             jsonPatch,
-            new NoOpMediaUrlEnricher(),
             new EntityReferenceFactory(ctx)
         );
         var studentSearch = await studentService.SearchAsync(
@@ -174,7 +160,6 @@ public class CourseServiceTests
             currentUser,
             mapper,
             jsonPatch,
-            new NoOpMediaUrlEnricher(),
             new EntityReferenceFactory(ctx)
         );
 
@@ -207,7 +192,6 @@ public class CourseServiceTests
             currentUser,
             mapper,
             jsonPatch,
-            new NoOpMediaUrlEnricher(),
             new EntityReferenceFactory(ctx)
         );
 
@@ -247,7 +231,6 @@ public class CourseServiceTests
             currentUser,
             mapper,
             jsonPatch,
-            new NoOpMediaUrlEnricher(),
             new EntityReferenceFactory(ctx)
         );
 
@@ -304,7 +287,6 @@ public class CourseServiceTests
                 currentUser,
                 mapper,
                 jsonPatch,
-                new NoOpMediaUrlEnricher(),
                 new EntityReferenceFactory(ctx)
             );
 

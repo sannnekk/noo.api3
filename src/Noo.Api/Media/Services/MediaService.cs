@@ -119,10 +119,6 @@ public class MediaService : IMediaService
             media.Hash = etag.Trim('"');
         }
 
-        media.Url = await _s3.CreatePresignedDownloadAsync(
-            media.Path,
-            cancellationToken: cancellationToken
-        );
         return media;
     }
 

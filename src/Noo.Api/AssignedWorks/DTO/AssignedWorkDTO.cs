@@ -1,17 +1,23 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Noo.Api.AssignedWorks.Types;
+using Noo.Api.Media.DTO;
 using Noo.Api.Users.DTO;
 using Noo.Api.Works.DTO;
 using Noo.Api.Works.Types;
 
 namespace Noo.Api.AssignedWorks.DTO;
 
-public record AssignedWorkDTO
+public record AssignedWorkDTO : IHasPresignedMedia
 {
     [Required]
     [JsonPropertyName("_entityName")]
     public string EntityName => "AssignedWork";
+
+    public IEnumerable<MediaDTO?> GetMediaForPresigning()
+    {
+        return PresignedMedia.Collect(Student, MainMentor, HelperMentor);
+    }
 
     [Required]
     [JsonPropertyName("id")]

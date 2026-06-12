@@ -6,11 +6,16 @@ using Noo.Api.Users.DTO;
 
 namespace Noo.Api.NooTube.DTO;
 
-public record NooTubeVideoDTO
+public record NooTubeVideoDTO : IHasPresignedMedia
 {
     [Required]
     [JsonPropertyName("_entityName")]
     public string EntityName => "NooTubeVideo";
+
+    public IEnumerable<MediaDTO?> GetMediaForPresigning()
+    {
+        return PresignedMedia.Collect(Thumbnail, UploadedByUser);
+    }
 
     [Required]
     [JsonPropertyName("id")]

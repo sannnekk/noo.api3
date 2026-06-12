@@ -5,14 +5,13 @@ using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
 using Noo.Api.Core.Utils.Richtext;
 using Noo.Api.Media.Models;
-using Noo.Api.Media.Services;
 using Noo.Api.NooTube.Models;
 using Noo.Api.Polls.Models;
 
 namespace Noo.Api.Courses.Models;
 
 [Model("course_material_content")]
-public class CourseMaterialContentModel : BaseModel, IHasPresignedMedia
+public class CourseMaterialContentModel : BaseModel
 {
     [RichTextColumn("content")]
     public IRichTextType? Content { get; set; }
@@ -41,9 +40,4 @@ public class CourseMaterialContentModel : BaseModel, IHasPresignedMedia
     public ICollection<CourseMaterialReactionModel>? Reactions { get; set; }
 
     #endregion
-
-    public IEnumerable<MediaModel?> GetMediaForPresigning()
-    {
-        return Medias ?? [];
-    }
 }

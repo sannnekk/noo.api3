@@ -20,8 +20,7 @@ public interface IMediaService
 
     /// <summary>
     /// Confirms an upload finished and persists the final size + ETag.
-    /// Returns the media entity with <see cref="MediaModel.Url"/> populated with a
-    /// presigned GET URL for the freshly uploaded object. Owner-only (admins also).
+    /// Owner-only (admins also).
     /// </summary>
     public Task<MediaModel> CompleteUploadAsync(
         Ulid mediaId,
