@@ -36,6 +36,9 @@ public record WorkTaskDTO
     [JsonPropertyName("maxScore")]
     public int MaxScore { get; set; }
 
+    [JsonPropertyName("averageScore")]
+    public double? AverageScore { get; set; }
+
     [Required]
     [JsonPropertyName("content")]
     public IRichTextType Content { get; set; } = default!;

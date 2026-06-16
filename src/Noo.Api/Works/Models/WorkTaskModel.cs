@@ -39,6 +39,9 @@ public class WorkTaskModel : OrderedModel
     [Range(0, int.MaxValue)]
     public int MaxScore { get; set; }
 
+    [NotMapped]
+    public double? AverageScore { get; set; }
+
     [Column("show_answer_before_check", TypeName = DbDataTypes.Boolean)]
     public bool ShowAnswerBeforeCheck { get; set; }
 

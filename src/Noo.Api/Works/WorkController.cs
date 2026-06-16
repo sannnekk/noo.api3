@@ -8,6 +8,7 @@ using Noo.Api.Works.DTO;
 using Noo.Api.Works.Filters;
 using Noo.Api.Works.Models;
 using Noo.Api.Works.Services;
+using Noo.Api.Works.Types;
 using SystemTextJsonPatch;
 using ProducesAttribute = Noo.Api.Core.Documentation.ProducesAttribute;
 
@@ -66,6 +67,27 @@ public class WorkController : ApiController
         var work = await _workService.GetWorkAsync(id);
 
         return SendResponse<WorkModel, WorkDTO>(work);
+    }
+
+    /// <summary>
+    /// Retrieves statistics of a particular work by its id
+    /// </summary>
+    [HttpGet("{id}/statistics")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = WorkPolicies.CanGetWorkStatistics)]
+    [Produces(
+        typeof(ApiResponseDTO<WorkStatisticsDTO>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> GetWorkStatisticsAsync([FromRoute] Ulid id)
+    {
+        var statistics = await _workService.GetWorkStatisticsAsync(id);
+
+        return SendResponse<WorkStatistics, WorkStatisticsDTO>(statistics);
     }
 
     /// <summary>

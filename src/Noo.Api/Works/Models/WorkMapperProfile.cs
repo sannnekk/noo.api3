@@ -1,6 +1,7 @@
 using AutoMapper;
 using Noo.Api.Core.Utils.AutoMapper;
 using Noo.Api.Works.DTO;
+using Noo.Api.Works.Types;
 
 namespace Noo.Api.Works.Models;
 
@@ -16,6 +17,7 @@ public class WorkMapperProfile : Profile
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.AverageScore, opt => opt.Ignore())
             .ForMember(dest => dest.WorkId, opt => opt.Ignore())
             .ForMember(dest => dest.Work, opt => opt.Ignore());
 
@@ -25,8 +27,16 @@ public class WorkMapperProfile : Profile
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.AverageScore, opt => opt.Ignore())
             .ForMember(dest => dest.WorkId, opt => opt.Ignore())
             .ForMember(dest => dest.Work, opt => opt.Ignore());
+
+        // work statistics
+        CreateMap<ScoreSummary, ScoreSummaryDTO>();
+
+        CreateMap<TaskSummary, TaskSummaryDTO>();
+
+        CreateMap<WorkStatistics, WorkStatisticsDTO>();
 
         // work
         CreateMap<WorkModel, UpdateWorkDTO>()

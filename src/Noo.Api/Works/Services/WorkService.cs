@@ -1,11 +1,14 @@
 using AutoMapper;
+using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Request.Patching;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Works.DTO;
 using Noo.Api.Works.Filters;
 using Noo.Api.Works.Models;
+using Noo.Api.Works.Types;
 using SystemTextJsonPatch;
 
 namespace Noo.Api.Works.Services;
@@ -13,21 +16,27 @@ namespace Noo.Api.Works.Services;
 [RegisterScoped(typeof(IWorkService))]
 public class WorkService : IWorkService
 {
+    private static readonly TimeSpan _statisticsCacheTtl = TimeSpan.FromMinutes(15);
+
     private readonly IWorkRepository _workRepository;
 
     private readonly IMapper _mapper;
 
     private readonly IJsonPatchUpdateService _patchUpdateService;
 
+    private readonly ICacheRepository _cache;
+
     public WorkService(
         IWorkRepository workRepository,
         IMapper mapper,
-        IJsonPatchUpdateService patchUpdateService
+        IJsonPatchUpdateService patchUpdateService,
+        ICacheRepository cache
     )
     {
         _workRepository = workRepository;
         _mapper = mapper;
         _patchUpdateService = patchUpdateService;
+        _cache = cache;
     }
 
     public Ulid CreateWork(CreateWorkDTO work)
@@ -64,5 +73,53 @@ public class WorkService : IWorkService
     public void DeleteWork(Ulid id)
     {
         _workRepository.DeleteById(id);
+    }
+
+    public async Task<WorkStatistics?> GetWorkStatisticsAsync(Ulid id)
+    {
+        var work = await _workRepository.GetWithTasksAsync(id);
+
+        if (work is null)
+        {
+            return null;
+        }
+
+        var statistics = await _cache.GetOrSetAsync(
+            StatisticsCacheKey(id),
+            () => BuildStatisticsAsync(id, work.MaxScore),
+            _statisticsCacheTtl
+        );
+
+        statistics!.Work = work;
+
+        return statistics;
+    }
+
+    private async Task<WorkStatistics> BuildStatisticsAsync(Ulid id, int maxScore)
+    {
+        var scores = await _workRepository.GetScoresAsync(id);
+        var taskSummaries = await _workRepository.GetTaskSummariesAsync(id);
+        var solveCount = await _workRepository.CountSolvedAsync(id);
+
+        return new WorkStatistics
+        {
+            TaskSummaries = taskSummaries,
+            AverageWorkScore = new()
+            {
+                Absolute = scores.AverageOrNull(),
+                Percentage = scores.AveragePercentageOrNull(maxScore),
+            },
+            MedianWorkScore = new()
+            {
+                Absolute = scores.MedianOrNull(),
+                Percentage = scores.MedianPercentageOrNull(maxScore),
+            },
+            WorkSolveCount = solveCount,
+        };
+    }
+
+    private static string StatisticsCacheKey(Ulid id)
+    {
+        return $"work:statistics:{id}";
     }
 }
