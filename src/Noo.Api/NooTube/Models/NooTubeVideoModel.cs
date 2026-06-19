@@ -52,18 +52,26 @@ public class NooTubeVideoModel : BaseModel
     [Range(0, 16_777_215)]
     public int? Duration { get; set; }
 
+    [Required]
+    [Column("is_active", TypeName = DbDataTypes.Boolean)]
+    public bool IsActive { get; set; } = false;
+
+    [Required]
+    [Column("is_listed", TypeName = DbDataTypes.Boolean)]
+    public bool IsListed { get; set; } = false;
+
     [Column("published_at", TypeName = DbDataTypes.DateTimeWithoutTZ)]
     public DateTime? PublishedAt { get; set; }
 
-    [Column("uploaded_by_user_id", TypeName = DbDataTypes.Ulid)]
-    [ForeignKey(nameof(UploadedByUser))]
-    public Ulid? UploadedByUserId { get; set; }
+    [Column("uploaded_by_id", TypeName = DbDataTypes.Ulid)]
+    [ForeignKey(nameof(UploadedBy))]
+    public Ulid? UploadedById { get; set; }
 
     #region Navigation Properties
 
     [InverseProperty(nameof(UserModel.UploadedVideos))]
     [DeleteBehavior(DeleteBehavior.SetNull)]
-    public UserModel UploadedByUser { get; set; } = default!;
+    public UserModel UploadedBy { get; set; } = default!;
 
     [InverseProperty(nameof(MediaModel.NooTubeVideoThumbnail))]
     [DeleteBehavior(DeleteBehavior.SetNull)]

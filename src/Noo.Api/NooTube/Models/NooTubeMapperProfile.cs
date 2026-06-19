@@ -10,17 +10,42 @@ public class NooTubeMapperProfile : Profile
     public NooTubeMapperProfile()
     {
         // NooTubeVideo
-        CreateMap<NooTubeVideoModel, NooTubeVideoDTO>()
-            // TODO: add mapping
-            .ForMember(dest => dest.Comments, opt => opt.Ignore());
+        CreateMap<NooTubeVideoModel, NooTubeVideoDTO>();
 
-        CreateMap<NooTubeVideoDTO, NooTubeVideoModel>()
+        CreateMap<NooTubeVideoModel, UpdateNooTubeVideoDTO>();
+
+        CreateMap<UpdateNooTubeVideoDTO, NooTubeVideoModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-            .ForMember(dest => dest.UploadedByUser, opt => opt.Ignore())
+            .ForMember(dest => dest.UploadedById, opt => opt.Ignore())
+            .ForMember(dest => dest.UploadedBy, opt => opt.Ignore())
+            .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
             .ForMember(dest => dest.Reactions, opt => opt.Ignore())
             .ForMember(dest => dest.Comments, opt => opt.Ignore())
             .ForMember(dest => dest.CourseMaterialContents, opt => opt.Ignore());
+
+        // NooTubeVideoComment
+        CreateMap<NooTubeVideoCommentModel, NooTubeVideoCommentDTO>();
+
+        CreateMap<CreateNooTubeVideoCommentDTO, NooTubeVideoCommentModel>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.VideoId, opt => opt.Ignore())
+            .ForMember(dest => dest.Video, opt => opt.Ignore())
+            .ForMember(dest => dest.UserId, opt => opt.Ignore())
+            .ForMember(dest => dest.User, opt => opt.Ignore());
+
+        CreateMap<NooTubeVideoCommentModel, UpdateNooTubeVideoCommentDTO>();
+
+        CreateMap<UpdateNooTubeVideoCommentDTO, NooTubeVideoCommentModel>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.VideoId, opt => opt.Ignore())
+            .ForMember(dest => dest.Video, opt => opt.Ignore())
+            .ForMember(dest => dest.UserId, opt => opt.Ignore())
+            .ForMember(dest => dest.User, opt => opt.Ignore());
     }
 }

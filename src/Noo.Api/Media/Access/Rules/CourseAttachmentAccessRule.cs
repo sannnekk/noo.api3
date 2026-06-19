@@ -6,9 +6,8 @@ using Noo.Api.Media.Types;
 namespace Noo.Api.Media.Access.Rules;
 
 /// <summary>
-/// Example rule. Restricts <see cref="MediaCategory.CourseAttachment"/> downloads
+/// Restricts <see cref="MediaCategory.CourseAttachment"/> downloads
 /// to course members; staff roles bypass the membership check.
-/// Use this as a template for your own category-specific rules.
 /// </summary>
 [RegisterScoped(typeof(IMediaAccessRule))]
 public class CourseAttachmentAccessRule : IMediaAccessRule
@@ -28,14 +27,13 @@ public class CourseAttachmentAccessRule : IMediaAccessRule
         _memberships = memberships;
     }
 
-    public IReadOnlySet<MediaCategory> Categories { get; } = new HashSet<MediaCategory>
-    {
-        MediaCategory.CourseAttachment,
-    };
+    public IReadOnlySet<MediaCategory> Categories { get; } =
+        new HashSet<MediaCategory> { MediaCategory.CourseAttachment };
 
     public async Task<MediaAccessDecision> EvaluateAsync(
         MediaAccessContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (context.User.UserRole is { } role && _staffRoles.Contains(role))
         {

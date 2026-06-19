@@ -12,11 +12,6 @@ public record NooTubeVideoDTO : IHasPresignedMedia
     [JsonPropertyName("_entityName")]
     public string EntityName => "NooTubeVideo";
 
-    public IEnumerable<MediaDTO?> GetMediaForPresigning()
-    {
-        return PresignedMedia.Collect(Thumbnail, UploadedByUser);
-    }
-
     [Required]
     [JsonPropertyName("id")]
     public Ulid Id { get; init; }
@@ -52,22 +47,31 @@ public record NooTubeVideoDTO : IHasPresignedMedia
     public int? Duration { get; set; }
 
     [Required]
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; }
+
+    [Required]
+    [JsonPropertyName("isListed")]
+    public bool IsListed { get; set; }
+
+    [Required]
     [JsonPropertyName("publishedAt")]
     public DateTime? PublishedAt { get; set; }
 
     [Required]
-    [JsonPropertyName("uploadedByUserId")]
-    public Ulid UploadedByUserId { get; set; }
+    [JsonPropertyName("uploadedById")]
+    public Ulid UploadedById { get; set; }
 
-    [JsonPropertyName("uploadedByUser")]
+    [JsonPropertyName("uploadedBy")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public UserDTO? UploadedByUser { get; set; }
+    public UserDTO? UploadedBy { get; set; }
 
     [JsonPropertyName("thumbnail")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MediaDTO? Thumbnail { get; set; }
 
-    [JsonPropertyName("comments")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public IEnumerable<NooTubeVideoCommentDTO>? Comments { get; set; }
+    public IEnumerable<MediaDTO?> GetMediaForPresigning()
+    {
+        return PresignedMedia.Collect(Thumbnail, UploadedBy);
+    }
 }

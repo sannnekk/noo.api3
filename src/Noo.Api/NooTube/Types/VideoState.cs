@@ -4,6 +4,7 @@ public enum VideoState
 {
     NotUploaded,
     Uploading,
+    Encoding,
     Uploaded,
     Published
 }
