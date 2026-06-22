@@ -31,5 +31,6 @@ public class VideoSpecification : Specification<NooTubeVideoModel>
         }
 
         Query.Include(v => v.UploadedBy);
+        Query.Include(v => v.Thumbnail);
     }
 }

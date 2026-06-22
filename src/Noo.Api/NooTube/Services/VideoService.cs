@@ -63,6 +63,7 @@ public class VideoService : IVideoService
         {
             Title = createDto.Title,
             Description = createDto.Description,
+            ThumbnailId = createDto.ThumbnailId,
             ServiceType = createDto.ServiceType,
             State = VideoState.Uploading,
             ExternalIdentifier = ticket.ExternalId,

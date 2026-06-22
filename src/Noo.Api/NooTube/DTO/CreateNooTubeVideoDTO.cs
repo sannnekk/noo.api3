@@ -19,6 +19,9 @@ public record CreateNooTubeVideoDTO
     [MaxLength(512)]
     public string? Description { get; set; }
 
+    [JsonPropertyName("thumbnailId")]
+    public Ulid? ThumbnailId { get; set; }
+
     [JsonPropertyName("fileSize")]
     [Required]
     [Range(1, long.MaxValue)]
