@@ -25,6 +25,8 @@ public interface IVideoService
 
     public Task UpdateAsync(Ulid videoId, JsonPatchDocument<UpdateNooTubeVideoDTO> patch);
 
+    public Task ToggleFavouriteAsync(Ulid videoId);
+
     public Task DeleteAsync(Ulid videoId);
 
     public Task ToggleReactionAsync(Ulid videoId, VideoReaction reaction);

@@ -55,6 +55,10 @@ public record NooTubeVideoDTO : IHasPresignedMedia
     public bool IsListed { get; set; }
 
     [Required]
+    [JsonPropertyName("isFavourite")]
+    public bool IsFavourite { get; set; }
+
+    [Required]
     [JsonPropertyName("publishedAt")]
     public DateTime? PublishedAt { get; set; }
 
@@ -69,6 +73,13 @@ public record NooTubeVideoDTO : IHasPresignedMedia
     [JsonPropertyName("thumbnail")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MediaDTO? Thumbnail { get; set; }
+
+    [JsonPropertyName("createdAt")]
+    [Required]
+    public DateTime CreatedAt { get; set; }
+
+    [JsonPropertyName("updatedAt")]
+    public DateTime? UpdatedAt { get; set; }
 
     public IEnumerable<MediaDTO?> GetMediaForPresigning()
     {

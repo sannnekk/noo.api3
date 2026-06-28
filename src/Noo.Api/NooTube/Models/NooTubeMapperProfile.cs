@@ -10,7 +10,11 @@ public class NooTubeMapperProfile : Profile
     public NooTubeMapperProfile()
     {
         // NooTubeVideo
-        CreateMap<NooTubeVideoModel, NooTubeVideoDTO>();
+        CreateMap<NooTubeVideoModel, NooTubeVideoDTO>()
+            .ForMember(
+                dest => dest.IsFavourite,
+                opt => opt.MapFrom<NooTubeVideoIsFavouriteValueResolver>()
+            );
 
         CreateMap<NooTubeVideoModel, UpdateNooTubeVideoDTO>();
 
@@ -22,6 +26,7 @@ public class NooTubeMapperProfile : Profile
             .ForMember(dest => dest.UploadedBy, opt => opt.Ignore())
             .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
             .ForMember(dest => dest.Reactions, opt => opt.Ignore())
+            .ForMember(dest => dest.Favourites, opt => opt.Ignore())
             .ForMember(dest => dest.Comments, opt => opt.Ignore())
             .ForMember(dest => dest.CourseMaterialContents, opt => opt.Ignore());
 

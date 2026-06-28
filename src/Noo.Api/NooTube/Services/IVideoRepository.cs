@@ -11,5 +11,5 @@ public interface IVideoRepository : IRepository<NooTubeVideoModel>
         string externalId
     );
 
-    public Task<NooTubeVideoModel?> GetVideoAsync(Ulid videoId);
+    public Task<NooTubeVideoModel?> GetVideoAsync(Ulid videoId, Ulid? currentUserId);
 }

@@ -142,6 +142,27 @@ public class NootubeController : ApiController
     }
 
     /// <summary>
+    /// Toggles whether a video is in the current user's favourites.
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpPatch("{videoId:ulid}/favourite")]
+    [Authorize(Policy = NooTubePolicies.CanGetNooTubeVideos)]
+    [Produces(
+        null,
+        StatusCodes.Status204NoContent,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> ToggleFavouriteAsync([FromRoute] Ulid videoId)
+    {
+        await _videoService.ToggleFavouriteAsync(videoId);
+
+        return SendResponse();
+    }
+
+    /// <summary>
     /// Updates a video.
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]

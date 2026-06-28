@@ -81,6 +81,8 @@ public class NooTubeVideoModel : BaseModel
 
     public ICollection<NooTubeVideoReactionModel> Reactions { get; set; } = [];
 
+    public ICollection<NooTubeVideoFavouriteModel> Favourites { get; set; } = [];
+
     public ICollection<CourseMaterialContentModel> CourseMaterialContents { get; set; } = [];
 
     #endregion

@@ -27,10 +27,11 @@ public class VideoSpecification : Specification<NooTubeVideoModel>
 
         if (type == VideoFilterType.Favourite)
         {
-            // TODO: only favourite ones
+            Query.Where(video => video.Favourites.Any(favourite => favourite.UserId == userId));
         }
 
         Query.Include(v => v.UploadedBy);
         Query.Include(v => v.Thumbnail);
+        Query.Include(v => v.Favourites.Where(favourite => favourite.UserId == userId));
     }
 }

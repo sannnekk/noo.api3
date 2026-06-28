@@ -24,11 +24,12 @@ public class VideoRepository : Repository<NooTubeVideoModel>, IVideoRepository
             );
     }
 
-    public Task<NooTubeVideoModel?> GetVideoAsync(Ulid videoId)
+    public Task<NooTubeVideoModel?> GetVideoAsync(Ulid videoId, Ulid? currentUserId)
     {
         return Context
             .GetDbSet<NooTubeVideoModel>()
             .Include(v => v.UploadedBy)
+            .Include(v => v.Favourites.Where(f => f.UserId == currentUserId))
             .FirstOrDefaultAsync(v => v.Id == videoId);
     }
 }

@@ -109,6 +109,8 @@ public class UserModel : BaseModel
 
     public ICollection<NooTubeVideoReactionModel> NooTubeVideoReactions { get; set; } = [];
 
+    public ICollection<NooTubeVideoFavouriteModel> NooTubeVideoFavourites { get; set; } = [];
+
     public ICollection<AssignedWorkHistoryModel> AssignedWorkHistoryChanges { get; set; } = [];
 
     // Mentor / Student assignments

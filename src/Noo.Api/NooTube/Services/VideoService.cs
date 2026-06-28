@@ -22,6 +22,8 @@ public class VideoService : IVideoService
 
     private readonly IVideoReactionRepository _videoReactionRepository;
 
+    private readonly IVideoFavouriteRepository _videoFavouriteRepository;
+
     private readonly IJsonPatchUpdateService _updateService;
 
     private readonly IVideoEngineResolver _engineResolver;
@@ -31,6 +33,7 @@ public class VideoService : IVideoService
     public VideoService(
         IVideoRepository videoRepository,
         IVideoReactionRepository videoReactionRepository,
+        IVideoFavouriteRepository videoFavouriteRepository,
         IJsonPatchUpdateService updateService,
         IVideoEngineResolver engineResolver,
         ICurrentUser currentUser
@@ -38,6 +41,7 @@ public class VideoService : IVideoService
     {
         _videoRepository = videoRepository;
         _videoReactionRepository = videoReactionRepository;
+        _videoFavouriteRepository = videoFavouriteRepository;
         _updateService = updateService;
         _engineResolver = engineResolver;
         _currentUser = currentUser;
@@ -151,6 +155,28 @@ public class VideoService : IVideoService
         }
     }
 
+    public async Task ToggleFavouriteAsync(Ulid videoId)
+    {
+        var userId = _currentUser.RequireUserId();
+
+        if (!await _videoRepository.ExistsAsync(videoId))
+        {
+            throw new NotFoundException();
+        }
+
+        var favourite = await _videoFavouriteRepository.GetAsync(videoId, userId);
+
+        if (favourite is not null)
+        {
+            _videoFavouriteRepository.Delete(videoId, userId);
+            return;
+        }
+
+        _videoFavouriteRepository.Add(
+            new NooTubeVideoFavouriteModel { VideoId = videoId, UserId = userId }
+        );
+    }
+
     public async Task DeleteAsync(Ulid videoId)
     {
         var model = await _videoRepository.GetByIdAsync(videoId);
@@ -190,7 +216,7 @@ public class VideoService : IVideoService
 
     public async Task<NooTubeVideoModel?> GetByIdAsync(Ulid videoId)
     {
-        var model = await _videoRepository.GetVideoAsync(videoId);
+        var model = await _videoRepository.GetVideoAsync(videoId, _currentUser.UserId);
 
         if (model is null)
         {
