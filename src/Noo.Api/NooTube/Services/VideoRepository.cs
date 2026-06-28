@@ -17,9 +17,18 @@ public class VideoRepository : Repository<NooTubeVideoModel>, IVideoRepository
         string externalId
     )
     {
-        return Context.GetDbSet<NooTubeVideoModel>()
+        return Context
+            .GetDbSet<NooTubeVideoModel>()
             .FirstOrDefaultAsync(v =>
                 v.ServiceType == serviceType && v.ExternalIdentifier == externalId
             );
+    }
+
+    public Task<NooTubeVideoModel?> GetVideoAsync(Ulid videoId)
+    {
+        return Context
+            .GetDbSet<NooTubeVideoModel>()
+            .Include(v => v.UploadedBy)
+            .FirstOrDefaultAsync(v => v.Id == videoId);
     }
 }

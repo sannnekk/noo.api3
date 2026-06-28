@@ -10,4 +10,6 @@ public interface IVideoRepository : IRepository<NooTubeVideoModel>
         NooTubeServiceType serviceType,
         string externalId
     );
+
+    public Task<NooTubeVideoModel?> GetVideoAsync(Ulid videoId);
 }

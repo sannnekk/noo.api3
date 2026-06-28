@@ -17,9 +17,9 @@ public class Repository<T> : IRepository<T>
 {
     public NooDbContext Context { get; init; }
 
-    public Repository(NooDbContext? context = null)
+    public Repository(NooDbContext context)
     {
-        Context = context!;
+        Context = context;
     }
 
     public Task<T?> GetByIdAsync(Ulid id)

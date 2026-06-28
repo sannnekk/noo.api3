@@ -72,6 +72,7 @@ public class CommentService : ICommentService
 
         var userId = _currentUser.RequireUserId();
         commentModel.UserId = userId;
+        commentModel.VideoId = videoId;
 
         _commentRepository.Add(commentModel);
     }

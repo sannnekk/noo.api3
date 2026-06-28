@@ -174,7 +174,10 @@ public class VideoService : IVideoService
         var userRole = _currentUser.RequireUserRole();
         var userId = _currentUser.RequireUserId();
 
-        if (filter.Type == VideoFilterType.Own && !_currentUser.IsInRole(UserRoles.Teacher, UserRoles.Admin))
+        if (
+            filter.Type == VideoFilterType.Own
+            && !_currentUser.IsInRole(UserRoles.Teacher, UserRoles.Admin)
+        )
         {
             throw new UnauthorizedException();
         }
@@ -187,7 +190,7 @@ public class VideoService : IVideoService
 
     public async Task<NooTubeVideoModel?> GetByIdAsync(Ulid videoId)
     {
-        var model = await _videoRepository.GetByIdAsync(videoId);
+        var model = await _videoRepository.GetVideoAsync(videoId);
 
         if (model is null)
         {
