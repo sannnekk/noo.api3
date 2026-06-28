@@ -168,7 +168,7 @@ public class VideoService : IVideoService
 
         if (favourite is not null)
         {
-            _videoFavouriteRepository.Delete(videoId, userId);
+            _videoFavouriteRepository.Delete(favourite);
             return;
         }
 

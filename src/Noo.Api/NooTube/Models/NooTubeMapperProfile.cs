@@ -11,10 +11,7 @@ public class NooTubeMapperProfile : Profile
     {
         // NooTubeVideo
         CreateMap<NooTubeVideoModel, NooTubeVideoDTO>()
-            .ForMember(
-                dest => dest.IsFavourite,
-                opt => opt.MapFrom<NooTubeVideoIsFavouriteValueResolver>()
-            );
+            .ForMember(dest => dest.IsFavourite, opt => opt.MapFrom(src => src.Favourites.Any()));
 
         CreateMap<NooTubeVideoModel, UpdateNooTubeVideoDTO>();
 

@@ -13,11 +13,6 @@ public class VideoFavouriteRepository
     public VideoFavouriteRepository(NooDbContext dbContext)
         : base(dbContext) { }
 
-    public void Delete(Ulid videoId, Ulid userId)
-    {
-        DeleteEntity(new() { VideoId = videoId, UserId = userId });
-    }
-
     public Task<NooTubeVideoFavouriteModel?> GetAsync(Ulid videoId, Ulid userId)
     {
         return Context
