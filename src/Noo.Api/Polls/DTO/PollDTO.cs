@@ -42,4 +42,8 @@ public record PollDTO
     [JsonPropertyName("questions")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ICollection<PollQuestionDTO>? Questions { get; init; }
+
+    [Required]
+    [JsonPropertyName("participationsCount")]
+    public int ParticipationsCount { get; init; }
 }

@@ -43,4 +43,32 @@ public class PollMapperProfileTests
         Assert.True(model.IsActive);
         Assert.False(model.IsAuthRequired);
     }
+
+    [Fact]
+    public void Poll_Maps_ParticipationsCount_To_Dto()
+    {
+        var mapper = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<PollMapperProfile>()).CreateMapper();
+        var model = new PollModel
+        {
+            Title = "T",
+            IsActive = true,
+            IsAuthRequired = false,
+            ParticipationsCount = 5
+        };
+
+        var dto = mapper.Map<PollDTO>(model);
+
+        Assert.Equal(5, dto.ParticipationsCount);
+    }
+
+    [Fact]
+    public void Poll_Without_ParticipationsCount_Maps_To_Zero()
+    {
+        var mapper = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<PollMapperProfile>()).CreateMapper();
+        var model = new PollModel { Title = "T", IsActive = true, IsAuthRequired = false };
+
+        var dto = mapper.Map<PollDTO>(model);
+
+        Assert.Equal(0, dto.ParticipationsCount);
+    }
 }

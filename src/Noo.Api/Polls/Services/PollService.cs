@@ -8,6 +8,7 @@ using Noo.Api.Polls.DTO;
 using Noo.Api.Polls.Exceptions;
 using Noo.Api.Polls.Filters;
 using Noo.Api.Polls.Models;
+using Noo.Api.Polls.Specifications;
 using SystemTextJsonPatch;
 
 namespace Noo.Api.Polls.Services;
@@ -74,6 +75,14 @@ public class PollService : IPollService
     public Task<SearchResult<PollModel>> GetPollsAsync(PollFilter filter)
     {
         return _pollRepository.SearchAsync(filter);
+    }
+
+    public Task<SearchResult<PollModel>> GetParticipatedPollsAsync(Ulid userId, PollFilter filter)
+    {
+        return _pollRepository.SearchWithParticipationsCountAsync(
+            filter,
+            [new PollByParticipantSpecification(userId)]
+        );
     }
 
     public async Task ParticipateAsync(Ulid pollId, CreatePollParticipationDTO participationDto)

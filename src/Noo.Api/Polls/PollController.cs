@@ -46,6 +46,28 @@ public class PollController : ApiController
     }
 
     /// <summary>
+    /// Get a paginated list of polls a specific user has participated in.
+    /// </summary>
+    [HttpGet("user/{userId}/participation")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = PollPolicies.CanGetPolls)]
+    [Produces(
+        typeof(ApiResponseDTO<IEnumerable<PollDTO>>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden
+    )]
+    public async Task<IActionResult> GetParticipatedPollsAsync(
+        [FromRoute] Ulid userId,
+        [FromQuery] PollFilter filter
+    )
+    {
+        var result = await _pollService.GetParticipatedPollsAsync(userId, filter);
+
+        return SendResponse<PollModel, PollDTO>(result);
+    }
+
+    /// <summary>
     /// Get a specific poll by its ID.
     /// </summary>
     [HttpGet("{pollId}")]

@@ -30,6 +30,9 @@ public class PollModel : BaseModel
     [Required]
     public bool IsAuthRequired { get; set; } = true;
 
+    [NotMapped]
+    public int ParticipationsCount { get; set; }
+
     #region Navigation Properties
 
     public ICollection<PollQuestionModel> Questions { get; set; } = [];

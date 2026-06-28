@@ -173,6 +173,88 @@ public class PollServiceTests
     }
 
     [Fact]
+    public async Task GetParticipatedPolls_Returns_Only_Participated_Polls_With_Counts()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = TestHelpers.CreateInMemoryDb(dbName);
+        var uow = TestHelpers.CreateUowMock(context).Object;
+        var mapper = CreateMapper();
+        var pollRepo = new PollRepository(context);
+        var pollParticipationRepo = new PollParticipationRepository(context);
+        var pollAnswerRepo = new PollAnswerRepository(context);
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+
+        var userId = Ulid.NewUlid();
+        var otherUserId = Ulid.NewUlid();
+
+        // Poll A: target user + another user => participated, count 2
+        var pollA = new PollModel { Title = "A", IsActive = true, IsAuthRequired = false };
+        // Poll B: only another user => not participated by target user
+        var pollB = new PollModel { Title = "B", IsActive = true, IsAuthRequired = false };
+        // Poll C: only target user => participated, count 1
+        var pollC = new PollModel { Title = "C", IsActive = true, IsAuthRequired = false };
+        context.AddRange(pollA, pollB, pollC);
+        await context.SaveChangesAsync();
+
+        context.AddRange(
+            new PollParticipationModel { PollId = pollA.Id, UserId = userId, UserType = ParticipatingUserType.AuthenticatedUser },
+            new PollParticipationModel { PollId = pollA.Id, UserId = otherUserId, UserType = ParticipatingUserType.AuthenticatedUser },
+            new PollParticipationModel { PollId = pollB.Id, UserId = otherUserId, UserType = ParticipatingUserType.AuthenticatedUser },
+            new PollParticipationModel { PollId = pollC.Id, UserId = userId, UserType = ParticipatingUserType.AuthenticatedUser }
+        );
+        await context.SaveChangesAsync();
+
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId), jsonPatch);
+
+        var result = await service.GetParticipatedPollsAsync(userId, new PollFilter { Page = 1, PerPage = 10 });
+
+        Assert.Equal(2, result.Total);
+        var byId = result.Items.ToDictionary(p => p.Id);
+        Assert.True(byId.ContainsKey(pollA.Id));
+        Assert.True(byId.ContainsKey(pollC.Id));
+        Assert.False(byId.ContainsKey(pollB.Id));
+        Assert.Equal(2, byId[pollA.Id].ParticipationsCount);
+        Assert.Equal(1, byId[pollC.Id].ParticipationsCount);
+    }
+
+    [Fact]
+    public async Task GetParticipatedPolls_Respects_Pagination()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = TestHelpers.CreateInMemoryDb(dbName);
+        var uow = TestHelpers.CreateUowMock(context).Object;
+        var mapper = CreateMapper();
+        var pollRepo = new PollRepository(context);
+        var pollParticipationRepo = new PollParticipationRepository(context);
+        var pollAnswerRepo = new PollAnswerRepository(context);
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+
+        var userId = Ulid.NewUlid();
+
+        for (var i = 0; i < 3; i++)
+        {
+            var poll = new PollModel { Title = $"P{i}", IsActive = true, IsAuthRequired = false };
+            context.Add(poll);
+            await context.SaveChangesAsync();
+            context.Add(new PollParticipationModel
+            {
+                PollId = poll.Id,
+                UserId = userId,
+                UserType = ParticipatingUserType.AuthenticatedUser
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId), jsonPatch);
+
+        var page = await service.GetParticipatedPollsAsync(userId, new PollFilter { Page = 1, PerPage = 2 });
+
+        Assert.Equal(3, page.Total);
+        Assert.Equal(2, page.Items.Count());
+        Assert.All(page.Items, poll => Assert.Equal(1, poll.ParticipationsCount));
+    }
+
+    [Fact]
     public async Task UpdatePollAnswer_Patches_Value()
     {
         var dbName = Guid.NewGuid().ToString();
