@@ -42,6 +42,13 @@ public class CourseMapperProfile : Profile
         // (which calls dest.Chapters.Clear() before re-adding) never touches the EF-tracked
         // collection — that Clear would orphan existing rows under cascade FKs and
         // delete them despite the merge re-adding them.
+        //
+        // The update chapter tree is flat: src.Chapters holds EVERY chapter keyed by Id
+        // (roots and descendants alike), so it matches the tracked CourseModel.Chapters
+        // collection one-to-one. The Id-keyed merge therefore reuses existing instances,
+        // adds new ones, and only drops chapters the client genuinely removed — no
+        // descendant is ever silently orphaned. Tree position comes from each chapter's
+        // ParentChapterId (mapped as a plain scalar), not from collection nesting.
         CreateMap<UpdateCourseDTO, CourseModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
@@ -54,19 +61,7 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
             .ForMember(dest => dest.Subject, opt => opt.Ignore())
             .ForMember(dest => dest.Chapters, opt => opt.Ignore())
-            .AfterMap(
-                (src, dest, context) =>
-                {
-                    if (src.Chapters != null)
-                    {
-                        dest.Chapters = src.Chapters.MapDictionaryToCollection<
-                            UpdateCourseChapterDTO,
-                            CourseChapterModel
-                        >(dest.Chapters, context.Mapper);
-                    }
-                    ApplyCourseHierarchy(dest);
-                }
-            );
+            .AfterMap((src, dest, context) => MergeCourseGraph(src, dest, context.Mapper));
 
         CreateMap<CourseModel, CourseDTO>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
@@ -91,17 +86,6 @@ public class CourseMapperProfile : Profile
 
         CreateMap<CourseChapterModel, UpdateCourseChapterDTO>()
             .ForMember(
-                dest => dest.SubChapters,
-                opt =>
-                    opt.MapFrom(
-                        (src, _, _, context) =>
-                            src.SubChapters.MapCollectionToDictionary<
-                                CourseChapterModel,
-                                UpdateCourseChapterDTO
-                            >(context)
-                    )
-            )
-            .ForMember(
                 dest => dest.Materials,
                 opt =>
                     opt.MapFrom(
@@ -113,8 +97,12 @@ public class CourseMapperProfile : Profile
                     )
             );
 
-        // SubChapters / Materials are handled in AfterMap to avoid AutoMapper's
-        // Clear-based collection mapping (see comment on UpdateCourseDTO -> CourseModel).
+        // Only chapter scalars (including the ParentChapterId tree edge) are mapped here.
+        // Materials are merged at the course level (see MergeCourseGraph) because a material
+        // can move between chapters, so its identity must be resolved across the whole course
+        // rather than per chapter — a per-chapter merge would re-create the moved material under
+        // its new chapter and make EF track two instances with the same Id. SubChapters are not a
+        // nested collection: the tree is flat and parentage is the ParentChapterId scalar.
         CreateMap<UpdateCourseChapterDTO, CourseChapterModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
@@ -123,27 +111,7 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.CourseId, opt => opt.Ignore())
             .ForMember(dest => dest.ParentChapter, opt => opt.Ignore())
             .ForMember(dest => dest.SubChapters, opt => opt.Ignore())
-            .ForMember(dest => dest.Materials, opt => opt.Ignore())
-            .AfterMap(
-                (src, dest, context) =>
-                {
-                    if (src.SubChapters != null)
-                    {
-                        dest.SubChapters = src.SubChapters.MapDictionaryToCollection<
-                            UpdateCourseChapterDTO,
-                            CourseChapterModel
-                        >(dest.SubChapters, context.Mapper);
-                    }
-
-                    if (src.Materials != null)
-                    {
-                        dest.Materials = src.Materials.MapDictionaryToCollection<
-                            UpdateCourseMaterialDTO,
-                            CourseMaterialModel
-                        >(dest.Materials, context.Mapper);
-                    }
-                }
-            );
+            .ForMember(dest => dest.Materials, opt => opt.Ignore());
 
         CreateMap<CourseChapterModel, CourseChapterDTO>()
             .MaxDepth(CourseConfig.MaxChapterTreeDepth);
@@ -274,6 +242,50 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Work, opt => opt.Ignore());
 
         CreateMap<CourseWorkAssignmentModel, UpdateCourseWorkAssignmentDTO>();
+    }
+
+    // Rebuilds the tracked course graph from a fully-patched UpdateCourseDTO. Chapters are a flat
+    // Id-keyed dictionary, so they merge one-to-one against the tracked CourseModel.Chapters and
+    // their tree position comes from ParentChapterId. Materials stay nested per chapter in the DTO
+    // but are merged against a course-wide reservoir so a material that moved to another chapter
+    // resolves to its single tracked instance instead of being duplicated. Children absent from the
+    // DTO are left out of every collection and EF orphans/cascades them.
+    private static void MergeCourseGraph(UpdateCourseDTO src, CourseModel dest, IRuntimeMapper mapper)
+    {
+        if (src.Chapters == null)
+        {
+            return;
+        }
+
+        var materialReservoir = (dest.Chapters ?? [])
+            .Where(chapter => chapter.Materials != null)
+            .SelectMany(chapter => chapter.Materials!)
+            .GroupBy(material => material.Id)
+            .ToDictionary(group => group.Key, group => group.First());
+
+        dest.Chapters = src.Chapters.MapDictionaryToCollection<
+            UpdateCourseChapterDTO,
+            CourseChapterModel
+        >(dest.Chapters, mapper);
+
+        var chaptersById = dest.Chapters.ToDictionary(chapter => chapter.Id);
+
+        foreach (var (key, chapterDto) in src.Chapters)
+        {
+            if (!Ulid.TryParse(key, out var chapterId)
+                || !chaptersById.TryGetValue(chapterId, out var chapter))
+            {
+                continue;
+            }
+
+            chapter.CourseId = dest.Id;
+            chapter.Materials = chapterDto.Materials.MergeFromReservoir(materialReservoir, mapper);
+
+            foreach (var material in chapter.Materials)
+            {
+                material.ChapterId = chapter.Id;
+            }
+        }
     }
 
     private static void ApplyCourseHierarchy(CourseModel course)

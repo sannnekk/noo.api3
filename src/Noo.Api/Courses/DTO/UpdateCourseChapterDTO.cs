@@ -26,11 +26,14 @@ public record UpdateCourseChapterDTO
     [JsonPropertyName("publishAt")]
     public DateTime? PublishAt { get; init; }
 
+    // The chapter tree is flattened for updates: every chapter (root or nested)
+    // is a top-level entry in UpdateCourseDTO.Chapters keyed by its Id, and its
+    // position in the tree is expressed solely through ParentChapterId. This keeps
+    // the patch dictionary's semantics aligned with the EF-tracked CourseModel.Chapters
+    // collection (which is the inverse of every chapter's Course FK), so the nested
+    // merge can reuse tracked instances by Id without orphaning descendants.
     [JsonPropertyName("parentChapterId")]
     public Ulid? ParentChapterId { get; init; }
-
-    [JsonPropertyName("subChapters")]
-    public IDictionary<string, UpdateCourseChapterDTO>? SubChapters { get; init; }
 
     [JsonPropertyName("materials")]
     public IDictionary<string, UpdateCourseMaterialDTO>? Materials { get; init; }

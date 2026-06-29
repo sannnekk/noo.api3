@@ -149,12 +149,15 @@ public class CourseMapperProfileTests
         Assert.Contains(model.Chapters!, c => c.Id == newChapterId);
     }
 
-    [Fact(DisplayName = "Course mapper: PATCH adds a sub-chapter, preserves existing sub-chapter identity")]
+    [Fact(DisplayName = "Course mapper: PATCH adds a sub-chapter (flat), preserves existing sub-chapter identity")]
     public void Patch_Add_SubChapter_Preserves_Existing()
     {
         var mapper = CreateConfiguration().CreateMapper();
+        var parentId = Ulid.NewUlid();
         var existingSubChapterId = Ulid.NewUlid();
 
+        // The update load is flat: every chapter (root or nested) is a top-level entry in
+        // CourseModel.Chapters, with parentage expressed via ParentChapterId.
         var model = new CourseModel
         {
             Id = Ulid.NewUlid(),
@@ -164,46 +167,46 @@ public class CourseMapperProfileTests
             {
                 new()
                 {
-                    Id = Ulid.NewUlid(),
+                    Id = parentId,
                     Title = "Parent",
                     Order = 0,
                     IsActive = true,
-                    SubChapters = new List<CourseChapterModel>
-                    {
-                        new()
-                        {
-                            Id = existingSubChapterId,
-                            Title = "Existing Sub",
-                            Order = 0,
-                            IsActive = true,
-                        }
-                    }
-                }
+                },
+                new()
+                {
+                    Id = existingSubChapterId,
+                    Title = "Existing Sub",
+                    Order = 0,
+                    IsActive = true,
+                    ParentChapterId = parentId,
+                },
             }
         };
-        var parentChapter = model.Chapters!.First();
-        var existingSubRef = parentChapter.SubChapters!.First();
+        var existingSubRef = model.Chapters!.Single(c => c.Id == existingSubChapterId);
 
         var dto = mapper.Map<UpdateCourseDTO>(model);
-        var parentDto = dto.Chapters!.Values.Single();
+        Assert.Equal(2, dto.Chapters!.Count);
 
         var newSubId = Ulid.NewUlid();
-        parentDto.SubChapters![newSubId.ToString()] = new UpdateCourseChapterDTO
+        dto.Chapters![newSubId.ToString()] = new UpdateCourseChapterDTO
         {
             Id = newSubId,
             Title = "New Sub",
             Order = 1,
             IsActive = true,
+            ParentChapterId = parentId,
         };
 
         mapper.Map(dto, model);
 
-        var parentAfter = model.Chapters!.Single();
-        Assert.Equal(2, parentAfter.SubChapters!.Count);
-        var keptSub = parentAfter.SubChapters!.Single(c => c.Id == existingSubChapterId);
+        Assert.Equal(3, model.Chapters!.Count);
+        var keptSub = model.Chapters!.Single(c => c.Id == existingSubChapterId);
         Assert.Same(existingSubRef, keptSub);
         Assert.Equal("Existing Sub", keptSub.Title);
-        Assert.Contains(parentAfter.SubChapters!, c => c.Id == newSubId);
+        Assert.Equal(parentId, keptSub.ParentChapterId);
+
+        var newSub = model.Chapters!.Single(c => c.Id == newSubId);
+        Assert.Equal(parentId, newSub.ParentChapterId);
     }
 
     [Fact(DisplayName = "Course mapper: PATCH adds a material, preserves existing material identity")]
@@ -258,6 +261,65 @@ public class CourseMapperProfileTests
         Assert.Same(existingMaterialRef, keptMaterial);
         Assert.Equal("Existing Material", keptMaterial.Title);
         Assert.Contains(chapterAfter.Materials!, m => m.Id == newMaterialId);
+    }
+
+    [Fact(DisplayName = "Course mapper: PATCH moving a material to another chapter reuses the same instance")]
+    public void Patch_Move_Material_Between_Chapters_Reuses_Instance()
+    {
+        var mapper = CreateConfiguration().CreateMapper();
+        var chapterAId = Ulid.NewUlid();
+        var chapterBId = Ulid.NewUlid();
+        var materialId = Ulid.NewUlid();
+
+        var movable = new CourseMaterialModel
+        {
+            Id = materialId,
+            Title = "Movable",
+            Order = 0,
+            IsActive = true,
+            ChapterId = chapterAId,
+        };
+        var model = new CourseModel
+        {
+            Id = Ulid.NewUlid(),
+            Name = "C",
+            SubjectId = Ulid.NewUlid(),
+            Chapters = new List<CourseChapterModel>
+            {
+                new()
+                {
+                    Id = chapterAId,
+                    Title = "A",
+                    Order = 0,
+                    IsActive = true,
+                    Materials = new List<CourseMaterialModel> { movable },
+                },
+                new()
+                {
+                    Id = chapterBId,
+                    Title = "B",
+                    Order = 1,
+                    IsActive = true,
+                    Materials = new List<CourseMaterialModel>(),
+                },
+            }
+        };
+
+        var dto = mapper.Map<UpdateCourseDTO>(model);
+        var materialDto = dto.Chapters![chapterAId.ToString()].Materials![materialId.ToString()];
+        dto.Chapters![chapterAId.ToString()].Materials!.Remove(materialId.ToString());
+        dto.Chapters![chapterBId.ToString()].Materials![materialId.ToString()] = materialDto;
+
+        mapper.Map(dto, model);
+
+        var chapterA = model.Chapters!.Single(c => c.Id == chapterAId);
+        var chapterB = model.Chapters!.Single(c => c.Id == chapterBId);
+        Assert.Empty(chapterA.Materials!);
+        var moved = Assert.Single(chapterB.Materials!);
+        // The same tracked instance must move (identity resolved course-wide), otherwise EF
+        // would track two CourseMaterialModel rows with the same Id and reject SaveChanges.
+        Assert.Same(movable, moved);
+        Assert.Equal(chapterBId, moved.ChapterId);
     }
 
     [Fact(DisplayName = "Course mapper: PATCH adds a work-assignment, preserves existing work-assignment identity")]

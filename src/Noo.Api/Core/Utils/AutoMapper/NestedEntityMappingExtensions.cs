@@ -69,6 +69,42 @@ public static class NestedEntityMappingExtensions
         }
 
         var existingById = destination?.ToDictionary(e => e.Id) ?? new Dictionary<UlidT, TEntity>();
+
+        return dtoDict.MergeById(existingById, mapper);
+    }
+
+    /// <summary>
+    /// Merges a dictionary of DTOs against an external reservoir of tracked entities keyed by Id,
+    /// reusing an existing instance whenever the key matches regardless of which parent currently
+    /// owns it. Use this (instead of the per-collection overload) when a child can move between
+    /// parents within the same aggregate — e.g. a material moving to another chapter — so that the
+    /// moved child resolves to its single tracked instance across the whole graph rather than being
+    /// re-created under the new parent (which would make EF track two instances with the same key).
+    ///
+    /// The caller is responsible for (re)assigning the owning FK on each returned entity. Entities
+    /// in the reservoir that no key references are simply absent from every returned list, so EF
+    /// orphans and cascades them as configured.
+    /// </summary>
+    public static ICollection<TEntity> MergeFromReservoir<TDto, TEntity>(
+        this IDictionary<string, TDto>? dtoDict,
+        IReadOnlyDictionary<UlidT, TEntity> reservoir,
+        IRuntimeMapper mapper
+    ) where TEntity : BaseModel
+    {
+        if (dtoDict == null)
+        {
+            return new List<TEntity>();
+        }
+
+        return dtoDict.MergeById(reservoir, mapper);
+    }
+
+    private static ICollection<TEntity> MergeById<TDto, TEntity>(
+        this IDictionary<string, TDto> dtoDict,
+        IReadOnlyDictionary<UlidT, TEntity> existingById,
+        IRuntimeMapper mapper
+    ) where TEntity : BaseModel
+    {
         var merged = new List<TEntity>(dtoDict.Count);
 
         foreach (var (key, dto) in dtoDict)

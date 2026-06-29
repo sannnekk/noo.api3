@@ -12,15 +12,17 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
     {
     }
 
-    public async Task<CourseModel?> GetWithChapterTreeAsync(Ulid courseId, bool includeInactive = false, int maxDepth = 2)
+    public async Task<CourseModel?> GetWithChapterTreeAsync(Ulid courseId, bool includeInactive = false, int maxDepth = CourseConfig.MaxChapterTreeDepth)
     {
         var chapters = await Context.GetDbSet<CourseChapterModel>()
+            .AsNoTracking()
             .Where(c => c.CourseId == courseId)
             .Where(c => includeInactive || c.IsActive)
             .Include(c => c.Materials.Where(m => includeInactive || m.IsActive).OrderBy(m => m.Order))
             .ToListAsync();
 
         var course = await Context.GetDbSet<CourseModel>()
+            .AsNoTracking()
             .Where(c => c.Id == courseId)
             .Include(c => c.Subject)
             .Include(c => c.Thumbnail)
@@ -32,6 +34,29 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
         }
 
         return BuildTree(course, chapters, maxDepth);
+    }
+
+    public async Task<CourseModel?> GetWithChapterTreeForUpdateAsync(Ulid courseId)
+    {
+        var course = await Context.GetDbSet<CourseModel>()
+            .FirstOrDefaultAsync(c => c.Id == courseId);
+
+        if (course is null)
+        {
+            return null;
+        }
+
+        // Load every chapter and its materials tracked. EF relationship fix-up wires the
+        // in-memory graph (course.Chapters, each chapter.SubChapters / .Materials). The
+        // update merge then reconciles the tree purely through ParentChapterId / ChapterId
+        // without reassigning any tracked navigation collection, so no existing child is
+        // ever severed from its required parent and orphan-deleted before the patch runs.
+        await Context.GetDbSet<CourseChapterModel>()
+            .Where(c => c.CourseId == courseId)
+            .Include(c => c.Materials)
+            .LoadAsync();
+
+        return course;
     }
 
     private CourseModel BuildTree(CourseModel course, List<CourseChapterModel> chapters, int maxDepth)

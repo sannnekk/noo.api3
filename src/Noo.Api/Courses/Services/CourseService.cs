@@ -98,10 +98,7 @@ public class CourseService : ICourseService
 
     public async Task UpdateAsync(Ulid courseId, JsonPatchDocument<UpdateCourseDTO> courseUpdateDto)
     {
-        var model = await _courseRepository.GetWithChapterTreeAsync(
-            courseId,
-            includeInactive: true
-        );
+        var model = await _courseRepository.GetWithChapterTreeForUpdateAsync(courseId);
 
         model.ThrowNotFoundIfNull();
 

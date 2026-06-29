@@ -129,7 +129,6 @@ public class CourseNestedPatchTests : IClassFixture<ApiFactory>
                   "title": "New Chapter",
                   "order": 1,
                   "isActive": true,
-                  "subChapters": {},
                   "materials": {}
                 }
               }
@@ -150,18 +149,12 @@ public class CourseNestedPatchTests : IClassFixture<ApiFactory>
     }
 
     // KNOWN FAILURE — separate from the mapper merge bug this suite primarily guards.
-    // Reproduction shows that CourseRepository.GetWithChapterTreeAsync reassigns each
-    // chapter.SubChapters to a fresh `.ToList()` AFTER EF's relationship fix-up has
-    // already populated those navs from a flat query. That re-assignment marks every
-    // already-tracked existing sub-chapter as State=Deleted (orphan removal under
-    // [DeleteBehavior.Cascade] on CourseChapterModel.SubChapters) before the patch
-    // service even runs, so a subsequent PATCH that adds a new sub-chapter silently
-    // wipes existing sibling sub-chapters. The mapper merge itself is verified in
-    // CourseMapperProfileTests.Patch_Add_SubChapter_Preserves_Existing (unit test);
-    // re-enable this once the repository tree-load is fixed to keep EF's auto-fixed
-    // navigation collections instead of replacing them.
-    [Fact(DisplayName = "PATCH /course adds a sub-chapter; existing parent + sub-chapter Ids preserved",
-        Skip = "Blocked by CourseRepository.BuildTree replacing EF-tracked SubChapters nav — see comment.")]
+    // Regression for the original data-loss bug: adding a sub-chapter to a chapter that
+    // already has one used to silently wipe the existing sibling. With the flattened
+    // update contract every chapter (root or nested) is a top-level entry in
+    // /chapters keyed by Id, and parentage is a plain ParentChapterId field — so the
+    // Id-keyed merge sees the existing sub-chapter in the document and never orphans it.
+    [Fact(DisplayName = "PATCH /course adds a sub-chapter; existing parent + sub-chapter Ids preserved")]
     public async Task Patch_Course_Add_SubChapter_Preserves_Existing()
     {
         using var client = _factory.CreateClient();
@@ -208,18 +201,20 @@ public class CourseNestedPatchTests : IClassFixture<ApiFactory>
         existingSubs.Should().HaveCount(1);
         var existingSubChapterId = existingSubs[0].GetProperty("id").GetString()!;
 
+        // Flat contract: the new sub-chapter is a top-level /chapters entry whose
+        // parentChapterId points at the existing parent.
         var newSubChapterId = Ulid.NewUlid();
         var addPatch = $$"""
             [
               {
                 "op": "add",
-                "path": "/chapters/{{parentChapterId}}/subChapters/{{newSubChapterId}}",
+                "path": "/chapters/{{newSubChapterId}}",
                 "value": {
                   "id": "{{newSubChapterId}}",
                   "title": "New Sub",
                   "order": 1,
                   "isActive": true,
-                  "subChapters": {},
+                  "parentChapterId": "{{parentChapterId}}",
                   "materials": {}
                 }
               }

@@ -29,11 +29,11 @@ public record UpdateWorkTaskDTO
     [JsonPropertyName("rightAnswers")]
     public IEnumerable<string>? RightAnswers { get; set; }
 
-    [RichText(AllowEmpty = true)]
+    [RichText(AllowEmpty = true, AllowNull = true)]
     [JsonPropertyName("solveHint")]
     public IRichTextType? SolveHint { get; set; }
 
-    [RichText(AllowEmpty = true)]
+    [RichText(AllowEmpty = true, AllowNull = true)]
     [JsonPropertyName("explanation")]
     public IRichTextType? Explanation { get; set; }
 
