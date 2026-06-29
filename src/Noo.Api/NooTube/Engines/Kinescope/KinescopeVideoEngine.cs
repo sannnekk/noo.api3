@@ -1,5 +1,6 @@
 using Noo.Api.Core.ThirdPartyServices.Kinescope;
 using Noo.Api.Core.ThirdPartyServices.Kinescope.Models;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.NooTube.Types;
 
@@ -65,6 +66,48 @@ public class KinescopeVideoEngine : IVideoEngine
     public Task DeleteAsync(string externalId, CancellationToken cancellationToken = default)
     {
         return _client.DeleteVideoAsync(externalId, cancellationToken);
+    }
+
+    public async Task<VideoStatistics?> GetStatisticsAsync(
+        string externalId,
+        DateTime from,
+        DateTime to,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var overview = await _client.GetVideoAnalyticsOverviewAsync(
+            externalId,
+            DateOnly.FromDateTime(from),
+            DateOnly.FromDateTime(to),
+            cancellationToken
+        );
+
+        if (overview is null)
+        {
+            return null;
+        }
+
+        var total = overview.Total;
+
+        return new VideoStatistics
+        {
+            From = from,
+            To = to,
+            Views = total?.Views ?? 0,
+            UniqueViews = total?.UniqueViews ?? 0,
+            WatchTimeSeconds = (int)Math.Round(total?.WatchTime ?? 0),
+            PlayerLoads = total?.PlayerLoads ?? 0,
+            Timeline = overview
+                .Timeline.Select(point => new VideoStatisticsPoint
+                {
+                    Date = point.Date is { } date ? Clock.ToMoscow(date) : default,
+                    Views = point.Views,
+                    UniqueViews = point.UniqueViews,
+                    WatchTimeSeconds = (int)Math.Round(point.WatchTime),
+                    PlayerLoads = point.PlayerLoads,
+                })
+                .ToList(),
+        };
     }
 
     public VideoProcessingStatus MapStatus(string? rawStatus)

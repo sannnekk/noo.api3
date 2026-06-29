@@ -1,6 +1,7 @@
 using AutoMapper;
 using Noo.Api.Core.Utils.AutoMapper;
 using Noo.Api.NooTube.DTO;
+using Noo.Api.NooTube.Engines;
 
 namespace Noo.Api.NooTube.Models;
 
@@ -26,6 +27,10 @@ public class NooTubeMapperProfile : Profile
             .ForMember(dest => dest.Favourites, opt => opt.Ignore())
             .ForMember(dest => dest.Comments, opt => opt.Ignore())
             .ForMember(dest => dest.CourseMaterialContents, opt => opt.Ignore());
+
+        // NooTubeVideoStatistics
+        CreateMap<VideoStatistics, NooTubeVideoStatisticsDTO>();
+        CreateMap<VideoStatisticsPoint, NooTubeVideoStatisticsPointDTO>();
 
         // NooTubeVideoComment
         CreateMap<NooTubeVideoCommentModel, NooTubeVideoCommentDTO>();

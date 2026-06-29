@@ -11,6 +11,8 @@ public class NooTubePolicies : IPolicyRegistrar
 
     public const string CanDeleteNooTubeVideos = nameof(CanDeleteNooTubeVideos);
 
+    public const string CanGetNooTubeVideoStatistics = nameof(CanGetNooTubeVideoStatistics);
+
     public const string CanCommentOnNooTubeVideos = nameof(CanCommentOnNooTubeVideos);
 
     public const string CanEditNooTubeComments = nameof(CanEditNooTubeComments);
@@ -40,6 +42,17 @@ public class NooTubePolicies : IPolicyRegistrar
 
         options.AddPolicy(
             CanDeleteNooTubeVideos,
+            policy =>
+            {
+                policy
+                    .RequireAuthenticatedUser()
+                    .RequireNotBlocked()
+                    .RequireRole(nameof(UserRoles.Admin), nameof(UserRoles.Teacher));
+            }
+        );
+
+        options.AddPolicy(
+            CanGetNooTubeVideoStatistics,
             policy =>
             {
                 policy

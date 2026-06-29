@@ -30,4 +30,15 @@ public interface IKinescopeClient
     /// Permanently deletes a video on Kinescope.
     /// </summary>
     public Task DeleteVideoAsync(string videoId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns aggregated playback analytics (views, unique viewers, watch time)
+    /// for a single video over the given period, or <c>null</c> if the video is unknown.
+    /// </summary>
+    public Task<KinescopeAnalyticsOverview?> GetVideoAnalyticsOverviewAsync(
+        string videoId,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default
+    );
 }

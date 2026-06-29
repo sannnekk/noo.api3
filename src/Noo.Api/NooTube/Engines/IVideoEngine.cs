@@ -34,6 +34,17 @@ public interface IVideoEngine
     public Task DeleteAsync(string externalId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns playback statistics for a video over the given (inclusive) period,
+    /// or <c>null</c> if the provider has no data for it.
+    /// </summary>
+    public Task<VideoStatistics?> GetStatisticsAsync(
+        string externalId,
+        DateTime from,
+        DateTime to,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
     /// Translates a provider-specific status string (e.g. from a webhook) into a
     /// provider-agnostic <see cref="VideoProcessingStatus"/>.
     /// </summary>

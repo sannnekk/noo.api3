@@ -1,5 +1,6 @@
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.NooTube.DTO;
+using Noo.Api.NooTube.Engines;
 using Noo.Api.NooTube.Filters;
 using Noo.Api.NooTube.Models;
 using Noo.Api.NooTube.Types;
@@ -12,6 +13,8 @@ public interface IVideoService
     public Task<SearchResult<NooTubeVideoModel>> GetAsync(VideoFilter filter);
 
     public Task<NooTubeVideoModel?> GetByIdAsync(Ulid videoId);
+
+    public Task<VideoStatistics> GetStatisticsAsync(Ulid videoId, DateTime? from, DateTime? to);
 
     public Task<NooTubeVideoUploadDTO> CreateAsync(CreateNooTubeVideoDTO createDto);
 

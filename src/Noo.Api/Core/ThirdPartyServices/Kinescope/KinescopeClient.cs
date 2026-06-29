@@ -70,6 +70,29 @@ public class KinescopeClient : IKinescopeClient
         await SendAsync<object>(message, cancellationToken, allowNotFound: true);
     }
 
+    public async Task<KinescopeAnalyticsOverview?> GetVideoAnalyticsOverviewAsync(
+        string videoId,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var query =
+            $"?video_id={Uri.EscapeDataString(videoId)}"
+            + $"&from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}&group_time=day";
+
+        using var message = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"{_config.ApiBaseUrl}/v1/analytics/overview{query}"
+        );
+
+        return await SendAsync<KinescopeAnalyticsOverview>(
+            message,
+            cancellationToken,
+            allowNotFound: true
+        );
+    }
+
     private async Task<T?> SendAsync<T>(
         HttpRequestMessage message,
         CancellationToken cancellationToken,

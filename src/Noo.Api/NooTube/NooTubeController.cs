@@ -5,6 +5,7 @@ using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
 using Noo.Api.Core.Utils.Versioning;
 using Noo.Api.NooTube.DTO;
+using Noo.Api.NooTube.Engines;
 using Noo.Api.NooTube.Filters;
 using Noo.Api.NooTube.Models;
 using Noo.Api.NooTube.Services;
@@ -73,6 +74,32 @@ public class NootubeController : ApiController
         var video = await _videoService.GetByIdAsync(videoId);
 
         return SendResponse<NooTubeVideoModel, NooTubeVideoDTO>(video);
+    }
+
+    /// <summary>
+    /// Gets playback statistics for a video over an optional period
+    /// (defaults to the video's whole lifetime).
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpGet("{videoId:ulid}/statistics")]
+    [Authorize(Policy = NooTubePolicies.CanGetNooTubeVideoStatistics)]
+    [Produces(
+        typeof(ApiResponseDTO<NooTubeVideoStatisticsDTO>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> GetVideoStatisticsAsync(
+        [FromRoute] Ulid videoId,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null
+    )
+    {
+        var statistics = await _videoService.GetStatisticsAsync(videoId, from, to);
+
+        return SendResponse<VideoStatistics, NooTubeVideoStatisticsDTO>(statistics);
     }
 
     /// <summary>

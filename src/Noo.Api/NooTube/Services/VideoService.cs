@@ -3,6 +3,7 @@ using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.NooTube.DTO;
 using Noo.Api.NooTube.Engines;
@@ -229,6 +230,36 @@ public class VideoService : IVideoService
         }
 
         return model;
+    }
+
+    public async Task<VideoStatistics> GetStatisticsAsync(
+        Ulid videoId,
+        DateTime? from,
+        DateTime? to
+    )
+    {
+        var model = await _videoRepository.GetByIdAsync(videoId);
+
+        model.ThrowNotFoundIfNull();
+
+        if (string.IsNullOrEmpty(model.ExternalIdentifier))
+        {
+            throw new EncodingNotFinishedYetException();
+        }
+
+        var rangeFrom = from ?? model.CreatedAt;
+        var rangeTo = to ?? Clock.Today;
+
+        var engine = _engineResolver.Resolve(model.ServiceType);
+
+        var statistics = await engine.GetStatisticsAsync(
+            model.ExternalIdentifier,
+            rangeFrom,
+            rangeTo
+        );
+
+        return statistics
+            ?? new VideoStatistics { From = rangeFrom, To = rangeTo };
     }
 
     public async Task ToggleReactionAsync(Ulid videoId, VideoReaction newReaction)
