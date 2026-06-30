@@ -83,10 +83,11 @@ public class CalendarController : ApiController
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public IActionResult DeleteCalendarEvent([FromRoute] Ulid id)
+    public async Task<IActionResult> DeleteCalendarEventAsync([FromRoute] Ulid id)
     {
         var userId = User.GetId();
-        _calendarService.DeleteCalendarEvent(userId, id);
+
+        await _calendarService.DeleteCalendarEventAsync(userId, id);
 
         return SendResponse();
     }

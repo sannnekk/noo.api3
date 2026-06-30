@@ -7,4 +7,3 @@ public interface ICalendarEventRepository : IRepository<CalendarEventModel>
 {
     public Task<CalendarEventModel?> GetEventAsync(Ulid userId, Ulid eventId);
 }
-

@@ -31,9 +31,14 @@ public class CalendarService : ICalendarService
         return calendarEvent.Id;
     }
 
-    public void DeleteCalendarEvent(Ulid userId, Ulid eventId)
+    public async Task DeleteCalendarEventAsync(Ulid userId, Ulid eventId)
     {
-        _calendarEventRepository.DeleteById(eventId);
+        var calenderEvent = await _calendarEventRepository.GetEventAsync(userId, eventId);
+
+        if (calenderEvent is not null)
+        {
+            _calendarEventRepository.Delete(calenderEvent);
+        }
     }
 
     public Task<SearchResult<CalendarEventModel>> GetCalendarEventsAsync(

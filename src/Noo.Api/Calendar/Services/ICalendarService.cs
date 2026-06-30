@@ -12,5 +12,5 @@ public interface ICalendarService
         int month
     );
     public Ulid CreateCalendarEvent(Ulid userId, CreateCalendarEventDTO dto);
-    public void DeleteCalendarEvent(Ulid userId, Ulid eventId);
+    public Task DeleteCalendarEventAsync(Ulid userId, Ulid eventId);
 }
