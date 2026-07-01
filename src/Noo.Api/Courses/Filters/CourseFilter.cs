@@ -20,7 +20,8 @@ public class CourseFilter : PaginationFilterBase
 
     public Range<DateTime>? CreatedAt { get; set; }
 
-    public Ulid? SubjectId { get; set; }
+    [ArraySearchFilter]
+    public IEnumerable<Ulid?>? SubjectId { get; set; }
 
     public UserFilter? Authors { get; set; }
 }

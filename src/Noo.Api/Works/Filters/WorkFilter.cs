@@ -13,15 +13,16 @@ namespace Noo.Api.Works.Filters;
 )]
 public class WorkFilter : PaginationFilterBase
 {
-    // 2) Global Search: one field that compares to multiple props
     [CompareTo(nameof(WorkModel.Title))]
     [CompareTo(nameof(WorkModel.Description))]
     [ToLowerContainsComparison]
     public string? Search { get; set; }
 
-    public WorkType? Type { get; set; }
+    [ArraySearchFilter]
+    public IEnumerable<WorkType>? Type { get; set; }
 
-    public Ulid? SubjectId { get; set; }
+    [ArraySearchFilter]
+    public IEnumerable<Ulid?>? SubjectId { get; set; }
 
     public Range<DateTime>? CreatedAt { get; set; }
 }

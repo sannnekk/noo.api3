@@ -565,6 +565,24 @@ public class WorkTests : IClassFixture<ApiFactory>
             .Should().ContainSingle().Which.Should().Be(workId);
     }
 
+    [Fact(DisplayName = "GET /work filters by multiple subjectIds (IN)")]
+    public async Task Search_Works_MultipleSubjectIds_Works()
+    {
+        using var client = _factory.CreateClient();
+        var subjectA = await CreateSubjectAsync(client);
+        var subjectB = await CreateSubjectAsync(client);
+        var subjectC = await CreateSubjectAsync(client);
+
+        var workA = (await CreateWorkAsync(client, subjectA, title: "SA")).ToString();
+        var workB = (await CreateWorkAsync(client, subjectB, title: "SB")).ToString();
+        var workC = (await CreateWorkAsync(client, subjectC, title: "SC")).ToString();
+
+        var ids = await GetWorkIdsAsync(client, $"/work?subjectId={subjectA}&subjectId={subjectC}&perPage=100");
+
+        ids.Should().Contain(workA).And.Contain(workC);
+        ids.Should().NotContain(workB);
+    }
+
     private static async Task<List<string>> GetWorkIdsAsync(HttpClient client, string url)
     {
         var resp = await client.AsTeacher().GetAsync(url);

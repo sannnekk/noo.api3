@@ -22,7 +22,8 @@ public class UserFilter : PaginationFilterBase
     [ToLowerContainsComparison]
     public string? Search { get; set; }
 
-    public UserRoles? Role { get; set; }
+    [ArraySearchFilter]
+    public IEnumerable<UserRoles>? Role { get; set; }
 
     public Range<DateTime>? CreatedAt { get; set; }
 }

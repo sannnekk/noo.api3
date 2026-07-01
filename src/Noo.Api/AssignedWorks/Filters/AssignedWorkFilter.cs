@@ -19,7 +19,8 @@ public class AssignedWorkFilter : PaginationFilterBase
     [ToLowerContainsComparison]
     public string? Search { get; set; }
 
-    public WorkType? Type { get; set; }
+    [ArraySearchFilter]
+    public IEnumerable<WorkType>? Type { get; set; }
 
     public AssignedWorkSolveStatus? SolveStatus { get; set; }
 
