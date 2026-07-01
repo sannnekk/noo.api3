@@ -81,7 +81,7 @@ public class Repository<T> : IRepository<T>
 
         var total = await query.ApplyFilterWithoutPagination(filter).CountAsync();
 
-        var results = await query.ApplyFilter(filter).ToListAsync();
+        var results = await query.ApplyDefaultOrdering(filter).ApplyFilter(filter).ToListAsync();
 
         return new SearchResult<T>(results, total);
     }
@@ -92,7 +92,7 @@ public class Repository<T> : IRepository<T>
 
         var total = await query.ApplyFilterWithoutPagination(filter).CountAsync();
 
-        var results = await query.ApplyFilter(filter).ToListAsync();
+        var results = await query.ApplyDefaultOrdering(filter).ApplyFilter(filter).ToListAsync();
 
         return new SearchResult<T>(results, total);
     }

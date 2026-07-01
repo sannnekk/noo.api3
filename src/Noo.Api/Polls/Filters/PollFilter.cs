@@ -20,9 +20,9 @@ public class PollFilter : PaginationFilterBase
     [ToLowerContainsComparison]
     public string? Search { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public Range<DateTime>? CreatedAt { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public Range<DateTime>? UpdatedAt { get; set; }
 
     public bool? IsActive { get; set; }
 

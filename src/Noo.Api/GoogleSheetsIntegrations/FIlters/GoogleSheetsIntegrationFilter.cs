@@ -18,5 +18,5 @@ public class GoogleSheetsIntegrationFilter : PaginationFilterBase
 
     public string? Entity { get; set; }
 
-    public DateTime? LastRunAt { get; set; }
+    public Range<DateTime>? LastRunAt { get; set; }
 }

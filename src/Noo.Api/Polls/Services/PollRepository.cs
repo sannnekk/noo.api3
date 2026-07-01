@@ -42,7 +42,7 @@ public class PollRepository : Repository<PollModel>, IPollRepository
 
         var total = await query.ApplyFilterWithoutPagination(filter).CountAsync();
 
-        var polls = await query.ApplyFilter(filter).ToListAsync();
+        var polls = await query.ApplyDefaultOrdering(filter).ApplyFilter(filter).ToListAsync();
 
         var pollIds = polls.ConvertAll(poll => poll.Id);
 

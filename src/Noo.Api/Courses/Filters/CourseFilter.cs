@@ -18,7 +18,7 @@ public class CourseFilter : PaginationFilterBase
     [ToLowerContainsComparison]
     public string? Search { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public Range<DateTime>? CreatedAt { get; set; }
 
     public Ulid? SubjectId { get; set; }
 

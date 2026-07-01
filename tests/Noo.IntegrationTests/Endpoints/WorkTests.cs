@@ -502,5 +502,78 @@ public class WorkTests : IClassFixture<ApiFactory>
         tasksAfter.Should().HaveCount(1);
         tasksAfter[0].GetProperty("id").GetString().Should().Be(keepId);
     }
+
+    // ------------------------------------------------------------------
+    // Default ordering: with no explicit sort, list endpoints must return
+    // rows newest-first. Ids are ULIDs (time-sortable), so the repository
+    // applies OrderByDescending(Id) by default.
+    // ------------------------------------------------------------------
+    [Fact(DisplayName = "GET /work returns newest-first by default")]
+    public async Task Search_Works_DefaultOrdering_NewestFirst()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+
+        // Separate creations in time so the ULID ids are strictly increasing
+        // and the expected order is deterministic.
+        var firstId = await CreateWorkAsync(client, subjectId, title: "First");
+        await Task.Delay(15);
+        var secondId = await CreateWorkAsync(client, subjectId, title: "Second");
+        await Task.Delay(15);
+        var thirdId = await CreateWorkAsync(client, subjectId, title: "Third");
+
+        var ids = await GetWorkIdsAsync(client, $"/work?subjectId={subjectId}");
+
+        ids.Should().Equal(
+            thirdId.ToString(),
+            secondId.ToString(),
+            firstId.ToString());
+    }
+
+    // ------------------------------------------------------------------
+    // Regression: the createdAt filter on the list page is a range that the
+    // front-end serializes as `createdAt.Min` / `createdAt.Max`. The backend
+    // filter property must be Range<DateTime> so those bind; when it was a
+    // scalar DateTime the params were silently ignored and every row came
+    // back regardless of the range.
+    // ------------------------------------------------------------------
+    [Fact(DisplayName = "GET /work createdAt range filter (.Min/.Max) is applied")]
+    public async Task Search_Works_CreatedAtRangeFilter_IsApplied()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+        var workId = (await CreateWorkAsync(client, subjectId, title: "Ranged")).ToString();
+
+        var pastBound = Uri.EscapeDataString("2000-01-01T00:00:00");
+        var futureBound = Uri.EscapeDataString("2100-01-01T00:00:00");
+
+        // No range: the work is returned.
+        (await GetWorkIdsAsync(client, $"/work?subjectId={subjectId}"))
+            .Should().ContainSingle().Which.Should().Be(workId);
+
+        // Min in the far future must EXCLUDE the work (the regression: before
+        // Range<DateTime>, this param was ignored and the work still returned).
+        (await GetWorkIdsAsync(client, $"/work?subjectId={subjectId}&createdAt.Min={futureBound}"))
+            .Should().BeEmpty();
+
+        // Max in the far past must EXCLUDE the work.
+        (await GetWorkIdsAsync(client, $"/work?subjectId={subjectId}&createdAt.Max={pastBound}"))
+            .Should().BeEmpty();
+
+        // A window that surrounds "now" must INCLUDE the work.
+        (await GetWorkIdsAsync(client, $"/work?subjectId={subjectId}&createdAt.Min={pastBound}&createdAt.Max={futureBound}"))
+            .Should().ContainSingle().Which.Should().Be(workId);
+    }
+
+    private static async Task<List<string>> GetWorkIdsAsync(HttpClient client, string url)
+    {
+        var resp = await client.AsTeacher().GetAsync(url);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+        return doc.RootElement.GetProperty("data").EnumerateArray()
+            .Select(e => e.GetProperty("id").GetString()!)
+            .ToList();
+    }
 }
 

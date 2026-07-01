@@ -12,7 +12,7 @@ public class VideoFilter : PaginationFilterBase
     [ToLowerContainsComparison]
     public string? Search { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public Range<DateTime>? CreatedAt { get; set; }
 
     [IgnoreFilter]
     public VideoFilterType Type { get; set; } = VideoFilterType.All;

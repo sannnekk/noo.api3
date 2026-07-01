@@ -14,7 +14,7 @@ namespace Noo.Api.Users.Filters;
 )]
 public class UserFilter : PaginationFilterBase
 {
-    // 2) Global Search: one field that compares to multiple props
+    // Global Search: one field that compares to multiple props
     [CompareTo(nameof(UserModel.Name))]
     [CompareTo(nameof(UserModel.Username))]
     [CompareTo(nameof(UserModel.Email))]
@@ -22,6 +22,7 @@ public class UserFilter : PaginationFilterBase
     [ToLowerContainsComparison]
     public string? Search { get; set; }
 
-    // 3) Filter by a role
     public UserRoles? Role { get; set; }
+
+    public Range<DateTime>? CreatedAt { get; set; }
 }

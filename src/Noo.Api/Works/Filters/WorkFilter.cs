@@ -23,5 +23,5 @@ public class WorkFilter : PaginationFilterBase
 
     public Ulid? SubjectId { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public Range<DateTime>? CreatedAt { get; set; }
 }
