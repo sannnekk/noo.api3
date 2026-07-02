@@ -35,6 +35,10 @@ public record CourseMembershipDTO
     public bool IsArchived { get; init; }
 
     [Required]
+    [JsonPropertyName("isArchivedByStudent")]
+    public bool IsArchivedByStudent { get; init; }
+
+    [Required]
     [JsonPropertyName("studentId")]
     public Ulid StudentId { get; init; }
 

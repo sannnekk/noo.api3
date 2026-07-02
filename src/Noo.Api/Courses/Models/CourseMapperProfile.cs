@@ -20,6 +20,7 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Editors, opt => opt.Ignore())
             .ForMember(dest => dest.Authors, opt => opt.Ignore())
             .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+            .ForMember(dest => dest.IsArchived, opt => opt.Ignore())
             .ForMember(dest => dest.Memberships, opt => opt.Ignore())
             .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
             .ForMember(dest => dest.Subject, opt => opt.Ignore())
@@ -214,6 +215,7 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Student, opt => opt.Ignore())
             .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
             .ForMember(dest => dest.IsArchived, opt => opt.MapFrom(_ => false))
+            .ForMember(dest => dest.IsArchivedByStudent, opt => opt.MapFrom(_ => false))
             .ForMember(
                 dest => dest.Type,
                 opt => opt.MapFrom(_ => CourseMembershipType.ManualAssigned)

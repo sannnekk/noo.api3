@@ -23,5 +23,10 @@ public class CourseFilter : PaginationFilterBase
     [ArraySearchFilter]
     public IEnumerable<Ulid?>? SubjectId { get; set; }
 
+    public bool? IsArchived { get; set; }
+
     public UserFilter? Authors { get; set; }
+
+    [IgnoreFilter]
+    public Ulid? AuthorId { get; set; }
 }

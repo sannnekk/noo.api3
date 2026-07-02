@@ -80,7 +80,7 @@ public class CourseService : ICourseService
     {
         var result = await _courseRepository.SearchAsync(
             filter,
-            [new CourseSpecification(_currentUser.UserRole, _currentUser.UserId)]
+            [new CourseSpecification(_currentUser.UserRole, _currentUser.UserId, filter.AuthorId)]
         );
 
         return result;

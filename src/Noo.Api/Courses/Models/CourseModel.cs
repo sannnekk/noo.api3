@@ -41,6 +41,9 @@ public class CourseModel : BaseModel, ISoftDeletableModel
     [Column("is_deleted", TypeName = DbDataTypes.Boolean)]
     public bool IsDeleted { get; set; }
 
+    [Column("is_archived", TypeName = DbDataTypes.Boolean)]
+    public bool IsArchived { get; set; }
+
     #region Navigation Properties
 
     [DeleteBehavior(DeleteBehavior.SetNull)]

@@ -45,6 +45,10 @@ public record CourseDTO : IHasPresignedMedia
     public int? MemberCount { get; init; }
 
     [Required]
+    [JsonPropertyName("isArchived")]
+    public bool IsArchived { get; init; }
+
+    [Required]
     [JsonPropertyName("subjectId")]
     public Ulid SubjectId { get; init; }
 

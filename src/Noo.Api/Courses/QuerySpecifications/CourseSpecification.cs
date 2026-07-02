@@ -6,7 +6,7 @@ namespace Noo.Api.Courses.QuerySpecifications;
 
 public class CourseSpecification : Specification<CourseModel>
 {
-    public CourseSpecification(UserRoles? userRole, Ulid? userId)
+    public CourseSpecification(UserRoles? userRole, Ulid? userId, Ulid? authorId = null)
     {
         if (userRole == null || userId == null)
         {
@@ -35,6 +35,11 @@ public class CourseSpecification : Specification<CourseModel>
                 // For any other roles, no courses are visible
                 Query.Where(_ => false);
                 break;
+        }
+
+        if (authorId.HasValue)
+        {
+            Query.Where(course => course.Authors.Any(author => author.Id == authorId.Value));
         }
 
         // Add subject to the query to include related data
