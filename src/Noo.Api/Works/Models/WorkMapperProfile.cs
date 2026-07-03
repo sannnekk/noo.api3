@@ -38,6 +38,9 @@ public class WorkMapperProfile : Profile
 
         CreateMap<WorkStatistics, WorkStatisticsDTO>();
 
+        // work relation
+        CreateMap<WorkRelation, WorkRelationDTO>();
+
         // work
         CreateMap<WorkModel, UpdateWorkDTO>()
             .ForMember(

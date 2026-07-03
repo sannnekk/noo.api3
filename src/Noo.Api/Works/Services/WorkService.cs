@@ -5,6 +5,7 @@ using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
+using Noo.Api.Courses.Utils;
 using Noo.Api.Works.DTO;
 using Noo.Api.Works.Filters;
 using Noo.Api.Works.Models;
@@ -121,5 +122,25 @@ public class WorkService : IWorkService
     private static string StatisticsCacheKey(Ulid id)
     {
         return $"work:statistics:{id}";
+    }
+
+    public async Task<IEnumerable<WorkRelation>> GetWorkRelationsAsync(Ulid workId)
+    {
+        var relations = await _workRepository.GetWorkRelationsAsync(workId);
+
+        foreach (var relation in relations)
+        {
+            var material = relation.Assignment.CourseMaterialContent.Material;
+            var course = material.Chapter.Course;
+
+            relation.Path = CourseMaterialPath.Build(
+                course.Name,
+                course.Chapters.ToDictionary(chapter => chapter.Id),
+                material.ChapterId,
+                material.Title
+            );
+        }
+
+        return relations;
     }
 }

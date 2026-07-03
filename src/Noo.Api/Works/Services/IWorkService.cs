@@ -20,4 +20,6 @@ public interface IWorkService
     public void DeleteWork(Ulid id);
 
     public Task<WorkStatistics?> GetWorkStatisticsAsync(Ulid id);
+
+    public Task<IEnumerable<WorkRelation>> GetWorkRelationsAsync(Ulid workId);
 }

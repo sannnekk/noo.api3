@@ -13,4 +13,6 @@ public interface IWorkRepository : IRepository<WorkModel>
     public Task<List<int>> GetScoresAsync(Ulid id);
 
     public Task<IReadOnlyList<TaskSummary>> GetTaskSummariesAsync(Ulid id);
+
+    public Task<IEnumerable<WorkRelation>> GetWorkRelationsAsync(Ulid workId);
 }

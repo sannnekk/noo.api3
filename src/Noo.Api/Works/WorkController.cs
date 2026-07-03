@@ -91,6 +91,30 @@ public class WorkController : ApiController
     }
 
     /// <summary>
+    /// Retrieves the list of materials with their chain via chapters up to a course
+    /// which has a work assignment with the given work id
+    /// </summary>
+    [HttpGet("{id}/relation")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = WorkPolicies.CanGetWorkRelations)]
+    [Produces(
+        typeof(ApiResponseDTO<IEnumerable<WorkRelationDTO>>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> GetWorkMaterialAsync([FromRoute] Ulid id)
+    {
+        var relations = await _workService.GetWorkRelationsAsync(id);
+
+        return SendResponse<IEnumerable<WorkRelationDTO>>(
+            _mapper.Map<IEnumerable<WorkRelationDTO>>(relations)
+        );
+    }
+
+    /// <summary>
     /// Creates a new work.
     /// </summary>
     [HttpPost]

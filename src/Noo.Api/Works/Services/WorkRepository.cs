@@ -3,6 +3,7 @@ using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils.DI;
+using Noo.Api.Courses.Models;
 using Noo.Api.Works.Models;
 using Noo.Api.Works.Types;
 
@@ -52,9 +53,7 @@ public class WorkRepository : Repository<WorkModel>, IWorkRepository
             {
                 TaskId = task.Id,
                 MaxScore = task.MaxScore,
-                AverageScore = averageScores.TryGetValue(task.Id, out var average)
-                    ? average
-                    : null,
+                AverageScore = averageScores.TryGetValue(task.Id, out var average) ? average : null,
             })
             .OrderBy(summary =>
                 summary.AverageScore is double average && summary.MaxScore > 0
@@ -81,5 +80,26 @@ public class WorkRepository : Repository<WorkModel>, IWorkRepository
     private IQueryable<AssignedWorkModel> AssignedWorksOf(Ulid workId)
     {
         return Context.GetDbSet<AssignedWorkModel>().Where(aw => aw.WorkId == workId);
+    }
+
+    public async Task<IEnumerable<WorkRelation>> GetWorkRelationsAsync(Ulid workId)
+    {
+        var assignments = await Context
+            .GetDbSet<CourseWorkAssignmentModel>()
+            .Where(assignment => assignment.WorkId == workId)
+            .Include(assignment => assignment.CourseMaterialContent.Material.Chapter.Course)
+            .ThenInclude(course => course.Chapters)
+            .Include(assignment => assignment.CourseMaterialContent.Material.Chapter.Course)
+            .ThenInclude(course => course.Subject)
+            .AsSplitQuery()
+            .ToListAsync();
+
+        return assignments.ConvertAll(assignment => new WorkRelation
+        {
+            CourseId = assignment.CourseMaterialContent.Material.Chapter.CourseId,
+            MaterialId = assignment.CourseMaterialContent.Material.Id,
+            Subject = assignment.CourseMaterialContent.Material.Chapter.Course.Subject,
+            Assignment = assignment,
+        });
     }
 }

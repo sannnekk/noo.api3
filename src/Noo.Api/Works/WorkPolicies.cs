@@ -8,10 +8,10 @@ public class WorkPolicies : IPolicyRegistrar
     public const string CanSearchWorks = nameof(CanSearchWorks);
     public const string CanGetWork = nameof(CanGetWork);
     public const string CanGetWorkStatistics = nameof(CanGetWorkStatistics);
-    public const string CanSeeWorkRelatedMaterials = nameof(CanSeeWorkRelatedMaterials);
     public const string CanCreateWorks = nameof(CanCreateWorks);
     public const string CanEditWorks = nameof(CanEditWorks);
     public const string CanDeleteWorks = nameof(CanDeleteWorks);
+    public const string CanGetWorkRelations = nameof(CanGetWorkRelations);
 
     public void RegisterPolicies(AuthorizationOptions options)
     {
@@ -56,7 +56,7 @@ public class WorkPolicies : IPolicyRegistrar
         );
 
         options.AddPolicy(
-            CanSeeWorkRelatedMaterials,
+            CanGetWorkRelations,
             policy =>
             {
                 policy
