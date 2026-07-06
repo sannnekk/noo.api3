@@ -43,10 +43,9 @@ public class UserAccessRequirementHandler : AuthorizationHandler<UserAccessRequi
             return;
         }
 
-        // Potential route keys that map to a target user id
-        // userId -> used in /user/{userId}
-        // studentId -> mentor assignments (student perspective)
-        // mentorId -> mentor assignments (mentor perspective)
+        // Every endpoint guarded by this requirement must expose the target user id
+        // under the route key "userId" — any other name makes self access fail.
+        // This contract is enforced by UserAccessRouteContractTests.
         var routeValues = httpContext.GetRouteData().Values;
         var targetUserId = routeValues.GetUlidValue("userId");
 

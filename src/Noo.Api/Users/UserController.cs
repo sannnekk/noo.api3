@@ -213,7 +213,7 @@ public class UserController : ApiController
     /// <summary>
     /// Retrieves a student's mentor assignments by their unique identifier.
     /// </summary>
-    [HttpGet("{studentId}/mentor-assignment")]
+    [HttpGet("{userId}/mentor-assignment")]
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanGetUser)]
     [Produces(
@@ -224,11 +224,11 @@ public class UserController : ApiController
         StatusCodes.Status403Forbidden
     )]
     public async Task<IActionResult> GetMentorAssignmentsAsync(
-        [FromRoute] Ulid studentId,
+        [FromRoute] Ulid userId,
         [FromQuery] MentorAssignmentFilter filter
     )
     {
-        var result = await _mentorService.GetMentorAssignmentsAsync(studentId, filter);
+        var result = await _mentorService.GetMentorAssignmentsAsync(userId, filter);
 
         return SendResponse<MentorAssignmentModel, MentorAssignmentDTO>(result);
     }
@@ -236,7 +236,7 @@ public class UserController : ApiController
     /// <summary>
     /// Retrieves a mentor's assignments by their unique identifier.
     /// </summary>
-    [HttpGet("{mentorId}/student-assignment")]
+    [HttpGet("{userId}/student-assignment")]
     [MapToApiVersion(NooApiVersions.Current)]
     [Authorize(Policy = UserPolicies.CanGetUser)]
     [ProducesResponseType(
@@ -254,11 +254,11 @@ public class UserController : ApiController
         StatusCodes.Status403Forbidden
     )]
     public async Task<IActionResult> GetStudentAssignmentsAsync(
-        [FromRoute] Ulid mentorId,
+        [FromRoute] Ulid userId,
         [FromQuery] MentorAssignmentFilter filter
     )
     {
-        var result = await _mentorService.GetStudentAssignmentsAsync(mentorId, filter);
+        var result = await _mentorService.GetStudentAssignmentsAsync(userId, filter);
 
         return SendResponse<MentorAssignmentModel, MentorAssignmentDTO>(result);
     }
