@@ -12,6 +12,7 @@ public class CoursePolicies : IPolicyRegistrar
     public const string CanSearchCourseMemberships = nameof(CanSearchCourseMemberships);
     public const string CanCreateCourseMembership = nameof(CanCreateCourseMembership);
     public const string CanDeleteCourseMembership = nameof(CanDeleteCourseMembership);
+    public const string CanManageOwnCourseMembership = nameof(CanManageOwnCourseMembership);
     public const string CanEditCourse = nameof(CanEditCourse);
     public const string CanDeleteCourse = nameof(CanDeleteCourse);
 
@@ -45,6 +46,11 @@ public class CoursePolicies : IPolicyRegistrar
             policy.RequireRole(
                 nameof(UserRoles.Admin),
                 nameof(UserRoles.Teacher)
+            ).RequireNotBlocked());
+
+        options.AddPolicy(CanManageOwnCourseMembership, policy =>
+            policy.RequireRole(
+                nameof(UserRoles.Student)
             ).RequireNotBlocked());
 
         options.AddPolicy(CanEditCourse, policy =>

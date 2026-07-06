@@ -22,6 +22,9 @@ public class CourseMembershipModel : BaseModel
     [Column("is_archived_by_student", TypeName = DbDataTypes.Boolean)]
     public bool IsArchivedByStudent { get; set; }
 
+    [Column("is_pinned_by_student", TypeName = DbDataTypes.Boolean)]
+    public bool IsPinnedByStudent { get; set; }
+
     [Column("course_id", TypeName = DbDataTypes.Ulid)]
     [ForeignKey(nameof(Course))]
     public Ulid CourseId { get; set; }

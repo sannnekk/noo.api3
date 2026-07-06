@@ -28,4 +28,6 @@ public class CourseMembershipFilter : PaginationFilterBase
     public bool? IsArchived { get; set; }
 
     public bool? IsArchivedByStudent { get; set; }
+
+    public bool? IsPinnedByStudent { get; set; }
 }

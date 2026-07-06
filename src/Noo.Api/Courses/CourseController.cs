@@ -247,6 +247,90 @@ public class CourseController : ApiController
     }
 
     /// <summary>
+    /// Archives a course membership for the current student.
+    /// </summary>
+    [HttpPatch("membership/{membershipId:ulid}/archive")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = CoursePolicies.CanManageOwnCourseMembership)]
+    [Produces(
+        null,
+        StatusCodes.Status204NoContent,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> ArchiveCourseMembershipAsync([FromRoute] Ulid membershipId)
+    {
+        await _courseMembershipService.SetArchivedByStudentAsync(membershipId, true);
+
+        return SendResponse();
+    }
+
+    /// <summary>
+    /// Restores a course membership from the archive for the current student.
+    /// </summary>
+    [HttpPatch("membership/{membershipId:ulid}/unarchive")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = CoursePolicies.CanManageOwnCourseMembership)]
+    [Produces(
+        null,
+        StatusCodes.Status204NoContent,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> UnarchiveCourseMembershipAsync([FromRoute] Ulid membershipId)
+    {
+        await _courseMembershipService.SetArchivedByStudentAsync(membershipId, false);
+
+        return SendResponse();
+    }
+
+    /// <summary>
+    /// Pins a course membership for the current student.
+    /// </summary>
+    [HttpPatch("membership/{membershipId:ulid}/pin")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = CoursePolicies.CanManageOwnCourseMembership)]
+    [Produces(
+        null,
+        StatusCodes.Status204NoContent,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> PinCourseMembershipAsync([FromRoute] Ulid membershipId)
+    {
+        await _courseMembershipService.SetPinnedByStudentAsync(membershipId, true);
+
+        return SendResponse();
+    }
+
+    /// <summary>
+    /// Unpins a course membership for the current student.
+    /// </summary>
+    [HttpPatch("membership/{membershipId:ulid}/unpin")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = CoursePolicies.CanManageOwnCourseMembership)]
+    [Produces(
+        null,
+        StatusCodes.Status204NoContent,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> UnpinCourseMembershipAsync([FromRoute] Ulid membershipId)
+    {
+        await _courseMembershipService.SetPinnedByStudentAsync(membershipId, false);
+
+        return SendResponse();
+    }
+
+    /// <summary>
     /// Removes a course membership for a user
     /// </summary>
     [HttpDelete("membership/{membershipId}")]

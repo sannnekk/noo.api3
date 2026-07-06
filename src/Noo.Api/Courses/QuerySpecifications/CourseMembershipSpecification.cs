@@ -37,8 +37,11 @@ public class CourseMembershipSpecification : Specification<CourseMembershipModel
                 break;
 
             case UserRoles.Student:
-                // Students can see their own memberships
-                Query.Where(membership => membership.StudentId == userId);
+                // Students can see their own memberships, pinned ones first
+                Query
+                    .Where(membership => membership.StudentId == userId)
+                    .OrderByDescending(membership => membership.IsPinnedByStudent)
+                    .ThenByDescending(membership => membership.Id);
                 break;
 
             default:

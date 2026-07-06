@@ -216,6 +216,7 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
             .ForMember(dest => dest.IsArchived, opt => opt.MapFrom(_ => false))
             .ForMember(dest => dest.IsArchivedByStudent, opt => opt.MapFrom(_ => false))
+            .ForMember(dest => dest.IsPinnedByStudent, opt => opt.MapFrom(_ => false))
             .ForMember(
                 dest => dest.Type,
                 opt => opt.MapFrom(_ => CourseMembershipType.ManualAssigned)

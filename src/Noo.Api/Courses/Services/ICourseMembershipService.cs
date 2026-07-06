@@ -16,4 +16,6 @@ public interface ICourseMembershipService
     );
     public Ulid CreateMembership(CreateCourseMembershipDTO dto);
     public Task SoftDeleteMembershipAsync(Ulid membershipId);
+    public Task SetArchivedByStudentAsync(Ulid membershipId, bool isArchived);
+    public Task SetPinnedByStudentAsync(Ulid membershipId, bool isPinned);
 }
