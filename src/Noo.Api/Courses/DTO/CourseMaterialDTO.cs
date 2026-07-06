@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Noo.Api.Courses.Types;
 
 namespace Noo.Api.Courses.DTO;
 
@@ -38,6 +39,9 @@ public record CourseMaterialDTO
 
     [JsonPropertyName("contentId")]
     public Ulid? ContentId { get; init; }
+
+    [JsonPropertyName("myReaction")]
+    public CourseMaterialReactionTypes? MyReaction { get; init; }
 
     [Required]
     [JsonPropertyName("createdAt")]

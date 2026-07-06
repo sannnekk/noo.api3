@@ -36,8 +36,5 @@ public class CourseMaterialContentModel : BaseModel
     [InverseProperty(nameof(MediaModel.CourseMaterialContents))]
     public ICollection<MediaModel>? Medias { get; set; }
 
-    [InverseProperty(nameof(CourseMaterialReactionModel.MaterialContent))]
-    public ICollection<CourseMaterialReactionModel>? Reactions { get; set; }
-
     #endregion
 }

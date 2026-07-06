@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Noo.Api.Core.DataAbstraction.Db;
 
@@ -11,9 +12,11 @@ using Noo.Api.Core.DataAbstraction.Db;
 namespace Noo.Api.Migrations
 {
     [DbContext(typeof(NooDbContext))]
-    partial class NooDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260706110928_FixedMisspelledCourseReactionsEnum")]
+    partial class FixedMisspelledCourseReactionsEnum
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -715,6 +718,9 @@ namespace Noo.Api.Migrations
                         .HasColumnType("BINARY(16)")
                         .HasColumnName("id");
 
+                    b.Property<byte[]>("CourseMaterialModelId")
+                        .HasColumnType("BINARY(16)");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TIMESTAMP(6)")
@@ -722,10 +728,10 @@ namespace Noo.Api.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
 
-                    b.Property<byte[]>("MaterialId")
+                    b.Property<byte[]>("MaterialContentId")
                         .IsRequired()
                         .HasColumnType("BINARY(16)")
-                        .HasColumnName("material_id");
+                        .HasColumnName("material_content_id");
 
                     b.Property<string>("Reaction")
                         .IsRequired()
@@ -744,10 +750,11 @@ namespace Noo.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("CourseMaterialModelId");
 
-                    b.HasIndex("MaterialId", "UserId")
-                        .IsUnique();
+                    b.HasIndex("MaterialContentId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("course_reaction");
                 });
@@ -2374,9 +2381,13 @@ namespace Noo.Api.Migrations
 
             modelBuilder.Entity("Noo.Api.Courses.Models.CourseMaterialReactionModel", b =>
                 {
-                    b.HasOne("Noo.Api.Courses.Models.CourseMaterialModel", "Material")
+                    b.HasOne("Noo.Api.Courses.Models.CourseMaterialModel", null)
                         .WithMany("Reactions")
-                        .HasForeignKey("MaterialId")
+                        .HasForeignKey("CourseMaterialModelId");
+
+                    b.HasOne("Noo.Api.Courses.Models.CourseMaterialContentModel", "MaterialContent")
+                        .WithMany("Reactions")
+                        .HasForeignKey("MaterialContentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2386,7 +2397,7 @@ namespace Noo.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Material");
+                    b.Navigation("MaterialContent");
 
                     b.Navigation("User");
                 });
@@ -2716,6 +2727,8 @@ namespace Noo.Api.Migrations
                 {
                     b.Navigation("Material")
                         .IsRequired();
+
+                    b.Navigation("Reactions");
 
                     b.Navigation("WorkAssignments");
                 });

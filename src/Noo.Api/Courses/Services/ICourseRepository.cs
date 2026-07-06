@@ -9,7 +9,9 @@ public interface ICourseRepository : IRepository<CourseModel>
     /// Loads a course and its chapter tree for read-only display. The result is
     /// not tracked, so the manual tree-shaping cannot corrupt EF change tracking.
     /// </summary>
-    public Task<CourseModel?> GetWithChapterTreeAsync(Ulid courseId, bool includeInactive = false, int maxDepth = CourseConfig.MaxChapterTreeDepth);
+    public Task<CourseModel?> GetWithChapterTreeAsync(Ulid courseId, bool includeInactive = false, Ulid? reactionsUserId = null, int maxDepth = CourseConfig.MaxChapterTreeDepth);
+
+    public Task<bool> MaterialExistsAsync(Ulid courseId, Ulid materialId);
 
     /// <summary>
     /// Loads a course and its chapter tree tracked, shaped so the top-level

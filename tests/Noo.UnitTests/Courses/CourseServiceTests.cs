@@ -61,6 +61,7 @@ public class CourseServiceTests
             var service = new CourseService(
                 courseRepo,
                 courseContentRepo,
+                new CourseMaterialReactionRepository(ctx),
                 currentUser,
                 mapper,
                 jsonPatch,
@@ -82,6 +83,7 @@ public class CourseServiceTests
             var verifyService = new CourseService(
                 verifyRepo,
                 verifyContentRepo,
+                new CourseMaterialReactionRepository(verifyCtx),
                 MakeUser(UserRoles.Admin),
                 mapper,
                 jsonPatch,
@@ -117,6 +119,7 @@ public class CourseServiceTests
         var adminService = new CourseService(
             courseRepo,
             courseContentRepo,
+            new CourseMaterialReactionRepository(ctx),
             MakeUser(UserRoles.Admin),
             mapper,
             jsonPatch,
@@ -132,6 +135,7 @@ public class CourseServiceTests
         var studentService = new CourseService(
             courseRepo,
             courseContentRepo,
+            new CourseMaterialReactionRepository(ctx),
             student,
             mapper,
             jsonPatch,
@@ -157,6 +161,7 @@ public class CourseServiceTests
         var service = new CourseService(
             courseRepo,
             courseContentRepo,
+            new CourseMaterialReactionRepository(ctx),
             currentUser,
             mapper,
             jsonPatch,
@@ -189,6 +194,7 @@ public class CourseServiceTests
         var service = new CourseService(
             courseRepo,
             courseContentRepo,
+            new CourseMaterialReactionRepository(ctx),
             currentUser,
             mapper,
             jsonPatch,
@@ -228,6 +234,7 @@ public class CourseServiceTests
         var service = new CourseService(
             courseRepo,
             courseContentRepo,
+            new CourseMaterialReactionRepository(ctx),
             currentUser,
             mapper,
             jsonPatch,
@@ -284,6 +291,7 @@ public class CourseServiceTests
             var service = new CourseService(
                 courseRepo,
                 courseContentRepo,
+                new CourseMaterialReactionRepository(ctx),
                 currentUser,
                 mapper,
                 jsonPatch,

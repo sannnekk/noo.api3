@@ -46,7 +46,8 @@ public class CourseMaterialModel : OrderedModel
     [InverseProperty(nameof(CourseMaterialContentModel.Material))]
     public CourseMaterialContentModel Content { get; set; } = default!;
 
-    public ICollection<CourseMaterialReactionModel> Reactions { get; set; } = default!;
+    [InverseProperty(nameof(CourseMaterialReactionModel.Material))]
+    public ICollection<CourseMaterialReactionModel>? Reactions { get; set; }
 
     #endregion
 }

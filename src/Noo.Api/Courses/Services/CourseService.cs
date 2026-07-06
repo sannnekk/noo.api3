@@ -1,6 +1,7 @@
 using AutoMapper;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions;
+using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
@@ -8,6 +9,7 @@ using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Filters;
 using Noo.Api.Courses.Models;
 using Noo.Api.Courses.QuerySpecifications;
+using Noo.Api.Courses.Types;
 using Noo.Api.Media.Models;
 using Noo.Api.NooTube.Models;
 using SystemTextJsonPatch;
@@ -19,6 +21,7 @@ public class CourseService : ICourseService
 {
     private readonly ICourseRepository _courseRepository;
     private readonly ICourseContentRepository _courseContentRepository;
+    private readonly ICourseMaterialReactionRepository _reactionRepository;
     private readonly ICurrentUser _currentUser;
     private readonly IMapper _mapper;
     private readonly IJsonPatchUpdateService _jsonPatchUpdateService;
@@ -27,6 +30,7 @@ public class CourseService : ICourseService
     public CourseService(
         ICourseRepository courseRepository,
         ICourseContentRepository courseContentRepository,
+        ICourseMaterialReactionRepository reactionRepository,
         ICurrentUser currentUser,
         IMapper mapper,
         IJsonPatchUpdateService jsonPatchUpdateService,
@@ -35,6 +39,7 @@ public class CourseService : ICourseService
     {
         _courseRepository = courseRepository;
         _courseContentRepository = courseContentRepository;
+        _reactionRepository = reactionRepository;
         _currentUser = currentUser;
         _mapper = mapper;
         _jsonPatchUpdateService = jsonPatchUpdateService;
@@ -64,7 +69,14 @@ public class CourseService : ICourseService
 
     public async Task<CourseModel?> GetByIdAsync(Ulid id, bool includeInactive)
     {
-        var course = await _courseRepository.GetWithChapterTreeAsync(id, includeInactive: true);
+        var reactionsUserId =
+            _currentUser.UserRole == UserRoles.Student ? _currentUser.UserId : null;
+
+        var course = await _courseRepository.GetWithChapterTreeAsync(
+            id,
+            includeInactive: true,
+            reactionsUserId: reactionsUserId
+        );
 
         return course;
     }
@@ -94,6 +106,43 @@ public class CourseService : ICourseService
             return;
 
         course.IsDeleted = true;
+    }
+
+    public async Task ToggleMaterialReactionAsync(
+        Ulid courseId,
+        Ulid materialId,
+        CourseMaterialReactionTypes reaction
+    )
+    {
+        var userId = _currentUser.RequireUserId();
+
+        if (!await _courseRepository.MaterialExistsAsync(courseId, materialId))
+        {
+            throw new NotFoundException();
+        }
+
+        var existing = await _reactionRepository.GetAsync(materialId, userId);
+
+        if (existing == null)
+        {
+            _reactionRepository.Add(
+                new CourseMaterialReactionModel
+                {
+                    MaterialId = materialId,
+                    UserId = userId,
+                    Reaction = reaction,
+                }
+            );
+            return;
+        }
+
+        if (existing.Reaction == reaction)
+        {
+            _reactionRepository.Delete(existing);
+            return;
+        }
+
+        existing.Reaction = reaction;
     }
 
     public async Task UpdateAsync(Ulid courseId, JsonPatchDocument<UpdateCourseDTO> courseUpdateDto)

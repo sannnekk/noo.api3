@@ -12,14 +12,21 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
     {
     }
 
-    public async Task<CourseModel?> GetWithChapterTreeAsync(Ulid courseId, bool includeInactive = false, int maxDepth = CourseConfig.MaxChapterTreeDepth)
+    public async Task<CourseModel?> GetWithChapterTreeAsync(Ulid courseId, bool includeInactive = false, Ulid? reactionsUserId = null, int maxDepth = CourseConfig.MaxChapterTreeDepth)
     {
-        var chapters = await Context.GetDbSet<CourseChapterModel>()
+        var chaptersQuery = Context.GetDbSet<CourseChapterModel>()
             .AsNoTracking()
             .Where(c => c.CourseId == courseId)
-            .Where(c => includeInactive || c.IsActive)
-            .Include(c => c.Materials.Where(m => includeInactive || m.IsActive).OrderBy(m => m.Order))
-            .ToListAsync();
+            .Where(c => includeInactive || c.IsActive);
+
+        IQueryable<CourseChapterModel> chaptersWithMaterials = reactionsUserId is Ulid userId
+            ? chaptersQuery
+                .Include(c => c.Materials.Where(m => includeInactive || m.IsActive).OrderBy(m => m.Order))
+                .ThenInclude(m => m.Reactions!.Where(r => r.UserId == userId))
+            : chaptersQuery
+                .Include(c => c.Materials.Where(m => includeInactive || m.IsActive).OrderBy(m => m.Order));
+
+        var chapters = await chaptersWithMaterials.ToListAsync();
 
         var course = await Context.GetDbSet<CourseModel>()
             .AsNoTracking()
@@ -34,6 +41,12 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
         }
 
         return BuildTree(course, chapters, maxDepth);
+    }
+
+    public Task<bool> MaterialExistsAsync(Ulid courseId, Ulid materialId)
+    {
+        return Context.GetDbSet<CourseMaterialModel>()
+            .AnyAsync(m => m.Id == materialId && m.Chapter.CourseId == courseId);
     }
 
     public async Task<CourseModel?> GetWithChapterTreeForUpdateAsync(Ulid courseId)

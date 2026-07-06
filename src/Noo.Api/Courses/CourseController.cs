@@ -8,6 +8,7 @@ using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Filters;
 using Noo.Api.Courses.Models;
 using Noo.Api.Courses.Services;
+using Noo.Api.Courses.Types;
 using SystemTextJsonPatch;
 using ProducesAttribute = Noo.Api.Core.Documentation.ProducesAttribute;
 
@@ -155,6 +156,31 @@ public class CourseController : ApiController
     public async Task<IActionResult> DeleteCourseAsync([FromRoute] Ulid courseId)
     {
         await _courseService.SoftDeleteAsync(courseId);
+
+        return SendResponse();
+    }
+
+    /// <summary>
+    /// Toggles the current student's reaction on a course material.
+    /// </summary>
+    [HttpPatch("{courseId:ulid}/material/{materialId:ulid}/reaction")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = CoursePolicies.CanReactToCourseMaterial)]
+    [Produces(
+        null,
+        StatusCodes.Status204NoContent,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> ToggleMaterialReactionAsync(
+        [FromRoute] Ulid courseId,
+        [FromRoute] Ulid materialId,
+        [FromQuery] CourseMaterialReactionTypes reaction
+    )
+    {
+        await _courseService.ToggleMaterialReactionAsync(courseId, materialId, reaction);
 
         return SendResponse();
     }

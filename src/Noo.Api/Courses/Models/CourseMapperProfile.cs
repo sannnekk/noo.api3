@@ -138,7 +138,18 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.ContentId, opt => opt.Ignore())
             .ForMember(dest => dest.Reactions, opt => opt.Ignore());
 
-        CreateMap<CourseMaterialModel, CourseMaterialDTO>();
+        CreateMap<CourseMaterialModel, CourseMaterialDTO>()
+            .ForMember(
+                dest => dest.MyReaction,
+                opt =>
+                    opt.MapFrom(src =>
+                        src.Reactions == null
+                            ? null
+                            : src.Reactions
+                                .Select(r => (CourseMaterialReactionTypes?)r.Reaction)
+                                .FirstOrDefault()
+                    )
+            );
 
         // Course material content
         // Navigation collections (Medias, NooTubeVideos) and the Poll nav are
@@ -152,8 +163,7 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Material, opt => opt.Ignore())
             .ForMember(dest => dest.Poll, opt => opt.Ignore())
             .ForMember(dest => dest.NooTubeVideos, opt => opt.Ignore())
-            .ForMember(dest => dest.Medias, opt => opt.Ignore())
-            .ForMember(dest => dest.Reactions, opt => opt.Ignore());
+            .ForMember(dest => dest.Medias, opt => opt.Ignore());
 
         CreateMap<CourseMaterialContentModel, UpdateCourseMaterialContentDTO>()
             .ForMember(
@@ -185,7 +195,6 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.NooTubeVideos, opt => opt.Ignore())
             .ForMember(dest => dest.Medias, opt => opt.Ignore())
             .ForMember(dest => dest.Poll, opt => opt.Ignore())
-            .ForMember(dest => dest.Reactions, opt => opt.Ignore())
             .ForMember(dest => dest.Material, opt => opt.Ignore())
             .ForMember(dest => dest.WorkAssignments, opt => opt.Ignore())
             .AfterMap(
