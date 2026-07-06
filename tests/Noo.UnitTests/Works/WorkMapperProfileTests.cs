@@ -1,6 +1,11 @@
 using AutoMapper;
 using Noo.Api.Core.Utils.Richtext.Delta;
+using Noo.Api.Courses.Models;
+using Noo.Api.Media.Models;
+using Noo.Api.NooTube.Models;
+using Noo.Api.Polls.Models;
 using Noo.Api.Subjects.Models;
+using Noo.Api.Users.Models;
 using Noo.Api.Works.DTO;
 using Noo.Api.Works.Models;
 using Noo.Api.Works.Types;
@@ -20,6 +25,11 @@ public class WorkMapperProfileTests
         {
             cfg.AddProfile<WorkMapperProfile>();
             cfg.AddProfile<SubjectMapperProfile>();
+            cfg.AddProfile<CourseMapperProfile>();
+            cfg.AddProfile<NooTubeMapperProfile>();
+            cfg.AddProfile<MediaMapperProfile>();
+            cfg.AddProfile<PollMapperProfile>();
+            cfg.AddProfile<UserMapperProfile>();
         });
         config.AssertConfigurationIsValid();
         _mapper = config.CreateMapper();

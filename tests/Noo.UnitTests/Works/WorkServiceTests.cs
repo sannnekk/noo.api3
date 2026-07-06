@@ -4,6 +4,8 @@ using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Utils.Richtext.Delta;
+using Noo.Api.Courses.Models;
+using Noo.Api.Subjects.Models;
 using Noo.Api.Works.DTO;
 using Noo.Api.Works.Filters;
 using Noo.Api.Works.Models;
@@ -21,6 +23,11 @@ public class WorkServiceTests
         {
             cfg.AddProfile<WorkMapperProfile>();
             cfg.AddProfile<Noo.Api.Subjects.Models.SubjectMapperProfile>();
+            cfg.AddProfile<Noo.Api.Courses.Models.CourseMapperProfile>();
+            cfg.AddProfile<Noo.Api.NooTube.Models.NooTubeMapperProfile>();
+            cfg.AddProfile<Noo.Api.Media.Models.MediaMapperProfile>();
+            cfg.AddProfile<Noo.Api.Polls.Models.PollMapperProfile>();
+            cfg.AddProfile<Noo.Api.Users.Models.UserMapperProfile>();
         });
         config.AssertConfigurationIsValid();
         return config.CreateMapper();
@@ -405,6 +412,120 @@ public class WorkServiceTests
         // Work is attached but never cached.
         Assert.Equal(workId, statistics.Work.Id);
         Assert.Equal(2, statistics.Work.Tasks!.Count);
+    }
+
+    [Fact(
+        DisplayName = "Regression: GetWorkRelations loads the full course chain and builds the material path"
+    )]
+    public async Task GetWorkRelations_LoadsCourseChainAndBuildsPath()
+    {
+        // Reproduces a production NullReferenceException: GetWorkRelationsAsync once
+        // returned assignments without loading the CourseMaterialContent → Material →
+        // Chapter → Course navigation chain, so building the path dereferenced null.
+        // Querying from a fresh context ensures tracked-entity fix-up cannot hide a
+        // missing Include.
+        var dbName = Guid.NewGuid().ToString();
+        var mapper = CreateMapper();
+
+        Ulid workId;
+        Ulid courseId;
+        Ulid materialId;
+        Ulid subjectId;
+        Ulid assignmentId;
+
+        using (var seedContext = TestHelpers.CreateInMemoryDb(dbName))
+        {
+            var subject = new SubjectModel { Name = "Math", Color = "red" };
+            seedContext.GetDbSet<SubjectModel>().Add(subject);
+
+            var course = new CourseModel { Name = "Course 1", SubjectId = subject.Id };
+            seedContext.GetDbSet<CourseModel>().Add(course);
+
+            var rootChapter = new CourseChapterModel
+            {
+                Title = "Root chapter",
+                CourseId = course.Id,
+                IsActive = true,
+            };
+            var subChapter = new CourseChapterModel
+            {
+                Title = "Sub chapter",
+                CourseId = course.Id,
+                ParentChapterId = rootChapter.Id,
+                IsActive = true,
+            };
+            seedContext.GetDbSet<CourseChapterModel>().AddRange(rootChapter, subChapter);
+
+            var content = new CourseMaterialContentModel();
+            seedContext.GetDbSet<CourseMaterialContentModel>().Add(content);
+
+            var material = new CourseMaterialModel
+            {
+                Title = "Material 1",
+                ChapterId = subChapter.Id,
+                ContentId = content.Id,
+                IsActive = true,
+            };
+            seedContext.GetDbSet<CourseMaterialModel>().Add(material);
+
+            var work = new WorkModel
+            {
+                Title = "Work 1",
+                Type = WorkType.Test,
+                SubjectId = subject.Id,
+            };
+            seedContext.GetDbSet<WorkModel>().Add(work);
+
+            var assignment = new CourseWorkAssignmentModel
+            {
+                CourseMaterialContentId = content.Id,
+                WorkId = work.Id,
+                IsActive = true,
+            };
+            seedContext.GetDbSet<CourseWorkAssignmentModel>().Add(assignment);
+
+            await seedContext.SaveChangesAsync();
+
+            workId = work.Id;
+            courseId = course.Id;
+            materialId = material.Id;
+            subjectId = subject.Id;
+            assignmentId = assignment.Id;
+        }
+
+        using var context = TestHelpers.CreateInMemoryDb(dbName);
+        var service = new WorkService(
+            new WorkRepository(context),
+            mapper,
+            new JsonPatchUpdateService(mapper),
+            new MemoryCacheRepository()
+        );
+
+        var relations = await service.GetWorkRelationsAsync(workId);
+
+        var relation = Assert.Single(relations);
+        Assert.Equal(courseId, relation.CourseId);
+        Assert.Equal(materialId, relation.MaterialId);
+        Assert.NotNull(relation.Subject);
+        Assert.Equal(subjectId, relation.Subject!.Id);
+        Assert.Equal(assignmentId, relation.Assignment.Id);
+        string[] expectedPath = ["Course 1", "Root chapter", "Sub chapter", "Material 1"];
+        Assert.Equal(expectedPath, relation.Path);
+    }
+
+    [Fact(DisplayName = "WorkService: work with no assignments has no relations")]
+    public async Task GetWorkRelations_NoAssignments_ReturnsEmpty()
+    {
+        using var context = TestHelpers.CreateInMemoryDb();
+        var mapper = CreateMapper();
+        var service = new WorkService(
+            new WorkRepository(context),
+            mapper,
+            new JsonPatchUpdateService(mapper),
+            new MemoryCacheRepository()
+        );
+
+        Assert.Empty(await service.GetWorkRelationsAsync(Ulid.NewUlid()));
     }
 
     private static AssignedWorkModel AddAssignedWork(
