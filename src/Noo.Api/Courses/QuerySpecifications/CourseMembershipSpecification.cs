@@ -24,6 +24,7 @@ public class CourseMembershipSpecification : Specification<CourseMembershipModel
             case UserRoles.Assistant:
                 // Admins, Teachers, and Assistants can see all memberships
                 Query.Include(m => m.Assigner);
+                Query.Include(m => m.Student);
                 Query.Where(_ => true);
                 break;
 
