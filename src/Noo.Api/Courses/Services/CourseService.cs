@@ -12,6 +12,7 @@ using Noo.Api.Courses.QuerySpecifications;
 using Noo.Api.Courses.Types;
 using Noo.Api.Media.Models;
 using Noo.Api.NooTube.Models;
+using Noo.Api.Users.Models;
 using SystemTextJsonPatch;
 
 namespace Noo.Api.Courses.Services;
@@ -49,6 +50,8 @@ public class CourseService : ICourseService
     public async Task<Ulid> CreateAsync(CreateCourseDTO dto)
     {
         var model = _mapper.Map<CourseModel>(dto);
+
+        model.Authors = [_entityReferences.Reference<UserModel>(_currentUser.RequireUserId())];
 
         _courseRepository.Add(model);
 
