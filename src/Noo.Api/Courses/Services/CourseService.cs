@@ -90,12 +90,26 @@ public class CourseService : ICourseService
 
     public async Task<SearchResult<CourseModel>> SearchAsync(CourseFilter filter)
     {
+        // Archived courses are visible only to admins and teachers, and only on explicit request
+        var canViewArchived = _currentUser.UserRole is UserRoles.Admin or UserRoles.Teacher;
+
+        filter.IsArchived = canViewArchived ? filter.IsArchived ?? false : false;
+
         var result = await _courseRepository.SearchAsync(
             filter,
             [new CourseSpecification(_currentUser.UserRole, _currentUser.UserId, filter.AuthorId)]
         );
 
         return result;
+    }
+
+    public async Task SetArchivedAsync(Ulid courseId, bool isArchived)
+    {
+        var course = await _courseRepository.GetByIdAsync(courseId);
+
+        course.ThrowNotFoundIfNull();
+
+        course.IsArchived = isArchived;
     }
 
     public async Task SoftDeleteAsync(Ulid courseId)

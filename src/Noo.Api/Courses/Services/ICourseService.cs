@@ -14,6 +14,7 @@ public interface ICourseService
     public Task<CourseModel?> GetByIdAsync(Ulid id, bool includeInactive);
     public Task<CourseMaterialContentModel?> GetContentByIdAsync(Ulid contentId);
     public Task<SearchResult<CourseModel>> SearchAsync(CourseFilter filter);
+    public Task SetArchivedAsync(Ulid courseId, bool isArchived);
     public Task SoftDeleteAsync(Ulid courseId);
     public Task ToggleMaterialReactionAsync(Ulid courseId, Ulid materialId, CourseMaterialReactionTypes reaction);
     public Task UpdateAsync(Ulid courseId, JsonPatchDocument<UpdateCourseDTO> courseUpdateDto);

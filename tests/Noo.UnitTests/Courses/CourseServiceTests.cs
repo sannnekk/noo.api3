@@ -1,6 +1,7 @@
 using AutoMapper;
 using Moq;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Courses.DTO;
@@ -148,6 +149,56 @@ public class CourseServiceTests
     }
 
     [Fact]
+    public async Task Search_Hides_Archived_Courses_Unless_Explicitly_Requested_By_Privileged_Role()
+    {
+        using var ctx = TestHelpers.CreateInMemoryDb();
+        var uow = TestHelpers.CreateUowMock(ctx).Object;
+        var courseRepo = new CourseRepository(ctx);
+        var courseContentRepo = new CourseContentRepository(ctx);
+        var mapper = CreateMapper();
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+
+        var active = new CourseModel { Name = "Active", SubjectId = Ulid.NewUlid() };
+        var archived = new CourseModel
+        {
+            Name = "Archived",
+            SubjectId = Ulid.NewUlid(),
+            IsArchived = true,
+        };
+        uow.Context.GetDbSet<CourseModel>().AddRange(active, archived);
+        await uow.CommitAsync();
+
+        CourseService MakeService(UserRoles role) =>
+            new(
+                courseRepo,
+                courseContentRepo,
+                new CourseMaterialReactionRepository(ctx),
+                MakeUser(role),
+                mapper,
+                jsonPatch,
+                new EntityReferenceFactory(ctx)
+            );
+
+        // By default archived courses are hidden for everyone
+        var defaultSearch = await MakeService(UserRoles.Admin)
+            .SearchAsync(new CourseFilter { Page = 1, PerPage = 10 });
+        Assert.Equal(1, defaultSearch.Total);
+        Assert.Equal("Active", defaultSearch.Items.Single().Name);
+
+        // Admins and teachers can explicitly request archived courses
+        var archivedSearch = await MakeService(UserRoles.Teacher)
+            .SearchAsync(new CourseFilter { Page = 1, PerPage = 10, IsArchived = true });
+        Assert.Equal(1, archivedSearch.Total);
+        Assert.Equal("Archived", archivedSearch.Items.Single().Name);
+
+        // Other roles never see archived courses, even when requested
+        var assistantSearch = await MakeService(UserRoles.Assistant)
+            .SearchAsync(new CourseFilter { Page = 1, PerPage = 10, IsArchived = true });
+        Assert.Equal(1, assistantSearch.Total);
+        Assert.Equal("Active", assistantSearch.Items.Single().Name);
+    }
+
+    [Fact]
     public async Task SoftDelete_Sets_IsDeleted_True_WhenFound()
     {
         var dbName = Guid.NewGuid().ToString();
@@ -179,6 +230,71 @@ public class CourseServiceTests
         var course = await verifyUow.Context.GetDbSet<CourseModel>().FindAsync(id);
         Assert.NotNull(course);
         Assert.True(course!.IsDeleted);
+    }
+
+    [Fact]
+    public async Task SetArchived_Toggles_IsArchived()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var ctx = TestHelpers.CreateInMemoryDb(dbName);
+        var uow = TestHelpers.CreateUowMock(ctx).Object;
+        var courseRepo = new CourseRepository(ctx);
+        var courseContentRepo = new CourseContentRepository(ctx);
+        var currentUser = MakeUser(UserRoles.Admin);
+        var mapper = CreateMapper();
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+        var service = new CourseService(
+            courseRepo,
+            courseContentRepo,
+            new CourseMaterialReactionRepository(ctx),
+            currentUser,
+            mapper,
+            jsonPatch,
+            new EntityReferenceFactory(ctx)
+        );
+
+        var id = await service.CreateAsync(MakeCreateCourseDto("ToArchive"));
+        await uow.CommitAsync();
+
+        await service.SetArchivedAsync(id, true);
+        await uow.CommitAsync();
+
+        using (var verifyCtx = TestHelpers.CreateInMemoryDb(dbName))
+        {
+            var course = await verifyCtx.GetDbSet<CourseModel>().FindAsync(id);
+            Assert.NotNull(course);
+            Assert.True(course!.IsArchived);
+        }
+
+        await service.SetArchivedAsync(id, false);
+        await uow.CommitAsync();
+
+        using (var verifyCtx = TestHelpers.CreateInMemoryDb(dbName))
+        {
+            var course = await verifyCtx.GetDbSet<CourseModel>().FindAsync(id);
+            Assert.NotNull(course);
+            Assert.False(course!.IsArchived);
+        }
+    }
+
+    [Fact]
+    public async Task SetArchived_Throws_NotFound_WhenCourseMissing()
+    {
+        using var ctx = TestHelpers.CreateInMemoryDb();
+        var mapper = CreateMapper();
+        var service = new CourseService(
+            new CourseRepository(ctx),
+            new CourseContentRepository(ctx),
+            new CourseMaterialReactionRepository(ctx),
+            MakeUser(UserRoles.Admin),
+            mapper,
+            new JsonPatchUpdateService(mapper),
+            new EntityReferenceFactory(ctx)
+        );
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            service.SetArchivedAsync(Ulid.NewUlid(), true)
+        );
     }
 
     [Fact]

@@ -161,6 +161,48 @@ public class CourseController : ApiController
     }
 
     /// <summary>
+    /// Archives a course.
+    /// </summary>
+    [HttpPatch("{courseId:ulid}/archive")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = CoursePolicies.CanEditCourse)]
+    [Produces(
+        null,
+        StatusCodes.Status204NoContent,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> ArchiveCourseAsync([FromRoute] Ulid courseId)
+    {
+        await _courseService.SetArchivedAsync(courseId, true);
+
+        return SendResponse();
+    }
+
+    /// <summary>
+    /// Restores a course from the archive.
+    /// </summary>
+    [HttpPatch("{courseId:ulid}/unarchive")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = CoursePolicies.CanEditCourse)]
+    [Produces(
+        null,
+        StatusCodes.Status204NoContent,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> UnarchiveCourseAsync([FromRoute] Ulid courseId)
+    {
+        await _courseService.SetArchivedAsync(courseId, false);
+
+        return SendResponse();
+    }
+
+    /// <summary>
     /// Toggles the current student's reaction on a course material.
     /// </summary>
     [HttpPatch("{courseId:ulid}/material/{materialId:ulid}/reaction")]
