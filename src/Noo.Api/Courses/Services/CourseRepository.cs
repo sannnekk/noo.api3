@@ -8,29 +8,39 @@ namespace Noo.Api.Courses.Services;
 [RegisterScoped(typeof(ICourseRepository))]
 public class CourseRepository : Repository<CourseModel>, ICourseRepository
 {
-    public CourseRepository(NooDbContext dbContext) : base(dbContext)
-    {
-    }
+    public CourseRepository(NooDbContext dbContext)
+        : base(dbContext) { }
 
-    public async Task<CourseModel?> GetWithChapterTreeAsync(Ulid courseId, bool includeInactive = false, Ulid? reactionsUserId = null, int maxDepth = CourseConfig.MaxChapterTreeDepth)
+    public async Task<CourseModel?> GetWithChapterTreeAsync(
+        Ulid courseId,
+        bool includeInactive = false,
+        Ulid? reactionsUserId = null,
+        int maxDepth = CourseConfig.MaxChapterTreeDepth
+    )
     {
-        var chaptersQuery = Context.GetDbSet<CourseChapterModel>()
+        var chaptersQuery = Context
+            .GetDbSet<CourseChapterModel>()
             .AsNoTracking()
             .Where(c => c.CourseId == courseId)
             .Where(c => includeInactive || c.IsActive);
 
         IQueryable<CourseChapterModel> chaptersWithMaterials = reactionsUserId is Ulid userId
             ? chaptersQuery
-                .Include(c => c.Materials.Where(m => includeInactive || m.IsActive).OrderBy(m => m.Order))
-                .ThenInclude(m => m.Reactions!.Where(r => r.UserId == userId))
-            : chaptersQuery
-                .Include(c => c.Materials.Where(m => includeInactive || m.IsActive).OrderBy(m => m.Order));
+                .Include(c =>
+                    c.Materials.Where(m => includeInactive || m.IsActive).OrderBy(m => m.Order)
+                )
+                    .ThenInclude(m => m.Reactions!.Where(r => r.UserId == userId))
+            : chaptersQuery.Include(c =>
+                c.Materials.Where(m => includeInactive || m.IsActive).OrderBy(m => m.Order)
+            );
 
         var chapters = await chaptersWithMaterials.ToListAsync();
 
-        var course = await Context.GetDbSet<CourseModel>()
+        var course = await Context
+            .GetDbSet<CourseModel>()
             .AsNoTracking()
             .Where(c => c.Id == courseId)
+            .Include(c => c.Authors)
             .Include(c => c.Subject)
             .Include(c => c.Thumbnail)
             .FirstOrDefaultAsync();
@@ -45,13 +55,16 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
 
     public Task<bool> MaterialExistsAsync(Ulid courseId, Ulid materialId)
     {
-        return Context.GetDbSet<CourseMaterialModel>()
+        return Context
+            .GetDbSet<CourseMaterialModel>()
             .AnyAsync(m => m.Id == materialId && m.Chapter.CourseId == courseId);
     }
 
     public async Task<CourseModel?> GetWithChapterTreeForUpdateAsync(Ulid courseId)
     {
-        var course = await Context.GetDbSet<CourseModel>()
+        var course = await Context
+            .GetDbSet<CourseModel>()
+            .Include(c => c.Authors)
             .FirstOrDefaultAsync(c => c.Id == courseId);
 
         if (course is null)
@@ -64,7 +77,8 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
         // update merge then reconciles the tree purely through ParentChapterId / ChapterId
         // without reassigning any tracked navigation collection, so no existing child is
         // ever severed from its required parent and orphan-deleted before the patch runs.
-        await Context.GetDbSet<CourseChapterModel>()
+        await Context
+            .GetDbSet<CourseChapterModel>()
             .Where(c => c.CourseId == courseId)
             .Include(c => c.Materials)
             .LoadAsync();
@@ -72,7 +86,11 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
         return course;
     }
 
-    private CourseModel BuildTree(CourseModel course, List<CourseChapterModel> chapters, int maxDepth)
+    private CourseModel BuildTree(
+        CourseModel course,
+        List<CourseChapterModel> chapters,
+        int maxDepth
+    )
     {
         course.Chapters = chapters
             .Where(c => c.ParentChapterId == null)
@@ -83,7 +101,12 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
         return course;
     }
 
-    private CourseChapterModel BuildSubTree(CourseChapterModel chapter, List<CourseChapterModel> chapters, int maxDepth, int currentDepth = 0)
+    private CourseChapterModel BuildSubTree(
+        CourseChapterModel chapter,
+        List<CourseChapterModel> chapters,
+        int maxDepth,
+        int currentDepth = 0
+    )
     {
         if (currentDepth >= maxDepth)
         {

@@ -28,6 +28,10 @@ public class CourseMapperProfile : Profile
 
         CreateMap<CourseModel, UpdateCourseDTO>()
             .ForMember(
+                dest => dest.AuthorIds,
+                opt => opt.MapFrom(src => src.Authors.Select(author => author.Id))
+            )
+            .ForMember(
                 dest => dest.Chapters,
                 opt =>
                     opt.MapFrom(
@@ -54,8 +58,10 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-            // TODO: implement editors and authors update
+            // TODO: implement editors update
             .ForMember(dest => dest.Editors, opt => opt.Ignore())
+            // Authors are resolved to tracked references in CourseService (the mapper
+            // has no DbContext), so EF can reconcile the join table on save.
             .ForMember(dest => dest.Authors, opt => opt.Ignore())
             .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
             .ForMember(dest => dest.Memberships, opt => opt.Ignore())

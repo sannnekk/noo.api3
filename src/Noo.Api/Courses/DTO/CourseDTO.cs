@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Noo.Api.Media.DTO;
 using Noo.Api.Subjects.DTO;
+using Noo.Api.Users.DTO;
 
 namespace Noo.Api.Courses.DTO;
 
@@ -59,6 +60,9 @@ public record CourseDTO : IHasPresignedMedia
     [JsonPropertyName("chapters")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IEnumerable<CourseChapterDTO> Chapters { get; init; } = [];
+
+    [JsonPropertyName("authors")]
+    public IEnumerable<UserDTO> Authors { get; init; } = [];
 
     [Required]
     [JsonPropertyName("createdAt")]

@@ -168,7 +168,12 @@ public class CourseService : ICourseService
 
         model.ThrowNotFoundIfNull();
 
-        _jsonPatchUpdateService.ApplyPatch(model, courseUpdateDto);
+        var patched = _jsonPatchUpdateService.ApplyPatch(model, courseUpdateDto);
+
+        if (patched.AuthorIds != null)
+        {
+            model.Authors = _entityReferences.References<UserModel>(patched.AuthorIds);
+        }
     }
 
     public async Task UpdateContentAsync(
