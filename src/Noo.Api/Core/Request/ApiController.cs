@@ -54,6 +54,21 @@ public abstract class ApiController : ControllerBase
     }
 
     /// <summary>
+    /// Sends a response with the provided search result whose items are already
+    /// DTOs and therefore need no mapping.
+    /// </summary>
+    /// <remarks>
+    /// Without this overload a <see cref="SearchResult{T}"/> of DTOs binds to
+    /// the plain object overload below, which would nest the items and the
+    /// total under <c>data</c> instead of returning the items as an array.
+    /// </remarks>
+    protected IActionResult SendResponse<TDto>(SearchResult<TDto> data)
+        where TDto : class
+    {
+        return Ok(new ApiResponseDTO<IEnumerable<TDto>>(data.Items, data.Metadata));
+    }
+
+    /// <summary>
     /// Sends a response with the provided data mapped to the specified DTO type.
     /// If the data is null, it returns a NotFound result.
     /// </summary>

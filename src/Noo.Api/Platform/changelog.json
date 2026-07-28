@@ -1,0 +1,454 @@
+[
+  {
+    "version": "1.1.1-alpha",
+    "date": "2026-07-10T11:20:17+02:00",
+    "changes": [
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added authors update to course"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added basic stress testing"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added routes to archive/unarchive course"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Implemented course reactions"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added pin and archive functionality to course assignments for students"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added related materials route to works module"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed author not being automatically added to a course when creating it"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed for teacher and admin not loading a student along with course assignments"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed user cant get infos about himself & added tests"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed work relations route"
+      }
+    ]
+  },
+  {
+    "version": "1.1.0-alpha",
+    "date": "2026-07-02T11:13:23+02:00",
+    "changes": [
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added course archivation & course assignment archivation by student"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added filters to list routes & fixed filter bugs"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added default order: by id DESC & fixed bug with datetime filters"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added video statistics suport"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Implemented poll participation count & get participations by user id"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added favourite videos"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added video comment support"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Implemented nootube with kinescope"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added work statistics"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed small bugs in calendar module"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed problems with updating course tree & more tests"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed issues with favourite videos"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "Refactored media presigning"
+      }
+    ]
+  },
+  {
+    "version": "1.0.4-alpha",
+    "date": "2026-06-12T01:30:41+02:00",
+    "changes": [
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added avatar handling & refactored login & new auth integration tests"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added endpoint to get raw uploaded file via redirect"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added tiptap richtext support"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added get assigned work history route & small refactorings there"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Implemented help module, removed category there"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Implemented notifications"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added events to assigned works module & refactored assigned work history"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added refresh token mechanism"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed removing session not logging in the user & migration from prev commit & added online info endpoint"
+      }
+    ]
+  },
+  {
+    "version": "1.0.3-alpha",
+    "date": "2026-06-02T22:41:32+02:00",
+    "changes": [
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added automatic task checking, refactored AssignedWorkService"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added adequate date time handling including timezones"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed problem with course material content richtext not being updated via json patch"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed permissions in some modules, needs rewrite in future commits. Fixed some mapper issues with course memberships. Mentors can now access every student for read. CourseMembership has correct Include() statements now"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed statistics route throwing because of db context parallel usage"
+      },
+      {
+        "type": "optimization",
+        "author": "sannnekk",
+        "description": "Improved work max score: now it is calculated only on work save/update"
+      }
+    ]
+  },
+  {
+    "version": "1.0.2-alpha",
+    "date": "2026-05-20T09:29:18+02:00",
+    "changes": [
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added endpoint to get assigned works metadata"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added createdAt to ass work progress, made Mapper in Controllers protected, refactored get progress route"
+      }
+    ]
+  },
+  {
+    "version": "1.0.1-alpha",
+    "date": "2026-05-12T16:04:29+02:00",
+    "changes": [
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed readme"
+      }
+    ]
+  },
+  {
+    "version": "1.0.0-alpha",
+    "date": "2026-05-09T02:20:15+02:00",
+    "changes": [
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added migrations on start"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added dockerfile"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added OpenTelemetry"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added media module implementation"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added mediatr event system to assigned works"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added sessions and online"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added global.json & configured formatting in the ci"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added unit tests for courses, support & configured commit checks/ci"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added unit tests for notification system"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added notification system"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added more unit tests"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added Core unit tests"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added auth unit tests"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added a lot of things"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added user avatar"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added all the modules & databse complete"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added all the models except Statistics & Google Sheets"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added project for performance tests"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added all assigned work routes and interface"
+      },
+      {
+        "type": "feature",
+        "author": "Alex",
+        "description": "Added AssignedWorks and Calendar modules"
+      },
+      {
+        "type": "feature",
+        "author": "v7ta",
+        "description": "added tests for courses"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added course models and normal db schema"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added error type to swagger"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added swagger response types & started course module"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added proper indexing to models"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "Added user and subject services"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed mail ssl usage: moved to auto"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed missing using statement"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed loading student and mentor assignments"
+      },
+      {
+        "type": "bug-fix",
+        "author": "Alex",
+        "description": "Fixed & refactored json patch updates on nested entities"
+      },
+      {
+        "type": "bug-fix",
+        "author": "Alex",
+        "description": "Fixed course creation, added utility to manage mapping nested dicts to nested entity arrays"
+      },
+      {
+        "type": "bug-fix",
+        "author": "Alex",
+        "description": "Fixed failing ci"
+      },
+      {
+        "type": "bug-fix",
+        "author": "Alex",
+        "description": "Fixed the whole project to pass tests"
+      },
+      {
+        "type": "bug-fix",
+        "author": "Alex",
+        "description": "Fixed formatting"
+      },
+      {
+        "type": "bug-fix",
+        "author": "Alex",
+        "description": "Fixed integration tests still using mysql"
+      },
+      {
+        "type": "bug-fix",
+        "author": "Alex",
+        "description": "Fixed formatting"
+      },
+      {
+        "type": "bug-fix",
+        "author": "Alex",
+        "description": "Fixed formatting again"
+      },
+      {
+        "type": "bug-fix",
+        "author": "Alex",
+        "description": "Fixed formatting"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "Fixed token schemes to be standardized & fixed NotBlockedRequirement not injected"
+      },
+      {
+        "type": "refactor",
+        "author": "Alex",
+        "description": "Refactored User, Support, Subjects, Statistics, Smippets and Sessions modules"
+      },
+      {
+        "type": "refactor",
+        "author": "Alex",
+        "description": "Refactored Users & UserSettings modules"
+      }
+    ]
+  }
+]

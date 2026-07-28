@@ -1,5 +1,4 @@
 using Noo.Api.Core.DataAbstraction.Db;
-using Noo.Api.Core.Utils.Versioning;
 using Noo.Api.Platform.DTO;
 using Noo.Api.Platform.Services;
 using Noo.Api.Platform.Types;
@@ -9,11 +8,22 @@ namespace Noo.UnitTests.Platform;
 public class PlatformServiceTests
 {
     [Fact]
-    public void GetPlatformVersion_ReturnsCurrentVersion()
+    public void GetPlatformVersion_ReturnsVersionOfMostRecentRelease()
     {
         var service = new PlatformService();
         var version = service.GetPlatformVersion();
-        Assert.Equal(NooApiVersions.Current, version);
+        var newestRelease = service.GetChangelog().Items.First();
+
+        Assert.Equal(newestRelease.Version, version);
+    }
+
+    [Fact]
+    public void GetChangelog_ReturnsReleasesNewestFirst()
+    {
+        var service = new PlatformService();
+        var releases = service.GetChangelog().Items.ToList();
+
+        Assert.Equal(releases.OrderByDescending(release => release.Date), releases);
     }
 
     [Fact]

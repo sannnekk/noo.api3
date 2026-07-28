@@ -1,6 +1,9 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
+using Noo.Api.Core.Utils.Json;
 using Noo.Api.Core.Utils.Versioning;
 using Noo.Api.Platform.DTO;
 using Noo.Api.Platform.Types;
@@ -10,46 +13,73 @@ namespace Noo.Api.Platform.Services;
 [RegisterScoped(typeof(IPlatformService))]
 public class PlatformService : IPlatformService
 {
+    private const string _changelogResourceName = "Noo.Api.Platform.changelog.json";
+
+    private static readonly JsonSerializerOptions _serializerOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new HyphenLowerCaseStringEnumConverterFactory() }
+    };
+
+    /// <summary>
+    /// The changelog is generated at release time and embedded into the
+    /// assembly, so it never changes at runtime and is parsed once per process.
+    /// </summary>
+    private static readonly Lazy<IReadOnlyList<ChangeLogDTO>> _changelog = new(LoadChangelog);
+
+    /// <summary>
+    /// The version of the most recent release, which is the git tag the running
+    /// build was cut from. Falls back to the API contract version when the
+    /// changelog is empty (a repository with no tags yet).
+    /// </summary>
     public string GetPlatformVersion()
     {
-        return NooApiVersions.Current;
+        return _changelog.Value.Count > 0
+            ? _changelog.Value[0].Version
+            : NooApiVersions.Current;
     }
 
     public SearchResult<ChangeLogDTO> GetChangelog()
     {
-        // TODO: Replace with actual changelog retrieval logic
-        return new SearchResult<ChangeLogDTO>([
-            new ChangeLogDTO
-            {
-                Version = NooApiVersions.Current,
-                Date = Clock.Now,
-                Changes = [
-                    new PlatformChange
-                    {
-                        Type = ChangeType.Feature,
-                        Author = "Noo Team",
-                        Description = "Initial release of the Noo API platform."
-                    },
-                    new PlatformChange
-                    {
-                        Type = ChangeType.BugFix,
-                        Author = "Noo Team",
-                        Description = "Updated API documentation and versioning."
-                    },
-                    new PlatformChange
-                    {
-                        Type = ChangeType.Optimization,
-                        Author = "Noo Team",
-                        Description = "Deprecated old endpoints in favor of new ones."
-                    },
-                    new PlatformChange
-                    {
-                        Type = ChangeType.Refactor,
-                        Author = "Noo Team",
-                        Description = "Refactored API controllers for better maintainability."
-                    }
-                ]
-            }
-        ], 1);
+        var changelog = _changelog.Value;
+
+        return new SearchResult<ChangeLogDTO>(changelog, changelog.Count);
+    }
+
+    private static IReadOnlyList<ChangeLogDTO> LoadChangelog()
+    {
+        using var stream = typeof(PlatformService).Assembly
+            .GetManifestResourceStream(_changelogResourceName)
+            ?? throw new InvalidOperationException(
+                $"Embedded resource '{_changelogResourceName}' was not found."
+            );
+
+        var entries = JsonSerializer.Deserialize<IReadOnlyList<ChangelogEntry>>(
+            stream,
+            _serializerOptions
+        ) ?? [];
+
+        return [.. entries.Select(entry => new ChangeLogDTO
+        {
+            Version = entry.Version,
+            Date = Clock.ToMoscow(entry.Date),
+            Changes = entry.Changes
+        })];
+    }
+
+    /// <summary>
+    /// The on-disk shape of a changelog release. Kept separate from
+    /// <see cref="ChangeLogDTO"/> so the generated file can carry an explicit
+    /// UTC offset, which is normalised to Moscow time on load.
+    /// </summary>
+    private sealed record ChangelogEntry
+    {
+        [JsonPropertyName("version")]
+        public string Version { get; init; } = string.Empty;
+
+        [JsonPropertyName("date")]
+        public DateTimeOffset Date { get; init; }
+
+        [JsonPropertyName("changes")]
+        public IEnumerable<PlatformChange> Changes { get; init; } = [];
     }
 }
