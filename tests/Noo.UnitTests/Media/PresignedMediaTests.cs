@@ -77,6 +77,39 @@ public class PresignedMediaTests
     }
 
     [Fact]
+    public void Collect_MentorAssignment_Reaches_Both_Sides()
+    {
+        var assignment = new MentorAssignmentDTO
+        {
+            Student = UserWithMedia("student"),
+            Mentor = UserWithMedia("mentor"),
+        };
+
+        var paths = PresignedMedia.Collect(assignment).Select(m => m!.Path).Order().ToArray();
+
+        Assert.Equal(["mentor", "student"], paths);
+    }
+
+    [Fact]
+    public void ApiResponse_Envelope_Collects_From_MentorAssignment_List()
+    {
+        var assignments = new[]
+        {
+            new MentorAssignmentDTO { Mentor = UserWithMedia("first") },
+            new MentorAssignmentDTO { Mentor = UserWithMedia("second") },
+        };
+        var response = new ApiResponseDTO<IEnumerable<MentorAssignmentDTO>>(assignments, null);
+
+        var paths = ((IHasPresignedMedia)response)
+            .GetMediaForPresigning()
+            .Select(m => m!.Path)
+            .Order()
+            .ToArray();
+
+        Assert.Equal(["first", "second"], paths);
+    }
+
+    [Fact]
     public void ApiResponse_Envelope_Collects_From_Single_Item()
     {
         var user = UserWithMedia("avatar");

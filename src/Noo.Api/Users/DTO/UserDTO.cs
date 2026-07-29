@@ -48,6 +48,14 @@ public record UserDTO : IHasPresignedMedia
     [JsonPropertyName("avatar")]
     public UserAvatarDTO? Avatar { get; set; }
 
+    /// <summary>
+    /// Mentors of the user, filled where the query loads them (the user
+    /// search). Only students have mentors, so it stays empty for everyone else.
+    /// </summary>
+    [Required]
+    [JsonPropertyName("mentors")]
+    public IEnumerable<UserMentorDTO> Mentors { get; set; } = [];
+
     [JsonIgnore]
     public string PasswordHash { get; set; } = string.Empty;
 

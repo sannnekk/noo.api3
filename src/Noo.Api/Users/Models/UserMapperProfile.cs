@@ -11,7 +11,11 @@ public class UserMapperProfile : Profile
     public UserMapperProfile()
     {
         // user
-        CreateMap<UserModel, UserDTO>();
+        CreateMap<UserModel, UserDTO>()
+            .ForMember(
+                dest => dest.Mentors,
+                opt => opt.MapFrom(src => src.MentorAssignmentsAsStudent)
+            );
         CreateMap<UserCreationPayload, UserModel>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
@@ -73,6 +77,19 @@ public class UserMapperProfile : Profile
 
         // mentor assignment
         CreateMap<MentorAssignmentModel, MentorAssignmentDTO>();
+
+        // The mentor side of an assignment, flattened for listings
+        CreateMap<MentorAssignmentModel, UserMentorDTO>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.MentorId))
+            .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Mentor.Name))
+            .ForMember(
+                dest => dest.SubjectName,
+                opt => opt.MapFrom(src => src.Subject == null ? null : src.Subject.Name)
+            )
+            .ForMember(
+                dest => dest.SubjectColor,
+                opt => opt.MapFrom(src => src.Subject == null ? null : src.Subject.Color)
+            );
 
         // user avatar
         CreateMap<UserAvatarModel, UserAvatarDTO>();
