@@ -30,6 +30,10 @@ public record CourseMaterialDTO
     public bool IsActive { get; init; }
 
     [Required]
+    [JsonPropertyName("isPinned")]
+    public bool IsPinned { get; init; }
+
+    [Required]
     [JsonPropertyName("publishAt")]
     public DateTime? PublishAt { get; init; }
 

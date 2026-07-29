@@ -26,6 +26,10 @@ public class CourseMaterialModel : OrderedModel
     [Required]
     public bool IsActive { get; set; }
 
+    [Column("is_pinned", TypeName = DbDataTypes.Boolean)]
+    [Required]
+    public bool IsPinned { get; set; }
+
     [Column("publish_at", TypeName = DbDataTypes.DateTimeWithoutTZ)]
     public DateTime? PublishAt { get; set; }
 
