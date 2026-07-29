@@ -266,28 +266,54 @@ public class VideoService : IVideoService
     {
         var userId = _currentUser.RequireUserId();
 
-        var reaction = await _videoReactionRepository.GetAsync(videoId, userId);
-
-        if (reaction?.Reaction == newReaction)
+        if (!await _videoRepository.ExistsAsync(videoId))
         {
-            _videoReactionRepository.Delete(videoId, userId);
-            return;
+            throw new NotFoundException();
         }
+
+        var reaction = await _videoReactionRepository.GetAsync(videoId, userId);
 
         if (reaction == null)
         {
-            reaction = new NooTubeVideoReactionModel
-            {
-                VideoId = videoId,
-                UserId = userId,
-                Reaction = newReaction,
-            };
+            _videoReactionRepository.Add(
+                new NooTubeVideoReactionModel
+                {
+                    VideoId = videoId,
+                    UserId = userId,
+                    Reaction = newReaction,
+                }
+            );
+            return;
+        }
 
-            _videoReactionRepository.Add(reaction);
+        // Reacting with the already picked reaction takes it back
+        if (reaction.Reaction == newReaction)
+        {
+            _videoReactionRepository.Delete(reaction);
             return;
         }
 
         reaction.Reaction = newReaction;
+    }
+
+    public async Task<NooTubeVideoReactionsDTO> GetReactionsAsync(Ulid videoId)
+    {
+        if (!await _videoRepository.ExistsAsync(videoId))
+        {
+            throw new NotFoundException();
+        }
+
+        var counts = await _videoReactionRepository.GetCountsAsync(videoId);
+
+        var myReaction = _currentUser.UserId is Ulid userId
+            ? await _videoReactionRepository.GetAsync(videoId, userId)
+            : null;
+
+        return new NooTubeVideoReactionsDTO
+        {
+            MyReaction = myReaction?.Reaction,
+            Counts = counts,
+        };
     }
 
     public async Task UpdateAsync(Ulid videoId, JsonPatchDocument<UpdateNooTubeVideoDTO> patch)

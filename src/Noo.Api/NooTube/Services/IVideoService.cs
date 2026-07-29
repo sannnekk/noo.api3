@@ -33,4 +33,6 @@ public interface IVideoService
     public Task DeleteAsync(Ulid videoId);
 
     public Task ToggleReactionAsync(Ulid videoId, VideoReaction reaction);
+
+    public Task<NooTubeVideoReactionsDTO> GetReactionsAsync(Ulid videoId);
 }

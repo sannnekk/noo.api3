@@ -145,11 +145,33 @@ public class NootubeController : ApiController
     }
 
     /// <summary>
+    /// Gets the reactions of all users on a video together with the reaction of
+    /// the current user. Reaction counts are visible to everyone.
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpGet("{videoId:ulid}/reaction")]
+    [Authorize(Policy = NooTubePolicies.CanGetNooTubeVideos)]
+    [Produces(
+        typeof(ApiResponseDTO<NooTubeVideoReactionsDTO>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> GetReactionsAsync([FromRoute] Ulid videoId)
+    {
+        var reactions = await _videoService.GetReactionsAsync(videoId);
+
+        return SendResponse(reactions);
+    }
+
+    /// <summary>
     /// Toggles a reaction for a video
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpPatch("{videoId:ulid}/reaction")]
-    [Authorize(Policy = NooTubePolicies.CanGetNooTubeVideos)]
+    [Authorize(Policy = NooTubePolicies.CanReactToNooTubeVideos)]
     [Produces(
         null,
         StatusCodes.Status204NoContent,

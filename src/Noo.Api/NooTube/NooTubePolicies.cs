@@ -15,6 +15,8 @@ public class NooTubePolicies : IPolicyRegistrar
 
     public const string CanCommentOnNooTubeVideos = nameof(CanCommentOnNooTubeVideos);
 
+    public const string CanReactToNooTubeVideos = nameof(CanReactToNooTubeVideos);
+
     public const string CanEditNooTubeComments = nameof(CanEditNooTubeComments);
 
     public const string CanDeleteNooTubeComments = nameof(CanDeleteNooTubeComments);
@@ -64,6 +66,15 @@ public class NooTubePolicies : IPolicyRegistrar
 
         options.AddPolicy(
             CanCommentOnNooTubeVideos,
+            policy =>
+            {
+                policy.RequireAuthenticatedUser().RequireNotBlocked();
+            }
+        );
+
+        // Everyone who may watch a video may react to it
+        options.AddPolicy(
+            CanReactToNooTubeVideos,
             policy =>
             {
                 policy.RequireAuthenticatedUser().RequireNotBlocked();
