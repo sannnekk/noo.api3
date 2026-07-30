@@ -60,6 +60,8 @@ public class PollMapperProfile : Profile
             .ForMember(d => d.PollQuestion, o => o.Ignore());
 
         // Participation
+        CreateMap<PollParticipationModel, DTO.PollParticipationDTO>();
+
         CreateMap<DTO.PollParticipationDTO, PollParticipationModel>()
             .ForMember(d => d.Id, o => o.Ignore())
             .ForMember(d => d.CreatedAt, o => o.Ignore())

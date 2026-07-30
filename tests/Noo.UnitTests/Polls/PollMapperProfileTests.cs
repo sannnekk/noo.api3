@@ -61,6 +61,31 @@ public class PollMapperProfileTests
         Assert.Equal(5, dto.ParticipationsCount);
     }
 
+    // The participation endpoints return this DTO, so a missing model -> DTO map turns
+    // every read of poll results into a 500 at response-serialization time.
+    [Fact]
+    public void Participation_Maps_To_Dto()
+    {
+        var mapper = MapperTestUtils.CreateMapperConfig(cfg => cfg.AddProfile<PollMapperProfile>()).CreateMapper();
+        var pollId = Ulid.NewUlid();
+        var model = new PollParticipationModel
+        {
+            Id = Ulid.NewUlid(),
+            PollId = pollId,
+            UserType = ParticipatingUserType.TelegramUser,
+            UserExternalIdentifier = "external-1",
+            Answers = []
+        };
+
+        var dto = mapper.Map<PollParticipationDTO>(model);
+
+        Assert.Equal(model.Id, dto.Id);
+        Assert.Equal(pollId, dto.PollId);
+        Assert.Equal(ParticipatingUserType.TelegramUser, dto.UserType);
+        Assert.Equal("external-1", dto.UserExternalIdentifier);
+        Assert.Null(dto.User);
+    }
+
     [Fact]
     public void Poll_Without_ParticipationsCount_Maps_To_Zero()
     {
