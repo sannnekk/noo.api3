@@ -21,4 +21,12 @@ public record UpdatePollDTO
 
     [JsonPropertyName("isAuthRequired")]
     public bool? IsAuthRequired { get; init; }
+
+    /// <summary>
+    /// The poll questions, keyed by question Id. See <see cref="UpdatePollQuestionDTO"/>
+    /// for how the keys are interpreted when the patched dictionary is merged back.
+    /// </summary>
+    [JsonPropertyName("questions")]
+    [MaxLength(100)]
+    public IDictionary<string, UpdatePollQuestionDTO>? Questions { get; init; }
 }

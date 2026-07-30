@@ -18,6 +18,10 @@ public record CreatePollQuestionDTO
     [JsonPropertyName("isRequired")]
     public bool IsRequired { get; init; }
 
+    [Range(0, int.MaxValue)]
+    [JsonPropertyName("order")]
+    public int Order { get; init; }
+
     [JsonPropertyName("type")]
     [Required]
     public PollQuestionType Type { get; init; }

@@ -15,6 +15,10 @@ public record PollQuestionDTO
     public Ulid Id { get; init; }
 
     [Required]
+    [JsonPropertyName("order")]
+    public int Order { get; init; }
+
+    [Required]
     [JsonPropertyName("title")]
     public string Title { get; init; } = string.Empty;
 

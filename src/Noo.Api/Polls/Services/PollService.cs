@@ -130,7 +130,7 @@ public class PollService : IPollService
 
     public async Task UpdatePollAsync(Ulid id, JsonPatchDocument<UpdatePollDTO> updatePollDto)
     {
-        var model = await _pollRepository.GetByIdAsync(id);
+        var model = await _pollRepository.GetWithQuestionsForUpdateAsync(id);
 
         model.ThrowNotFoundIfNull();
 

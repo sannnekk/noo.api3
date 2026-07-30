@@ -25,6 +25,18 @@ public class PollRepository : Repository<PollModel>, IPollRepository
             .FirstOrDefaultAsync();
     }
 
+    public Task<PollModel?> GetWithQuestionsForUpdateAsync(Ulid pollId)
+    {
+        // Tracked, unlike the read-side GetWithQuestionsAsync: the patch merge reconciles
+        // the questions collection in place, so EF has to observe the existing children.
+        // Loading the poll without its questions leaves the patch dictionary empty, and
+        // every question operation in the document is then merged into nothing and lost.
+        return Context.Set<PollModel>()
+            .Where(p => p.Id == pollId)
+            .Include(p => p.Questions.OrderBy(q => q.Order))
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<SearchResult<PollModel>> SearchWithParticipationsCountAsync(
         IPaginationFilter filter,
         IEnumerable<ISpecification<PollModel>>? specifications = default

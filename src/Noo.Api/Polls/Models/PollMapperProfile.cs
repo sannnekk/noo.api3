@@ -23,8 +23,24 @@ public class PollMapperProfile : Profile
             .ForMember(d => d.IsActive, o => o.MapFrom(s => s.IsActive ?? true))
             .ForMember(d => d.IsAuthRequired, o => o.MapFrom(s => s.IsAuthRequired ?? true));
 
-        CreateMap<PollModel, UpdatePollDTO>();
+        CreateMap<PollModel, UpdatePollDTO>()
+            .ForMember(
+                d => d.Questions,
+                o =>
+                    o.MapFrom(
+                        (src, _, _, context) =>
+                            src.Questions.MapCollectionToDictionary<
+                                PollQuestionModel,
+                                UpdatePollQuestionDTO
+                            >(context)
+                    )
+            );
 
+        // Questions are merged in AfterMap so AutoMapper's default collection mapper
+        // (which calls dest.Questions.Clear() before re-adding) never touches the
+        // EF-tracked collection — that clear would orphan the existing questions and
+        // cascade-delete them together with their answers, despite the merge re-adding
+        // them moments later.
         CreateMap<UpdatePollDTO, PollModel>()
             .ForMember(d => d.Id, o => o.Ignore())
             .ForMember(d => d.CreatedAt, o => o.Ignore())
@@ -32,10 +48,29 @@ public class PollMapperProfile : Profile
             .ForMember(d => d.Participations, o => o.Ignore())
             .ForMember(d => d.ParticipationsCount, o => o.Ignore())
             .ForMember(d => d.CourseMaterialContents, o => o.Ignore())
-            .ForMember(d => d.Questions, o => o.Ignore());
+            .ForMember(d => d.Questions, o => o.Ignore())
+            .AfterMap(
+                (src, dest, context) =>
+                {
+                    dest.Questions = src.Questions.MapDictionaryToCollection<
+                        UpdatePollQuestionDTO,
+                        PollQuestionModel
+                    >(dest.Questions, context.Mapper);
+                }
+            );
 
         // Question
         CreateMap<PollQuestionModel, PollQuestionDTO>();
+
+        CreateMap<PollQuestionModel, UpdatePollQuestionDTO>();
+
+        CreateMap<UpdatePollQuestionDTO, PollQuestionModel>()
+            .ForMember(d => d.Id, o => o.Ignore())
+            .ForMember(d => d.CreatedAt, o => o.Ignore())
+            .ForMember(d => d.UpdatedAt, o => o.Ignore())
+            .ForMember(d => d.PollId, o => o.Ignore())
+            .ForMember(d => d.Poll, o => o.Ignore())
+            .ForMember(d => d.Answers, o => o.Ignore());
 
         CreateMap<CreatePollQuestionDTO, PollQuestionModel>()
             .ForMember(d => d.Id, o => o.Ignore())
@@ -44,7 +79,6 @@ public class PollMapperProfile : Profile
             .ForMember(d => d.PollId, o => o.Ignore())
             .ForMember(d => d.Poll, o => o.Ignore())
             .ForMember(d => d.Answers, o => o.Ignore())
-            .ForMember(d => d.Order, o => o.MapFrom(_ => 0))
             .ForMember(d => d.Type, o => o.MapFrom(s => s.Type))
             .ForMember(d => d.Config, o => o.MapFrom(s => s.Config));
 
