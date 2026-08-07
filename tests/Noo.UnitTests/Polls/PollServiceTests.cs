@@ -4,6 +4,7 @@ using Noo.Api.Polls.Filters;
 using Noo.Api.Polls.Models;
 using Noo.Api.Polls.Services;
 using Noo.Api.Polls.Types;
+using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
 using Noo.UnitTests.Common;
 using SystemTextJsonPatch;
@@ -112,8 +113,7 @@ public class PollServiceTests
         var verifyCurrentUser = new TestCurrentUser(null, UserRoles.Admin);
         var verifyJsonPatch = new JsonPatchUpdateService(mapper);
         var verifyService = new PollService(mapper, verifyPollRepo, verifyPollParticipationRepo, verifyPollAnswerRepo, verifyCurrentUser, verifyJsonPatch);
-        var afterDelete = await verifyService.GetPollAsync(pollId);
-        Assert.Null(afterDelete);
+        await Assert.ThrowsAsync<NotFoundException>(() => verifyService.GetPollAsync(pollId));
     }
 
     [Fact]

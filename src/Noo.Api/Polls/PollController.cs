@@ -72,7 +72,6 @@ public class PollController : ApiController
     /// </summary>
     [HttpGet("{pollId}")]
     [MapToApiVersion(NooApiVersions.Current)]
-    [Authorize(Policy = PollPolicies.CanGetPoll)]
     [Produces(
         typeof(ApiResponseDTO<PollDTO>),
         StatusCodes.Status200OK,
@@ -80,6 +79,7 @@ public class PollController : ApiController
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
+    // TODO: add rate limiting since this route is public and can be abused
     public async Task<IActionResult> GetPollAsync([FromRoute] Ulid pollId)
     {
         var result = await _pollService.GetPollAsync(pollId);

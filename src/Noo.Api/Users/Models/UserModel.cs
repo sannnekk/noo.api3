@@ -10,6 +10,7 @@ using Noo.Api.Courses.Models;
 using Noo.Api.NooTube.Models;
 using Noo.Api.Notifications.Models;
 using Noo.Api.Polls.Models;
+using Noo.Api.SavedTasks.Models;
 using Noo.Api.Sessions.Models;
 using Noo.Api.Snippets.Models;
 using Noo.Api.UserSettings.Models;
@@ -94,6 +95,8 @@ public class UserModel : BaseModel
     public ICollection<SessionModel> Sessions { get; set; } = [];
 
     public ICollection<SnippetModel> Snippets { get; set; } = [];
+
+    public ICollection<SavedTaskModel> SavedTasks { get; set; } = [];
 
     public ICollection<PollParticipationModel> PollParticipations { get; set; } = [];
 

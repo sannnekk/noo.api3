@@ -53,9 +53,18 @@ public class PollService : IPollService
         _pollRepository.DeleteById(id);
     }
 
-    public Task<PollModel?> GetPollAsync(Ulid id)
+    public async Task<PollModel?> GetPollAsync(Ulid id)
     {
-        return _pollRepository.GetWithQuestionsAsync(id);
+        var poll = await _pollRepository.GetWithQuestionsAsync(id);
+
+        poll.ThrowNotFoundIfNull();
+
+        if (!_currentUser.IsAuthenticated && poll.IsAuthRequired)
+        {
+            return null;
+        }
+
+        return poll;
     }
 
     public Task<PollParticipationModel?> GetPollParticipationAsync(Ulid participationId)
