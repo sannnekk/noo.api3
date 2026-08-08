@@ -309,9 +309,9 @@ public class UserController : ApiController
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public IActionResult UnassignMentor([FromRoute] Ulid assignmentId)
+    public async Task<IActionResult> UnassignMentorAsync([FromRoute] Ulid assignmentId)
     {
-        _mentorService.UnassignMentor(assignmentId);
+        await _mentorService.UnassignMentorAsync(assignmentId);
 
         return SendResponse();
     }

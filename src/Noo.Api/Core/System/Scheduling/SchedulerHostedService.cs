@@ -1,3 +1,5 @@
+using Noo.Api.Core.System.Events;
+
 namespace Noo.Api.Core.System.Scheduling;
 
 public class SchedulerHostedService : BackgroundService
@@ -32,7 +34,18 @@ public class SchedulerHostedService : BackgroundService
             {
                 using var scope = _services.CreateScope();
                 var job = (IScheduledJob)scope.ServiceProvider.GetRequiredService(jobType);
-                await job.RunAsync(stoppingToken);
+                var collector = scope.ServiceProvider.GetRequiredService<IDomainEventCollector>();
+
+                try
+                {
+                    await job.RunAsync(stoppingToken);
+                    await collector.FlushAsync(stoppingToken);
+                }
+                catch
+                {
+                    collector.Discard();
+                    throw;
+                }
             }
             catch (Exception exception)
             {

@@ -12,6 +12,12 @@ public class EventsConfig : IConfig
     [Range(1, 3600)]
     public int HandlerTimeoutSeconds { get; set; } = 30;
 
+    /// <summary>
+    /// How long a publisher waits for room when the queue is saturated before the event is dropped.
+    /// </summary>
+    [Range(1, 60)]
+    public int EnqueueTimeoutSeconds { get; set; } = 2;
+
     [Range(1, 1024)]
     public int MaxConcurrentEvents { get; set; } = 8;
 

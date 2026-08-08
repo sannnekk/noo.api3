@@ -5,6 +5,7 @@ using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Utils;
 using Noo.Api.Notifications.DTO;
 using Noo.Api.Notifications.Services;
+using Noo.Api.UserHistory.Types;
 
 namespace Noo.Api.AssignedWorks.Events;
 
@@ -71,6 +72,25 @@ public sealed class SentOnResolveNotificationHandler : IEventHandler<SentOnResol
                 Link = _linkGenerator.GenerateViewLink(assignedWork.Id),
                 LinkText = "Перейти к работе",
             }
+        );
+    }
+}
+
+public sealed class SentOnResolveUserHistoryHandler : IEventHandler<SentOnResolveEvent>
+{
+    private readonly IAssignedWorkUserHistoryRecorder _recorder;
+
+    public SentOnResolveUserHistoryHandler(IAssignedWorkUserHistoryRecorder recorder)
+    {
+        _recorder = recorder;
+    }
+
+    public Task HandleAsync(SentOnResolveEvent @event, CancellationToken ct = default)
+    {
+        return _recorder.RecordAsync(
+            @event.AssignedWorkId,
+            @event.MentorId,
+            UserHistoryType.WorkSentOnResolve
         );
     }
 }

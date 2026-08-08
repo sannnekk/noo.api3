@@ -1816,6 +1816,52 @@ namespace Noo.Api.Migrations
                     b.ToTable("support_article");
                 });
 
+            modelBuilder.Entity("Noo.Api.UserHistory.Models.UserHistoryModel", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("id");
+
+                    b.Property<byte[]>("ActorUserId")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TIMESTAMP(6)")
+                        .HasColumnName("created_at");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("json")
+                        .HasColumnName("payload");
+
+                    b.Property<byte[]>("SubjectUserId")
+                        .IsRequired()
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("subject_user_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("VARCHAR(63)")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("TIMESTAMP(6)")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId", "Id");
+
+                    b.HasIndex("SubjectUserId", "Id");
+
+                    b.ToTable("user_history");
+                });
+
             modelBuilder.Entity("Noo.Api.UserSettings.Models.UserSettingsModel", b =>
                 {
                     b.Property<byte[]>("Id")
@@ -2678,6 +2724,24 @@ namespace Noo.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Noo.Api.UserHistory.Models.UserHistoryModel", b =>
+                {
+                    b.HasOne("Noo.Api.Users.Models.UserModel", "Actor")
+                        .WithMany("HistoryActions")
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Noo.Api.Users.Models.UserModel", "SubjectUser")
+                        .WithMany("History")
+                        .HasForeignKey("SubjectUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("SubjectUser");
+                });
+
             modelBuilder.Entity("Noo.Api.UserSettings.Models.UserSettingsModel", b =>
                 {
                     b.HasOne("Noo.Api.Media.Models.MediaModel", "BackgroundImage")
@@ -2877,6 +2941,10 @@ namespace Noo.Api.Migrations
                     b.Navigation("CoursesAsAssigner");
 
                     b.Navigation("CoursesAsMember");
+
+                    b.Navigation("History");
+
+                    b.Navigation("HistoryActions");
 
                     b.Navigation("MentorAssignmentsAsMentor");
 

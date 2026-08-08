@@ -30,6 +30,14 @@ public enum UserRoles
 
 public static class UserRolesExtensions
 {
+    /// <summary>
+    /// The role as it appears over the API and in the database enum: lowercase, e.g. <c>student</c>.
+    /// </summary>
+    public static string ToWireName(this UserRoles role)
+    {
+        return role.ToString().ToLowerInvariant();
+    }
+
     public static string? Translate(this UserRoles role)
     {
         return role switch

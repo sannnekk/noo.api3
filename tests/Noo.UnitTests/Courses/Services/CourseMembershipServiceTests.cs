@@ -1,6 +1,7 @@
 using AutoMapper;
 using Moq;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.System.Events;
 using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Filters;
 using Noo.Api.Courses.Services;
@@ -30,11 +31,16 @@ public class CourseMembershipServiceTests
         var mapper = CreateMapper();
         var current = MakeUser(UserRoles.Admin);
         var courseMembershipRepo = new CourseMembershipRepository(ctx);
-        var service = new CourseMembershipService(courseMembershipRepo, mapper, current);
+        var service = new CourseMembershipService(
+            courseMembershipRepo,
+            mapper,
+            current,
+            new Mock<IEventPublisher>().Object
+        );
 
         var courseId = Ulid.NewUlid();
         var studentId = Ulid.NewUlid();
-        var id = service.CreateMembership(new CreateCourseMembershipDTO
+        var id = await service.CreateMembershipAsync(new CreateCourseMembershipDTO
         {
             CourseId = courseId,
             StudentId = studentId

@@ -9,6 +9,7 @@ using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.System.Events;
 using Noo.Api.Sessions.Services;
 using Noo.Api.Users.Models;
 using Noo.Api.Users.Services;
@@ -37,8 +38,9 @@ public class AuthServiceTests
         public Mock<ISessionService> Sessions { get; } = new();
         public Mock<IRefreshTokenService> Refresh { get; } = new();
         public IHttpContextAccessor Ctx { get; } = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
+        public Mock<IEventPublisher> Events { get; } = new();
 
-        public AuthService Build() => new(Token.Object, Refresh.Object, Email.Object, Url.Object, EmailChange.Object, Users.Object, Hash, Sessions.Object, Ctx);
+        public AuthService Build() => new(Token.Object, Refresh.Object, Email.Object, Url.Object, EmailChange.Object, Users.Object, Hash, Sessions.Object, Ctx, Events.Object);
     }
 
     [Fact]
@@ -199,7 +201,7 @@ public class AuthServiceTests
         var newUserId = Ulid.NewUlid();
         var h = new Harness();
         h.Users.Setup(s => s.UserExistsAsync("jane", "jane@example.com")).ReturnsAsync(false);
-        h.Users.Setup(s => s.CreateUser(It.IsAny<UserCreationPayload>())).Returns(newUserId);
+        h.Users.Setup(s => s.CreateUserAsync(It.IsAny<UserCreationPayload>())).ReturnsAsync(newUserId);
         h.Token.Setup(t => t.CreateToken(It.IsAny<Ulid>(), TokenType.EmailVerification))
             .Returns(new TokenModel { Token = "vtoken", UserId = newUserId, Type = TokenType.EmailVerification, ExpiresAt = DateTime.UtcNow.AddDays(1) });
         h.Url.Setup(u => u.GenerateEmailVerificationUrl("vtoken")).Returns("/verify/vtoken");

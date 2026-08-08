@@ -5,6 +5,8 @@ using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Sessions.Models;
+using Noo.Api.UserHistory.Models;
+using Noo.Api.UserHistory.Types;
 using Noo.Api.Users.Models;
 using Noo.Api.Core.Utils.UserAgent;
 using Noo.Api.Works.Types;
@@ -129,5 +131,28 @@ public static class TestDataHelpers
             ChangedById = changedById,
         });
         await db.SaveChangesAsync();
+    }
+
+    public static async Task<Ulid> AddUserHistoryEntryAsync(
+        ApiFactory factory,
+        Ulid subjectUserId,
+        UserHistoryType type,
+        Ulid? actorUserId = null,
+        Dictionary<string, string>? payload = null)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NooDbContext>();
+
+        var model = new UserHistoryModel
+        {
+            SubjectUserId = subjectUserId,
+            ActorUserId = actorUserId,
+            Type = type,
+            Payload = payload,
+        };
+
+        db.GetDbSet<UserHistoryModel>().Add(model);
+        await db.SaveChangesAsync();
+        return model.Id;
     }
 }

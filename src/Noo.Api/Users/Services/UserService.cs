@@ -6,8 +6,10 @@ using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Users.DTO;
+using Noo.Api.Users.Events;
 using Noo.Api.Users.Filters;
 using Noo.Api.Users.Models;
 using Noo.Api.Users.Specifications;
@@ -33,6 +35,8 @@ public class UserService : IUserService
 
     private readonly IEmailChangeService _emailChangeService;
 
+    private readonly IEventPublisher _events;
+
     public UserService(
         IUserRepository userRepository,
         IUserAvatarRepository userAvatarRepository,
@@ -40,7 +44,8 @@ public class UserService : IUserService
         IMapper mapper,
         ICurrentUser currentUser,
         IHashService hashService,
-        IEmailChangeService emailChangeService
+        IEmailChangeService emailChangeService,
+        IEventPublisher events
     )
     {
         _userRepository = userRepository;
@@ -50,11 +55,14 @@ public class UserService : IUserService
         _currentUser = currentUser;
         _hashService = hashService;
         _emailChangeService = emailChangeService;
+        _events = events;
     }
 
     public async Task BlockUserAsync(Ulid id)
     {
         await _userRepository.BlockUserAsync(id);
+
+        await _events.PublishAsync(new UserBlockedEvent(id, _currentUser.UserId));
     }
 
     public async Task ChangeRoleAsync(Ulid id, UserRoles newRole)
@@ -76,14 +84,23 @@ public class UserService : IUserService
             throw new CantChangeRoleException();
         }
 
+        var oldRole = user.Role;
+
         user.Role = newRole;
+
+        await _events.PublishAsync(
+            new UserRoleChangedEvent(id, _currentUser.UserId, oldRole, newRole)
+        );
     }
 
-    public Ulid CreateUser(UserCreationPayload payload)
+    public async Task<Ulid> CreateUserAsync(UserCreationPayload payload)
     {
         var model = _mapper.Map<UserModel>(payload);
 
         _userRepository.Add(model);
+
+        // Publishing here rather than from the registration endpoint covers every creation path.
+        await _events.PublishAsync(new UserRegisteredEvent(model.Id, model.Username, model.Role));
 
         return model.Id;
     }
@@ -129,9 +146,11 @@ public class UserService : IUserService
         return _userRepository.IsBlockedAsync(id);
     }
 
-    public Task UnblockUserAsync(Ulid id)
+    public async Task UnblockUserAsync(Ulid id)
     {
-        return _userRepository.UnblockUserAsync(id);
+        await _userRepository.UnblockUserAsync(id);
+
+        await _events.PublishAsync(new UserUnblockedEvent(id, _currentUser.UserId));
     }
 
     public async Task UpdateUserAsync(Ulid id, JsonPatchDocument<UpdateUserDTO> patchUserDto)
@@ -149,7 +168,20 @@ public class UserService : IUserService
             );
         }
 
+        // Read after the email operation was pulled out above, so this reflects only the fields
+        // this patch actually writes.
+        var changedFields = patchUserDto
+            .Operations.Select(operation => operation.Path?.TrimStart('/'))
+            .Where(path => !string.IsNullOrEmpty(path))
+            .Select(path => path!)
+            .Distinct()
+            .ToArray();
+
         _patchUpdateService.ApplyPatch(user, patchUserDto);
+
+        await _events.PublishAsync(
+            new UserProfileUpdatedEvent(id, _currentUser.UserId, changedFields)
+        );
     }
 
     public async Task UpdateUserAvatarAsync(
@@ -224,5 +256,7 @@ public class UserService : IUserService
         }
 
         user.IsVerified = true;
+
+        await _events.PublishAsync(new UserVerifiedEvent(id, _currentUser.UserId));
     }
 }

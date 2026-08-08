@@ -4,6 +4,7 @@ using Noo.Api.Auth.Models;
 using Noo.Api.Auth.Services;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.System.Events;
 using Noo.Api.Users.Models;
 using Noo.Api.Users.Services;
 
@@ -17,9 +18,10 @@ public class EmailChangeServiceTests
         public Mock<ITokenService> Token { get; } = new();
         public Mock<IAuthEmailService> Email { get; } = new();
         public Mock<IAuthUrlGenerator> Url { get; } = new();
+        public Mock<IEventPublisher> Events { get; } = new();
 
         public EmailChangeService Build() =>
-            new(Users.Object, Token.Object, Email.Object, Url.Object);
+            new(Users.Object, Token.Object, Email.Object, Url.Object, Events.Object);
     }
 
     [Fact]

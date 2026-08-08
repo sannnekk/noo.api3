@@ -18,5 +18,5 @@ public interface IMentorService
 
     public Task<Ulid> AssignMentorAsync(Ulid studentId, Ulid mentorId, Ulid subjectId);
 
-    public void UnassignMentor(Ulid assignmentId);
+    public Task UnassignMentorAsync(Ulid assignmentId);
 }

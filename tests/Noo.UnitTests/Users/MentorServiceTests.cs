@@ -1,3 +1,6 @@
+using Moq;
+using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.System.Events;
 using Noo.Api.Users.Filters;
 using Noo.Api.Users.Services;
 using Noo.UnitTests.Common;
@@ -6,6 +9,14 @@ namespace Noo.UnitTests.Users;
 
 public class MentorServiceTests
 {
+    private static MentorService CreateService(MentorAssignmentRepository repository)
+    {
+        return new MentorService(
+            repository,
+            new Mock<ICurrentUser>().Object,
+            new Mock<IEventPublisher>().Object
+        );
+    }
 
     [Fact]
     public async Task Assign_Unassign_And_Query_Assignments()
@@ -14,7 +25,7 @@ public class MentorServiceTests
         using var context = TestHelpers.CreateInMemoryDb(dbName);
         var uow = TestHelpers.CreateUowMock(context).Object;
         var mentorAssignmentRepo = new MentorAssignmentRepository(context);
-        var mentorService = new MentorService(mentorAssignmentRepo);
+        var mentorService = CreateService(mentorAssignmentRepo);
 
         var studentId = Ulid.NewUlid();
         var mentorId = Ulid.NewUlid();
@@ -40,8 +51,8 @@ public class MentorServiceTests
         {
             var unassignUow = TestHelpers.CreateUowMock(unassignCtx).Object;
             var unassignMentorAssignmentRepo = new MentorAssignmentRepository(unassignCtx);
-            var unassignService = new MentorService(unassignMentorAssignmentRepo);
-            unassignService.UnassignMentor(assignmentId);
+            var unassignService = CreateService(unassignMentorAssignmentRepo);
+            await unassignService.UnassignMentorAsync(assignmentId);
             await unassignUow.CommitAsync();
         }
 
@@ -49,7 +60,7 @@ public class MentorServiceTests
         {
             var verifyUow = TestHelpers.CreateUowMock(verifyCtx).Object;
             var verifyMentorAssignmentRepo = new MentorAssignmentRepository(verifyCtx);
-            var verifyService = new MentorService(verifyMentorAssignmentRepo);
+            var verifyService = CreateService(verifyMentorAssignmentRepo);
             var afterDelete = await verifyService.GetMentorAssignmentsAsync(studentId, new MentorAssignmentFilter { Page = 1, PerPage = 10 });
             Assert.Equal(0, afterDelete.Total);
         }

@@ -167,6 +167,11 @@ public sealed class DomainEventDispatcher : BackgroundService
             {
                 await unitOfWork.CommitAsync(timeoutCts.Token);
             }
+
+            // Events raised by the handler itself get the same post-commit guarantee.
+            await scope.ServiceProvider
+                .GetRequiredService<IDomainEventCollector>()
+                .FlushAsync(timeoutCts.Token);
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !stoppingToken.IsCancellationRequested)
         {

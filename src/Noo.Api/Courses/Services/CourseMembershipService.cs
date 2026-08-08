@@ -2,8 +2,10 @@ using AutoMapper;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Courses.DTO;
+using Noo.Api.Courses.Events;
 using Noo.Api.Courses.Filters;
 using Noo.Api.Courses.Models;
 using Noo.Api.Courses.QuerySpecifications;
@@ -17,23 +19,36 @@ public class CourseMembershipService : ICourseMembershipService
     private readonly IMapper _mapper;
     private readonly ICurrentUser _currentUser;
 
+    private readonly IEventPublisher _events;
+
     public CourseMembershipService(
         ICourseMembershipRepository courseMembershipRepository,
         IMapper mapper,
-        ICurrentUser currentUser
+        ICurrentUser currentUser,
+        IEventPublisher events
     )
     {
         _courseMembershipRepository = courseMembershipRepository;
         _mapper = mapper;
         _currentUser = currentUser;
+        _events = events;
     }
 
-    public Ulid CreateMembership(CreateCourseMembershipDTO dto)
+    public async Task<Ulid> CreateMembershipAsync(CreateCourseMembershipDTO dto)
     {
         var model = _mapper.Map<CourseMembershipModel>(dto);
 
         model.AssignerId = _currentUser.UserId;
         _courseMembershipRepository.Add(model);
+
+        await _events.PublishAsync(
+            new CourseMembershipCreatedEvent(
+                model.Id,
+                model.StudentId,
+                model.CourseId,
+                model.AssignerId
+            )
+        );
 
         return model.Id;
     }
@@ -79,6 +94,15 @@ public class CourseMembershipService : ICourseMembershipService
             return;
 
         membership.IsActive = false;
+
+        await _events.PublishAsync(
+            new CourseMembershipRemovedEvent(
+                membership.Id,
+                membership.StudentId,
+                membership.CourseId,
+                _currentUser.UserId
+            )
+        );
     }
 
     public async Task SetArchivedByStudentAsync(Ulid membershipId, bool isArchived)

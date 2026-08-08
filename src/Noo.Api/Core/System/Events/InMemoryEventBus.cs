@@ -2,31 +2,24 @@ using Noo.Api.Core.Utils.DI;
 
 namespace Noo.Api.Core.System.Events;
 
-[RegisterSingleton(typeof(IEventPublisher))]
+/// <summary>
+/// Publishes into the ambient <see cref="IDomainEventCollector"/> rather than straight onto the
+/// queue, so events become visible to handlers only after the surrounding unit of work commits.
+/// </summary>
+[RegisterScoped(typeof(IEventPublisher))]
 public class InMemoryEventBus : IEventPublisher
 {
-    private readonly DomainEventQueue _queue;
-    private readonly ILogger<InMemoryEventBus> _logger;
+    private readonly IDomainEventCollector _collector;
 
-    public InMemoryEventBus(DomainEventQueue queue, ILogger<InMemoryEventBus> logger)
+    public InMemoryEventBus(IDomainEventCollector collector)
     {
-        _queue = queue;
-        _logger = logger;
+        _collector = collector;
     }
 
     public Task PublishAsync<TEvent>(TEvent @event, CancellationToken ct = default)
         where TEvent : IDomainEvent
     {
-        if (!_queue.TryEnqueue(@event))
-        {
-            // Queue is at capacity. We intentionally do not block the caller — losing visibility
-            // is preferable to stalling request threads — but we surface the drop so it can be
-            // monitored and the queue resized.
-            _logger.LogWarning(
-                "Domain event queue is full; dropping event of type {EventType}. Consider raising Events:QueueCapacity.",
-                typeof(TEvent).Name
-            );
-        }
+        _collector.Collect(@event);
 
         return Task.CompletedTask;
     }

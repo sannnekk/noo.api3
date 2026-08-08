@@ -307,9 +307,11 @@ public class CourseController : ApiController
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public IActionResult CreateCourseMembership([FromBody] CreateCourseMembershipDTO dto)
+    public async Task<IActionResult> CreateCourseMembershipAsync(
+        [FromBody] CreateCourseMembershipDTO dto
+    )
     {
-        var id = _courseMembershipService.CreateMembership(dto);
+        var id = await _courseMembershipService.CreateMembershipAsync(dto);
 
         return SendResponse(id);
     }

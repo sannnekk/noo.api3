@@ -40,6 +40,8 @@ public class UserMapperProfile : Profile
             .ForMember(dest => dest.NooTubeVideoComments, opt => opt.Ignore())
             .ForMember(dest => dest.NooTubeVideoReactions, opt => opt.Ignore())
             .ForMember(dest => dest.AssignedWorkHistoryChanges, opt => opt.Ignore())
+            .ForMember(dest => dest.History, opt => opt.Ignore())
+            .ForMember(dest => dest.HistoryActions, opt => opt.Ignore())
             .ForMember(dest => dest.MentorAssignmentsAsMentor, opt => opt.Ignore())
             .ForMember(dest => dest.MentorAssignmentsAsStudent, opt => opt.Ignore())
             .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role))
@@ -50,6 +52,8 @@ public class UserMapperProfile : Profile
         CreateMap<UserModel, UpdateUserDTO>();
         CreateMap<UpdateUserDTO, UserModel>()
             .ForMember(dest => dest.AssignedWorkHistoryChanges, opt => opt.Ignore())
+            .ForMember(dest => dest.History, opt => opt.Ignore())
+            .ForMember(dest => dest.HistoryActions, opt => opt.Ignore())
             .ForMember(dest => dest.MentorAssignmentsAsMentor, opt => opt.Ignore())
             .ForMember(dest => dest.MentorAssignmentsAsStudent, opt => opt.Ignore())
             .ForMember(dest => dest.CoursesAsMember, opt => opt.Ignore())

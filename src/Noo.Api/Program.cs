@@ -36,7 +36,6 @@ builder.Services.AddCacheProvider(builder.Configuration);
 builder.Services.AddMetrics();
 builder.Services.AddDomainEvents();
 builder.Services.AddHostedServices();
-builder.Services.AddMediatR();
 
 builder.WebHost.AddWebServerConfiguration(builder.Configuration);
 

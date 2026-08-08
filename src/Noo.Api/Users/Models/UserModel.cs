@@ -13,6 +13,7 @@ using Noo.Api.Polls.Models;
 using Noo.Api.SavedTasks.Models;
 using Noo.Api.Sessions.Models;
 using Noo.Api.Snippets.Models;
+using Noo.Api.UserHistory.Models;
 using Noo.Api.UserSettings.Models;
 using IndexAttribute = Microsoft.EntityFrameworkCore.IndexAttribute;
 
@@ -115,6 +116,12 @@ public class UserModel : BaseModel
     public ICollection<NooTubeVideoFavouriteModel> NooTubeVideoFavourites { get; set; } = [];
 
     public ICollection<AssignedWorkHistoryModel> AssignedWorkHistoryChanges { get; set; } = [];
+
+    [InverseProperty(nameof(UserHistoryModel.SubjectUser))]
+    public ICollection<UserHistoryModel> History { get; set; } = [];
+
+    [InverseProperty(nameof(UserHistoryModel.Actor))]
+    public ICollection<UserHistoryModel> HistoryActions { get; set; } = [];
 
     // Mentor / Student assignments
     [InverseProperty(nameof(MentorAssignmentModel.Student))]

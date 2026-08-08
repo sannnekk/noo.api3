@@ -34,7 +34,8 @@ public class DomainEventsTests
         services.AddSingleton<DomainEventQueue>();
         services.AddSingleton(DomainEventHandlerRegistry.Build(typeof(DomainEventsTests).Assembly));
         services.AddScoped<TestHandler>();
-        services.AddSingleton<IEventPublisher, InMemoryEventBus>();
+        services.AddScoped<IDomainEventCollector, DomainEventCollector>();
+        services.AddScoped<IEventPublisher, InMemoryEventBus>();
         services.AddHostedService<DomainEventDispatcher>();
 
         using var provider = services.BuildServiceProvider();
@@ -44,9 +45,13 @@ public class DomainEventsTests
             await hosted.StartAsync(CancellationToken.None);
         }
 
-        var publisher = provider.GetRequiredService<IEventPublisher>();
+        using var scope = provider.CreateScope();
+        var publisher = scope.ServiceProvider.GetRequiredService<IEventPublisher>();
+        var collector = scope.ServiceProvider.GetRequiredService<IDomainEventCollector>();
+
         var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         await publisher.PublishAsync(new TestEvent { Tcs = tcs });
+        await collector.FlushAsync();
 
         var completed = await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(5))) == tcs.Task;
         Assert.True(completed);

@@ -5,6 +5,7 @@ using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Utils;
 using Noo.Api.Notifications.DTO;
 using Noo.Api.Notifications.Services;
+using Noo.Api.UserHistory.Types;
 
 namespace Noo.Api.AssignedWorks.Events;
 
@@ -81,6 +82,25 @@ public sealed class CheckedNotificationHandler : IEventHandler<CheckedEvent>
                 Link = _linkGenerator.GenerateViewLink(assignedWork.Id),
                 LinkText = "Перейти к работе",
             }
+        );
+    }
+}
+
+public sealed class CheckedUserHistoryHandler : IEventHandler<CheckedEvent>
+{
+    private readonly IAssignedWorkUserHistoryRecorder _recorder;
+
+    public CheckedUserHistoryHandler(IAssignedWorkUserHistoryRecorder recorder)
+    {
+        _recorder = recorder;
+    }
+
+    public Task HandleAsync(CheckedEvent @event, CancellationToken ct = default)
+    {
+        return _recorder.RecordAsync(
+            @event.AssignedWorkId,
+            @event.MentorId,
+            UserHistoryType.WorkChecked
         );
     }
 }

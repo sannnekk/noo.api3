@@ -1,5 +1,7 @@
 using Noo.Api.Auth.DTO;
+using Noo.Api.Auth.Events;
 using Noo.Api.Core.Exceptions.Http;
+using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
@@ -31,6 +33,8 @@ public class AuthService : IAuthService
 
     private readonly IHttpContextAccessor _httpContextAccessor;
 
+    private readonly IEventPublisher _events;
+
     public AuthService(
         ITokenService tokenService,
         IRefreshTokenService refreshTokenService,
@@ -40,9 +44,11 @@ public class AuthService : IAuthService
         IUserService userService,
         IHashService hashService,
         ISessionService sessionService,
-        IHttpContextAccessor httpContextAccessor
+        IHttpContextAccessor httpContextAccessor,
+        IEventPublisher events
     )
     {
+        _events = events;
         _tokenService = tokenService;
         _refreshTokenService = refreshTokenService;
         _userService = userService;
@@ -165,7 +171,7 @@ public class AuthService : IAuthService
 
         var passwordHash = _hashService.Hash(request.Password);
 
-        var userId = _userService.CreateUser(
+        var userId = await _userService.CreateUserAsync(
             new UserCreationPayload
             {
                 Username = request.Username,
@@ -220,6 +226,8 @@ public class AuthService : IAuthService
         await _userService.UpdateUserPasswordAsync(user.Id, _hashService.Hash(newPassword));
         _sessionService.DeleteAllSessions(user.Id);
         _tokenService.DeleteTokens(user.Id, TokenType.PasswordReset);
+
+        await _events.PublishAsync(new UserPasswordChangedEvent(user.Id, ViaReset: true));
     }
 
     public async Task ConfirmEmailAsync(string token)
@@ -239,6 +247,8 @@ public class AuthService : IAuthService
 
             user.IsVerified = true;
             _tokenService.DeleteTokens(user.Id, TokenType.EmailVerification);
+
+            await _events.PublishAsync(new UserEmailConfirmedEvent(user.Id));
             return;
         }
 

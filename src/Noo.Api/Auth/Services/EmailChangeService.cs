@@ -1,4 +1,6 @@
+using Noo.Api.Auth.Events;
 using Noo.Api.Core.Exceptions.Http;
+using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Users.Services;
 
@@ -15,17 +17,21 @@ public class EmailChangeService : IEmailChangeService
 
     private readonly IAuthUrlGenerator _urlGenerator;
 
+    private readonly IEventPublisher _events;
+
     public EmailChangeService(
         IUserRepository userRepository,
         ITokenService tokenService,
         IAuthEmailService emailService,
-        IAuthUrlGenerator urlGenerator
+        IAuthUrlGenerator urlGenerator,
+        IEventPublisher events
     )
     {
         _userRepository = userRepository;
         _tokenService = tokenService;
         _emailService = emailService;
         _urlGenerator = urlGenerator;
+        _events = events;
     }
 
     public async Task RequestAsync(Ulid userId, string newEmail)
@@ -49,8 +55,12 @@ public class EmailChangeService : IEmailChangeService
     {
         var user = await _userRepository.GetByIdAsync(userId) ?? throw new NotFoundException();
 
+        var oldEmail = user.Email;
+
         user.Email = newEmail;
 
         _tokenService.DeleteTokens(user.Id, TokenType.EmailChange);
+
+        await _events.PublishAsync(new UserEmailChangedEvent(user.Id, oldEmail, newEmail));
     }
 }

@@ -11,7 +11,7 @@ namespace Noo.Api.Users.Services;
 public interface IUserService
 {
     public Task<bool> UserExistsAsync(string? username, string? email);
-    public Ulid CreateUser(UserCreationPayload payload);
+    public Task<Ulid> CreateUserAsync(UserCreationPayload payload);
     public Task<UserModel?> GetUserByIdAsync(Ulid id);
     public Task<UserModel?> GetUserByUsernameOrEmailAsync(string usernameOrEmail);
     public Task<SearchResult<UserModel>> GetUsersAsync(UserFilter filter);
