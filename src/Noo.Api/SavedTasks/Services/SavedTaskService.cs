@@ -76,7 +76,8 @@ public class SavedTaskService : ISavedTaskService
     {
         var specification = new SavedTaskSpecification(
             _currentUser.RequireUserId(),
-            filter.Search
+            filter.Search,
+            filter.SubjectId
         );
 
         return _savedTaskRepository.SearchAsync(filter, [specification]);

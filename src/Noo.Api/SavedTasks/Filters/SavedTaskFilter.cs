@@ -15,4 +15,11 @@ public class SavedTaskFilter : PaginationFilterBase
     /// </summary>
     [IgnoreFilter]
     public string? Search { get; set; }
+
+    /// <summary>
+    /// Subjects to keep. Behind the task like the search is, so it is applied by
+    /// the specification too.
+    /// </summary>
+    [IgnoreFilter]
+    public IEnumerable<Ulid>? SubjectId { get; set; }
 }
