@@ -28,4 +28,30 @@ public interface ISavedTaskRepository : IRepository<SavedTaskModel>
         Ulid assignedWorkId,
         Ulid taskId
     );
+
+    /// <summary>
+    /// The subjects the user has saved tasks on, with how many on each.
+    /// </summary>
+    public Task<IEnumerable<SavedTaskSubjectDTO>> GetSubjectSummariesAsync(Ulid userId);
+
+    /// <summary>
+    /// How many saved tasks the user has, on one subject or across all of them.
+    /// </summary>
+    public Task<int> CountAsync(Ulid userId, Ulid? subjectId);
+
+    /// <summary>
+    /// A random handful of the user's saved tasks, drawn in the database so the
+    /// draw does not depend on how many the user has saved.
+    /// </summary>
+    public Task<IEnumerable<SavedTaskModel>> GetRandomAsync(
+        Ulid userId,
+        Ulid? subjectId,
+        int count
+    );
+
+    /// <summary>
+    /// One saved task of the user's, with the task it points at loaded — the
+    /// answer key included, so it can be checked against.
+    /// </summary>
+    public Task<SavedTaskModel?> GetWithTaskAsync(Ulid userId, Ulid savedTaskId);
 }

@@ -26,14 +26,7 @@ public class TaskCheckService : ITaskCheckService
                 continue;
             }
 
-            var score = task.CheckStrategy switch
-            {
-                WorkTaskCheckStrategy.ExactMatchOrZero => CheckExactMatchOrZero(task, ref answer),
-                WorkTaskCheckStrategy.ExactMatchWithWrongCharacter => CheckExactMatchWithWrongCharacter(task, ref answer),
-                WorkTaskCheckStrategy.MultipleChoice => CheckMultipleChoice(task, ref answer),
-                WorkTaskCheckStrategy.Sequence => CheckSequence(task, ref answer),
-                _ => (int?)null,
-            };
+            var score = CheckWord(task, answer.WordContent);
 
             if (score == null)
             {
@@ -47,14 +40,32 @@ public class TaskCheckService : ITaskCheckService
         return totalScore;
     }
 
+    public int? CheckWord(WorkTaskModel task, string? word)
+    {
+        if (!task.IsAutomaticallyCheckable)
+        {
+            return null;
+        }
+
+        return task.CheckStrategy switch
+        {
+            WorkTaskCheckStrategy.ExactMatchOrZero => CheckExactMatchOrZero(task, word),
+            WorkTaskCheckStrategy.ExactMatchWithWrongCharacter =>
+                CheckExactMatchWithWrongCharacter(task, word),
+            WorkTaskCheckStrategy.MultipleChoice => CheckMultipleChoice(task, word),
+            WorkTaskCheckStrategy.Sequence => CheckSequence(task, word),
+            _ => null,
+        };
+    }
+
     /// <summary>
     /// Identical to the answer key: max points, otherwise 0.
     /// </summary>
-    private static int CheckExactMatchOrZero(WorkTaskModel task, ref AssignedWorkAnswerModel answer)
+    private static int CheckExactMatchOrZero(WorkTaskModel task, string? word)
     {
         return CheckBestOf(
             task,
-            answer,
+            word,
             static (word, exact, maxScore) => word == exact ? maxScore : 0
         );
     }
@@ -62,14 +73,11 @@ public class TaskCheckService : ITaskCheckService
     /// <summary>
     /// For every wrong character (compared position by position) minus one point.
     /// </summary>
-    private static int CheckExactMatchWithWrongCharacter(
-        WorkTaskModel task,
-        ref AssignedWorkAnswerModel answer
-    )
+    private static int CheckExactMatchWithWrongCharacter(WorkTaskModel task, string? word)
     {
         return CheckBestOf(
             task,
-            answer,
+            word,
             static (word, exact, maxScore) =>
             {
                 word = word.PadRight(exact.Length);
@@ -93,11 +101,11 @@ public class TaskCheckService : ITaskCheckService
     /// for every extra letter minus one. A mismatch in the amount of extra
     /// letters means the whole answer is wrong.
     /// </summary>
-    private static int CheckMultipleChoice(WorkTaskModel task, ref AssignedWorkAnswerModel answer)
+    private static int CheckMultipleChoice(WorkTaskModel task, string? word)
     {
         return CheckBestOf(
             task,
-            answer,
+            word,
             static (word, exact, maxScore) =>
             {
                 var score = maxScore;
@@ -139,11 +147,11 @@ public class TaskCheckService : ITaskCheckService
     /// Fully correct order: maximum points; up to two wrong characters minus one;
     /// every extra/missing character also subtracts a point.
     /// </summary>
-    private static int CheckSequence(WorkTaskModel task, ref AssignedWorkAnswerModel answer)
+    private static int CheckSequence(WorkTaskModel task, string? word)
     {
         return CheckBestOf(
             task,
-            answer,
+            word,
             static (word, exact, maxScore) =>
             {
                 maxScore -= Math.Abs(word.Length - exact.Length);
@@ -173,11 +181,11 @@ public class TaskCheckService : ITaskCheckService
     /// </summary>
     private static int CheckBestOf(
         WorkTaskModel task,
-        AssignedWorkAnswerModel answer,
+        string? answerWord,
         Func<string, string, int, int> check
     )
     {
-        var word = Normalize(answer.WordContent);
+        var word = Normalize(answerWord);
 
         if (string.IsNullOrEmpty(word) || task.RightAnswers == null)
         {

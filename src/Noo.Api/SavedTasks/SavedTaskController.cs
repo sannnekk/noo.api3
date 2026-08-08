@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -65,6 +66,78 @@ public class SavedTaskController : ApiController
     public async Task<IActionResult> GetSavedTaskReferencesAsync([FromQuery] Ulid? assignedWorkId)
     {
         var result = await _savedTaskService.GetReferencesAsync(assignedWorkId);
+
+        return SendResponse(result);
+    }
+
+    /// <summary>
+    /// Get the subjects the authenticated student has saved tasks on, with how
+    /// many on each. What a quiz is set up from.
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpGet("subject")]
+    [Authorize(Policy = SavedTaskPolicies.CanGetSavedTasks)]
+    [Produces(
+        typeof(ApiResponseDTO<IEnumerable<SavedTaskSubjectDTO>>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden
+    )]
+    public async Task<IActionResult> GetSavedTaskSubjectsAsync()
+    {
+        var result = await _savedTaskService.GetSubjectSummariesAsync();
+
+        return SendResponse(result);
+    }
+
+    /// <summary>
+    /// Get a random deck of the authenticated student's saved tasks to run a
+    /// quiz on, optionally drawn from one subject only.
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpGet("quiz")]
+    [Authorize(Policy = SavedTaskPolicies.CanGetSavedTasks)]
+    [Produces(
+        typeof(ApiResponseDTO<IEnumerable<SavedTaskDTO>>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status409Conflict
+    )]
+    public async Task<IActionResult> GetQuizDeckAsync(
+        [FromQuery] Ulid? subjectId,
+        [FromQuery] [Range(SavedTaskConfig.MinQuizCardCount, SavedTaskConfig.MaxQuizCardCount)]
+            int count = SavedTaskConfig.MinQuizCardCount
+    )
+    {
+        var result = await _savedTaskService.GetQuizDeckAsync(subjectId, count);
+
+        return SendResponse<IEnumerable<SavedTaskDTO>>(
+            _mapper.Map<IEnumerable<SavedTaskDTO>>(result)
+        );
+    }
+
+    /// <summary>
+    /// Check an answer to one saved task against its answer key.
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpPost("{savedTaskId}/check")]
+    [Authorize(Policy = SavedTaskPolicies.CanGetSavedTasks)]
+    [Produces(
+        typeof(ApiResponseDTO<SavedTaskAnswerCheckDTO>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> CheckSavedTaskAnswerAsync(
+        [FromRoute] Ulid savedTaskId,
+        [FromBody] CheckSavedTaskAnswerDTO checkAnswerDto
+    )
+    {
+        var result = await _savedTaskService.CheckAnswerAsync(savedTaskId, checkAnswerDto);
 
         return SendResponse(result);
     }

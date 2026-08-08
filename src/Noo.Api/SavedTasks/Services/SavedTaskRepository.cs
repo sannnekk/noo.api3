@@ -4,6 +4,7 @@ using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.SavedTasks.DTO;
 using Noo.Api.SavedTasks.Models;
+using Noo.Api.Subjects.DTO;
 
 namespace Noo.Api.SavedTasks.Services;
 
@@ -55,5 +56,74 @@ public class SavedTaskRepository : Repository<SavedTaskModel>, ISavedTaskReposit
                 && assignedWork.StudentId == studentId
                 && assignedWork.Work!.Tasks!.Any(task => task.Id == taskId)
             );
+    }
+
+    public async Task<IEnumerable<SavedTaskSubjectDTO>> GetSubjectSummariesAsync(Ulid userId)
+    {
+        var summaries = await OwnedBy(userId)
+            .GroupBy(savedTask => savedTask.Task.Work!.Subject)
+            .Select(group => new { Subject = group.Key, Count = group.Count() })
+            .ToListAsync();
+
+        return summaries
+            .Select(summary => new SavedTaskSubjectDTO
+            {
+                Subject =
+                    summary.Subject == null
+                        ? null
+                        : new SubjectDTO
+                        {
+                            Id = summary.Subject.Id,
+                            Name = summary.Subject.Name,
+                            Color = summary.Subject.Color,
+                            CreatedAt = summary.Subject.CreatedAt,
+                            UpdatedAt = summary.Subject.UpdatedAt,
+                        },
+                SavedTaskCount = summary.Count,
+            })
+            .OrderByDescending(summary => summary.SavedTaskCount)
+            .ToList();
+    }
+
+    public Task<int> CountAsync(Ulid userId, Ulid? subjectId)
+    {
+        return OnSubject(OwnedBy(userId), subjectId).CountAsync();
+    }
+
+    public async Task<IEnumerable<SavedTaskModel>> GetRandomAsync(
+        Ulid userId,
+        Ulid? subjectId,
+        int count
+    )
+    {
+        return await OnSubject(OwnedBy(userId), subjectId)
+            .Include(savedTask => savedTask.Task)
+            .ThenInclude(task => task.Work!)
+            .ThenInclude(work => work.Subject)
+            .OrderBy(_ => EF.Functions.Random())
+            .Take(count)
+            .ToListAsync();
+    }
+
+    public Task<SavedTaskModel?> GetWithTaskAsync(Ulid userId, Ulid savedTaskId)
+    {
+        return OwnedBy(userId)
+            .Include(savedTask => savedTask.Task)
+            .FirstOrDefaultAsync(savedTask => savedTask.Id == savedTaskId);
+    }
+
+    private IQueryable<SavedTaskModel> OwnedBy(Ulid userId)
+    {
+        return Context.GetDbSet<SavedTaskModel>().Where(savedTask => savedTask.UserId == userId);
+    }
+
+    private static IQueryable<SavedTaskModel> OnSubject(
+        IQueryable<SavedTaskModel> query,
+        Ulid? subjectId
+    )
+    {
+        return subjectId == null
+            ? query
+            : query.Where(savedTask => savedTask.Task.Work!.SubjectId == subjectId);
     }
 }

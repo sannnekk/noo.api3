@@ -13,4 +13,10 @@ public interface ITaskCheckService
         IEnumerable<AssignedWorkAnswerModel> answers,
         IEnumerable<WorkTaskModel> tasks
     );
+
+    /// <summary>
+    /// Scores a single word answer against a task's answer key, or returns
+    /// <c>null</c> when the task is not one that can be checked automatically.
+    /// </summary>
+    public int? CheckWord(WorkTaskModel task, string? word);
 }
