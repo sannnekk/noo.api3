@@ -12,6 +12,16 @@ public class PollParticipationRepository : Repository<PollParticipationModel>, I
     {
     }
 
+    public Task<PollParticipationModel?> GetWithAnswersAsync(Ulid participationId)
+    {
+        return Context.Set<PollParticipationModel>()
+            .AsNoTracking()
+            .Where(p => p.Id == participationId)
+            .Include(p => p.User)
+            .Include(p => p.Answers)
+            .FirstOrDefaultAsync();
+    }
+
     public Task<List<PollParticipationModel>> GetByPollIdAsync(Ulid pollId)
     {
         return Context.Set<PollParticipationModel>()

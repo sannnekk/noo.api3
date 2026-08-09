@@ -6,6 +6,7 @@ using Noo.Api.Polls.Services;
 using Noo.Api.Polls.Types;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Users.Models;
 using Noo.UnitTests.Common;
 using SystemTextJsonPatch;
 using Noo.Api.Core.Request.Patching;
@@ -282,5 +283,96 @@ public class PollServiceTests
 
         var again = await context.Set<PollAnswerModel>().FindAsync(a.Id);
         Assert.Equal("new", again!.Value.Value as string);
+    }
+
+    [Fact]
+    public async Task GetPollParticipations_Loads_User_And_Searches_By_Participant()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = TestHelpers.CreateInMemoryDb(dbName);
+        var mapper = CreateMapper();
+        var pollRepo = new PollRepository(context);
+        var pollParticipationRepo = new PollParticipationRepository(context);
+        var pollAnswerRepo = new PollAnswerRepository(context);
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+
+        var poll = new PollModel { Title = "P", IsActive = true, IsAuthRequired = false };
+        var alice = new UserModel { Name = "Alice", Username = "alice", Email = "alice@noo.ru", PasswordHash = "x", Role = UserRoles.Student };
+        var bob = new UserModel { Name = "Bob", Username = "bob", Email = "bob@noo.ru", PasswordHash = "x", Role = UserRoles.Student };
+        context.AddRange(poll, alice, bob);
+        await context.SaveChangesAsync();
+
+        context.AddRange(
+            new PollParticipationModel { PollId = poll.Id, UserId = alice.Id, UserType = ParticipatingUserType.AuthenticatedUser },
+            new PollParticipationModel { PollId = poll.Id, UserId = bob.Id, UserType = ParticipatingUserType.AuthenticatedUser },
+            new PollParticipationModel { PollId = poll.Id, UserType = ParticipatingUserType.TelegramUser, UserExternalIdentifier = "@carol" }
+        );
+        await context.SaveChangesAsync();
+
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(null, UserRoles.Admin), jsonPatch);
+
+        var all = await service.GetPollParticipationsAsync(poll.Id, new PollParticipationFilter { Page = 1, PerPage = 10 });
+        Assert.Equal(3, all.Total);
+        Assert.Contains(all.Items, p => p.User?.Name == "Alice");
+
+        var byName = await service.GetPollParticipationsAsync(poll.Id, new PollParticipationFilter { Page = 1, PerPage = 10, Search = "alic" });
+        Assert.Equal(1, byName.Total);
+        Assert.Equal(alice.Id, byName.Items.Single().UserId);
+
+        var byEmail = await service.GetPollParticipationsAsync(poll.Id, new PollParticipationFilter { Page = 1, PerPage = 10, Search = "bob@noo" });
+        Assert.Equal(1, byEmail.Total);
+        Assert.Equal(bob.Id, byEmail.Items.Single().UserId);
+
+        var byExternalIdentifier = await service.GetPollParticipationsAsync(poll.Id, new PollParticipationFilter { Page = 1, PerPage = 10, Search = "carol" });
+        Assert.Equal(1, byExternalIdentifier.Total);
+        Assert.Equal("@carol", byExternalIdentifier.Items.Single().UserExternalIdentifier);
+    }
+
+    [Fact]
+    public async Task GetPollParticipation_Loads_Answers_And_User()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = TestHelpers.CreateInMemoryDb(dbName);
+        var mapper = CreateMapper();
+        var pollRepo = new PollRepository(context);
+        var pollParticipationRepo = new PollParticipationRepository(context);
+        var pollAnswerRepo = new PollAnswerRepository(context);
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+
+        var poll = new PollModel { Title = "P", IsActive = true, IsAuthRequired = false };
+        var question = new PollQuestionModel { Poll = poll, Title = "Q", IsRequired = true, Type = PollQuestionType.Text, Order = 0 };
+        var user = new UserModel { Name = "Alice", Username = "alice", Email = "alice@noo.ru", PasswordHash = "x", Role = UserRoles.Student };
+        context.AddRange(question, user);
+        await context.SaveChangesAsync();
+
+        var participation = new PollParticipationModel
+        {
+            PollId = poll.Id,
+            UserId = user.Id,
+            UserType = ParticipatingUserType.AuthenticatedUser,
+            Answers =
+            [
+                new PollAnswerModel
+                {
+                    PollQuestionId = question.Id,
+                    Value = new PollAnswerValue { Type = PollQuestionType.Text, Value = "hello" }
+                }
+            ]
+        };
+        context.Add(participation);
+        await context.SaveChangesAsync();
+
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(null, UserRoles.Admin), jsonPatch);
+
+        var result = await service.GetPollParticipationAsync(participation.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal("Alice", result!.User?.Name);
+
+        var answer = Assert.Single(result.Answers);
+        Assert.Equal(question.Id, answer.PollQuestionId);
+        // Round-tripped through the JSON converter, so the value comes back as a
+        // JsonElement rather than the string it was stored as.
+        Assert.Equal("hello", answer.Value.Value?.ToString());
     }
 }

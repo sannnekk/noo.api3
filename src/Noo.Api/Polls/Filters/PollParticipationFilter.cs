@@ -12,12 +12,14 @@ namespace Noo.Api.Polls.Filters;
 )]
 public class PollParticipationFilter : PaginationFilterBase
 {
-    // 2) Global Search: one field that compares to multiple props
-    [CompareTo(nameof(PollParticipationModel.User.Name))]
-    [CompareTo(nameof(PollParticipationModel.User.Username))]
-    [CompareTo(nameof(PollParticipationModel.User.TelegramUsername))]
-    [CompareTo(nameof(PollParticipationModel.User.Email))]
-    [ToLowerContainsComparison]
+    /// <summary>
+    /// Matched against the participant: the user's name, username, e-mail and telegram
+    /// username, or the identifier an anonymous participant left. Most of them sit on
+    /// the related user, and CompareTo silently drops property paths it cannot resolve
+    /// on the filtered entity, so the search is applied by
+    /// <see cref="Noo.Api.Polls.Specifications.PollParticipationSearchSpecification"/>.
+    /// </summary>
+    [IgnoreFilter]
     public string? Search { get; set; }
 
     public Ulid? PollId { get; set; }

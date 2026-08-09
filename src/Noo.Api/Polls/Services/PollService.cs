@@ -69,7 +69,7 @@ public class PollService : IPollService
 
     public Task<PollParticipationModel?> GetPollParticipationAsync(Ulid participationId)
     {
-        return _pollParticipationRepository.GetByIdAsync(participationId);
+        return _pollParticipationRepository.GetWithAnswersAsync(participationId);
     }
 
     public Task<SearchResult<PollParticipationModel>> GetPollParticipationsAsync(
@@ -78,7 +78,10 @@ public class PollService : IPollService
     )
     {
         filter.PollId = pollId;
-        return _pollParticipationRepository.SearchAsync(filter);
+        return _pollParticipationRepository.SearchAsync(
+            filter,
+            [new PollParticipationSearchSpecification(filter.Search)]
+        );
     }
 
     public Task<SearchResult<PollModel>> GetPollsAsync(PollFilter filter)
