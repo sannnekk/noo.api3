@@ -33,6 +33,9 @@ public class PollModel : BaseModel
     [NotMapped]
     public int ParticipationsCount { get; set; }
 
+    [NotMapped]
+    public bool HasParticipated { get; set; }
+
     #region Navigation Properties
 
     public ICollection<PollQuestionModel> Questions { get; set; } = [];

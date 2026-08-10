@@ -46,4 +46,14 @@ public record PollDTO
     [Required]
     [JsonPropertyName("participationsCount")]
     public int ParticipationsCount { get; init; }
+
+    /// <summary>
+    /// Whether the caller has already answered this poll. Only computed when a
+    /// single poll is fetched by its id, and always false for an anonymous
+    /// caller — an unauthenticated visitor cannot be recognized before they
+    /// identify themselves.
+    /// </summary>
+    [Required]
+    [JsonPropertyName("hasParticipated")]
+    public bool HasParticipated { get; init; }
 }

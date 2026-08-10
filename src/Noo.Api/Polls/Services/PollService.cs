@@ -65,6 +65,17 @@ public class PollService : IPollService
             return null;
         }
 
+        // Lets the client keep a returning user out of the poll instead of
+        // letting them fill it in and be turned away on submit.
+        if (_currentUser.UserId.HasValue)
+        {
+            poll.HasParticipated = await UserAlreadyParticipatedAsync(
+                id,
+                _currentUser.UserId,
+                null
+            );
+        }
+
         return poll;
     }
 

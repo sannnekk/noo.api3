@@ -18,6 +18,7 @@ public class PollMapperProfile : Profile
             .ForMember(d => d.UpdatedAt, o => o.Ignore())
             .ForMember(d => d.Participations, o => o.Ignore())
             .ForMember(d => d.ParticipationsCount, o => o.Ignore())
+            .ForMember(d => d.HasParticipated, o => o.Ignore())
             .ForMember(d => d.Questions, o => o.MapFrom(s => s.Questions))
             .ForMember(d => d.CourseMaterialContents, o => o.Ignore())
             .ForMember(d => d.IsActive, o => o.MapFrom(s => s.IsActive ?? true))
@@ -47,6 +48,7 @@ public class PollMapperProfile : Profile
             .ForMember(d => d.UpdatedAt, o => o.Ignore())
             .ForMember(d => d.Participations, o => o.Ignore())
             .ForMember(d => d.ParticipationsCount, o => o.Ignore())
+            .ForMember(d => d.HasParticipated, o => o.Ignore())
             .ForMember(d => d.CourseMaterialContents, o => o.Ignore())
             .ForMember(d => d.Questions, o => o.Ignore())
             .AfterMap(

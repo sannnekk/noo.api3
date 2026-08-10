@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Polls.Services;
@@ -10,12 +9,10 @@ namespace Noo.Api.Polls.AuthorizationRequirements;
 public class PollParticipationCreationRequirementHandler : AuthorizationHandler<PollParticipationCreationRequirement>
 {
     private readonly IPollRepository _pollRepository;
-    private readonly IPollParticipationRepository _participationRepository;
 
-    public PollParticipationCreationRequirementHandler(IPollRepository pollRepository, IPollParticipationRepository participationRepository)
+    public PollParticipationCreationRequirementHandler(IPollRepository pollRepository)
     {
         _pollRepository = pollRepository;
-        _participationRepository = participationRepository;
     }
 
     protected override async Task HandleRequirementAsync(
@@ -60,17 +57,9 @@ public class PollParticipationCreationRequirementHandler : AuthorizationHandler<
             return;
         }
 
-        var userId = context.User.GetId();
-        if (userId != Ulid.Empty)
-        {
-            var alreadyParticipated = await _participationRepository.ParticipationExistsAsync(pollId, userId, null);
-            if (alreadyParticipated)
-            {
-                context.Fail();
-                return;
-            }
-        }
-
+        // Whether the caller already voted is deliberately not checked here:
+        // PollService answers that with UserAlreadyVotedException, which tells
+        // the client what happened instead of a blanket 403.
         context.Succeed(requirement);
     }
 }
