@@ -13,7 +13,10 @@ public interface IPollService
     public void DeletePoll(Ulid id);
     public Task<PollModel?> GetPollAsync(Ulid id);
     public Task<SearchResult<PollModel>> GetPollsAsync(PollFilter filter);
-    public Task<SearchResult<PollModel>> GetParticipatedPollsAsync(Ulid userId, PollFilter filter);
+    public Task<SearchResult<PollParticipationModel>> GetUserParticipationsAsync(
+        Ulid userId,
+        PollParticipationFilter filter
+    );
     public Task ParticipateAsync(Ulid pollId, CreatePollParticipationDTO participationDto);
     public Task<SearchResult<PollParticipationModel>> GetPollParticipationsAsync(
         Ulid pollId,

@@ -174,7 +174,7 @@ public class PollServiceTests
     }
 
     [Fact]
-    public async Task GetParticipatedPolls_Returns_Only_Participated_Polls_With_Counts()
+    public async Task GetUserParticipations_Returns_Only_Own_Participations_With_Polls()
     {
         var dbName = Guid.NewGuid().ToString();
         using var context = TestHelpers.CreateInMemoryDb(dbName);
@@ -188,11 +188,9 @@ public class PollServiceTests
         var userId = Ulid.NewUlid();
         var otherUserId = Ulid.NewUlid();
 
-        // Poll A: target user + another user => participated, count 2
+        // Poll A: target user + another user, Poll B: another user only, Poll C: target user only
         var pollA = new PollModel { Title = "A", IsActive = true, IsAuthRequired = false };
-        // Poll B: only another user => not participated by target user
         var pollB = new PollModel { Title = "B", IsActive = true, IsAuthRequired = false };
-        // Poll C: only target user => participated, count 1
         var pollC = new PollModel { Title = "C", IsActive = true, IsAuthRequired = false };
         context.AddRange(pollA, pollB, pollC);
         await context.SaveChangesAsync();
@@ -205,21 +203,21 @@ public class PollServiceTests
         );
         await context.SaveChangesAsync();
 
-        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId), jsonPatch);
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId, UserRoles.Student), jsonPatch);
 
-        var result = await service.GetParticipatedPollsAsync(userId, new PollFilter { Page = 1, PerPage = 10 });
+        var result = await service.GetUserParticipationsAsync(userId, new PollParticipationFilter { Page = 1, PerPage = 10 });
 
         Assert.Equal(2, result.Total);
-        var byId = result.Items.ToDictionary(p => p.Id);
-        Assert.True(byId.ContainsKey(pollA.Id));
-        Assert.True(byId.ContainsKey(pollC.Id));
-        Assert.False(byId.ContainsKey(pollB.Id));
-        Assert.Equal(2, byId[pollA.Id].ParticipationsCount);
-        Assert.Equal(1, byId[pollC.Id].ParticipationsCount);
+        Assert.All(result.Items, participation => Assert.Equal(userId, participation.UserId));
+        Assert.Equal(
+            [pollA.Id, pollC.Id],
+            result.Items.Select(participation => participation.PollId).Order()
+        );
+        Assert.All(result.Items, participation => Assert.NotNull(participation.Poll));
     }
 
     [Fact]
-    public async Task GetParticipatedPolls_Respects_Pagination()
+    public async Task GetUserParticipations_Respects_Pagination()
     {
         var dbName = Guid.NewGuid().ToString();
         using var context = TestHelpers.CreateInMemoryDb(dbName);
@@ -246,13 +244,41 @@ public class PollServiceTests
             await context.SaveChangesAsync();
         }
 
-        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId), jsonPatch);
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId, UserRoles.Student), jsonPatch);
 
-        var page = await service.GetParticipatedPollsAsync(userId, new PollFilter { Page = 1, PerPage = 2 });
+        var page = await service.GetUserParticipationsAsync(userId, new PollParticipationFilter { Page = 1, PerPage = 2 });
 
         Assert.Equal(3, page.Total);
         Assert.Equal(2, page.Items.Count());
-        Assert.All(page.Items, poll => Assert.Equal(1, poll.ParticipationsCount));
+    }
+
+    [Fact]
+    public async Task GetUserParticipations_Forbids_Reading_Another_Users_Participations()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = TestHelpers.CreateInMemoryDb(dbName);
+        var uow = TestHelpers.CreateUowMock(context).Object;
+        var mapper = CreateMapper();
+        var pollRepo = new PollRepository(context);
+        var pollParticipationRepo = new PollParticipationRepository(context);
+        var pollAnswerRepo = new PollAnswerRepository(context);
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+
+        var userId = Ulid.NewUlid();
+        var otherUserId = Ulid.NewUlid();
+        var filter = new PollParticipationFilter { Page = 1, PerPage = 10 };
+
+        var student = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId, UserRoles.Student), jsonPatch);
+
+        await Assert.ThrowsAsync<ForbiddenException>(
+            () => student.GetUserParticipationsAsync(otherUserId, filter)
+        );
+
+        var teacher = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId, UserRoles.Teacher), jsonPatch);
+
+        var result = await teacher.GetUserParticipationsAsync(otherUserId, filter);
+
+        Assert.Equal(0, result.Total);
     }
 
     [Fact]

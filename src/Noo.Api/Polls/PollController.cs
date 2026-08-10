@@ -46,25 +46,25 @@ public class PollController : ApiController
     }
 
     /// <summary>
-    /// Get a paginated list of polls a specific user has participated in.
+    /// Get a paginated list of the polls a specific user has participated in, as their participations.
     /// </summary>
     [HttpGet("user/{userId}/participation")]
     [MapToApiVersion(NooApiVersions.Current)]
-    [Authorize(Policy = PollPolicies.CanGetPolls)]
+    [Authorize(Policy = PollPolicies.CanGetUserParticipations)]
     [Produces(
-        typeof(ApiResponseDTO<IEnumerable<PollDTO>>),
+        typeof(ApiResponseDTO<IEnumerable<PollParticipationDTO>>),
         StatusCodes.Status200OK,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public async Task<IActionResult> GetParticipatedPollsAsync(
+    public async Task<IActionResult> GetUserParticipationsAsync(
         [FromRoute] Ulid userId,
-        [FromQuery] PollFilter filter
+        [FromQuery] PollParticipationFilter filter
     )
     {
-        var result = await _pollService.GetParticipatedPollsAsync(userId, filter);
+        var result = await _pollService.GetUserParticipationsAsync(userId, filter);
 
-        return SendResponse<PollModel, PollDTO>(result);
+        return SendResponse<PollParticipationModel, PollParticipationDTO>(result);
     }
 
     /// <summary>

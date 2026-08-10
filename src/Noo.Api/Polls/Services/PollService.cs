@@ -1,6 +1,7 @@
 using AutoMapper;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions;
+using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
@@ -86,14 +87,25 @@ public class PollService : IPollService
 
     public Task<SearchResult<PollModel>> GetPollsAsync(PollFilter filter)
     {
-        return _pollRepository.SearchAsync(filter);
+        return _pollRepository.SearchWithParticipationsCountAsync(filter);
     }
 
-    public Task<SearchResult<PollModel>> GetParticipatedPollsAsync(Ulid userId, PollFilter filter)
+    public Task<SearchResult<PollParticipationModel>> GetUserParticipationsAsync(
+        Ulid userId,
+        PollParticipationFilter filter
+    )
     {
-        return _pollRepository.SearchWithParticipationsCountAsync(
+        if (
+            userId != _currentUser.UserId
+            && !_currentUser.IsInRole(UserRoles.Admin, UserRoles.Teacher)
+        )
+        {
+            throw new ForbiddenException();
+        }
+
+        return _pollParticipationRepository.SearchAsync(
             filter,
-            [new PollByParticipantSpecification(userId)]
+            [new PollParticipationByUserSpecification(userId, filter.Search)]
         );
     }
 

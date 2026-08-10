@@ -12,6 +12,7 @@ public class PollPolicies : IPolicyRegistrar
     public const string CanGetPolls = nameof(CanGetPolls);
     public const string CanGetPollResults = nameof(CanGetPollResults);
     public const string CanGetPollResult = nameof(CanGetPollResult);
+    public const string CanGetUserParticipations = nameof(CanGetUserParticipations);
     public const string CanParticipateInPoll = nameof(CanParticipateInPoll);
     public const string CanUpdateAnswer = nameof(CanUpdateAnswer);
 
@@ -77,6 +78,14 @@ public class PollPolicies : IPolicyRegistrar
                     .AddRequirements(
                         new AuthorizationRequirements.PollParticipationAccessRequirement()
                     );
+            }
+        );
+
+        options.AddPolicy(
+            CanGetUserParticipations,
+            policy =>
+            {
+                policy.RequireAuthenticatedUser().RequireNotBlocked();
             }
         );
 
