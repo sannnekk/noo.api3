@@ -205,7 +205,7 @@ public class AssignedWorkService : IAssignedWorkService
     {
         var role = _currentUser.RequireUserRole();
 
-        var specification = new AssignedWorkSearchSpecification(role);
+        var specification = new AssignedWorkSearchSpecification(role, filter.Tab);
         return _assignedWorkRepository.SearchAsync(filter, [specification]);
     }
 

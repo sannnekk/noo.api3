@@ -1,13 +1,16 @@
 using Ardalis.Specification;
 using Noo.Api.AssignedWorks.Models;
+using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.Security.Authorization;
 
 namespace Noo.Api.AssignedWorks.Specifications;
 
 public class AssignedWorkSearchSpecification : Specification<AssignedWorkModel>
 {
-    public AssignedWorkSearchSpecification(UserRoles userRole)
+    public AssignedWorkSearchSpecification(UserRoles userRole, AssignedWorkListTab tab)
     {
+        Query.Where(AssignedWorkTabCriteria.For(tab));
+
         Query.Include(aw => aw.Work).ThenInclude(w => w!.Subject);
 
         if (userRole == UserRoles.Student)

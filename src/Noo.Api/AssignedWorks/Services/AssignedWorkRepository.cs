@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Noo.Api.AssignedWorks.DTO;
 using Noo.Api.AssignedWorks.Models;
+using Noo.Api.AssignedWorks.Specifications;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils.DI;
@@ -246,31 +247,33 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
 
     public async Task<AssignedWorksCounts> GetCountsForUserAsync(Ulid userId)
     {
-        // Single round-trip aggregate. Translates to one SELECT with conditional
-        // SUMs over the user's rows (covered by IX_assigned_work_student_id /
-        // _main_mentor_id / _helper_mentor_id and the status indexes).
-        var counts = await Context
+        // One COUNT per tab, each built from the very predicate the list query uses for
+        // that tab, so a counter cannot drift from the rows behind it. The counts are
+        // cached by the service, and every count runs over the user's rows only (covered
+        // by IX_assigned_work_student_id / _main_mentor_id / _helper_mentor_id and the
+        // status indexes).
+        var userWorks = Context
             .Set<AssignedWorkModel>()
             .Where(aw =>
                 aw.StudentId == userId
                 || aw.MainMentorId == userId
                 || aw.HelperMentorId == userId
-            )
-            .GroupBy(_ => 1)
-            .Select(g => new AssignedWorksCounts
-            {
-                Total = g.Count(),
-                NotSolved = g.Count(aw =>
-                    aw.SolveStatus != AssignedWorkSolveStatus.Solved
-                ),
-                NotChecked = g.Count(aw =>
-                    aw.SolveStatus == AssignedWorkSolveStatus.Solved
-                    && aw.CheckStatus != AssignedWorkCheckStatus.Checked
-                ),
-                Checked = g.Count(aw => aw.CheckStatus == AssignedWorkCheckStatus.Checked),
-            })
-            .FirstOrDefaultAsync();
+            );
 
-        return counts ?? new AssignedWorksCounts();
+        return new AssignedWorksCounts
+        {
+            Total = await userWorks.CountAsync(
+                AssignedWorkTabCriteria.For(AssignedWorkListTab.All)
+            ),
+            NotSolved = await userWorks.CountAsync(
+                AssignedWorkTabCriteria.For(AssignedWorkListTab.NotSolved)
+            ),
+            NotChecked = await userWorks.CountAsync(
+                AssignedWorkTabCriteria.For(AssignedWorkListTab.NotChecked)
+            ),
+            Checked = await userWorks.CountAsync(
+                AssignedWorkTabCriteria.For(AssignedWorkListTab.Checked)
+            ),
+        };
     }
 }

@@ -92,7 +92,13 @@ public static class TestDataHelpers
         return set.Any(s => s.Id == sessionId);
     }
 
-    public static async Task<Ulid> CreateAssignedWorkAsync(ApiFactory factory, Ulid studentId, Ulid mentorId)
+    public static async Task<Ulid> CreateAssignedWorkAsync(
+        ApiFactory factory,
+        Ulid studentId,
+        Ulid mentorId,
+        AssignedWorkSolveStatus solveStatus = AssignedWorkSolveStatus.NotSolved,
+        AssignedWorkCheckStatus checkStatus = AssignedWorkCheckStatus.NotChecked,
+        Ulid? helperMentorId = null)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NooDbContext>();
@@ -104,6 +110,9 @@ public static class TestDataHelpers
             Attempt = 1,
             StudentId = studentId,
             MainMentorId = mentorId,
+            HelperMentorId = helperMentorId,
+            SolveStatus = solveStatus,
+            CheckStatus = checkStatus,
             MaxScore = 10,
             SolveDeadlineAt = DateTime.UtcNow.AddDays(1),
             CheckDeadlineAt = DateTime.UtcNow.AddDays(2),

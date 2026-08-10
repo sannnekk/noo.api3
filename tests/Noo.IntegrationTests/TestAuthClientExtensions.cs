@@ -39,6 +39,7 @@ public static class TestAuthClientExtensions
     public static HttpClient AsTeacher(this HttpClient client) => client.AsRole(UserRoles.Teacher);
     public static HttpClient AsTeacher(this HttpClient client, Ulid userId) => client.AsRole(UserRoles.Teacher, userId);
     public static HttpClient AsMentor(this HttpClient client) => client.AsRole(UserRoles.Mentor);
+    public static HttpClient AsMentor(this HttpClient client, Ulid userId) => client.AsRole(UserRoles.Mentor, userId);
     public static HttpClient AsAssistant(this HttpClient client) => client.AsRole(UserRoles.Assistant);
     public static HttpClient AsStudent(this HttpClient client) => client.AsRole(UserRoles.Student);
 

@@ -22,9 +22,13 @@ public class AssignedWorkFilter : PaginationFilterBase
     [ArraySearchFilter]
     public IEnumerable<WorkType>? Type { get; set; }
 
-    public AssignedWorkSolveStatus? SolveStatus { get; set; }
-
-    public AssignedWorkCheckStatus? CheckStatus { get; set; }
+    /// <summary>
+    /// Which slice of the list to return. Not an ordinary property filter: the tab
+    /// predicate is shared with the tab counters, so it is applied by
+    /// <c>AssignedWorkSearchSpecification</c> instead of being built from this property.
+    /// </summary>
+    [IgnoreFilter]
+    public AssignedWorkListTab Tab { get; set; } = AssignedWorkListTab.All;
 
     [CompareTo(nameof(AssignedWorkModel.MainMentorId))]
     [CompareTo(nameof(AssignedWorkModel.HelperMentorId))]
