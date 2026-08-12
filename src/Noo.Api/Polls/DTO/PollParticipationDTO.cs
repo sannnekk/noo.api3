@@ -1,15 +1,21 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Noo.Api.Media.DTO;
 using Noo.Api.Polls.Types;
 using Noo.Api.Users.DTO;
 
 namespace Noo.Api.Polls.DTO;
 
-public record PollParticipationDTO
+public record PollParticipationDTO : IHasPresignedMedia
 {
     [Required]
     [JsonPropertyName("_entityName")]
     public string EntityName => "PollParticipation";
+
+    public IEnumerable<MediaDTO?> GetMediaForPresigning()
+    {
+        return PresignedMedia.Collect(Answers, User);
+    }
 
     [Required]
     [JsonPropertyName("id")]

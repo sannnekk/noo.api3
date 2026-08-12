@@ -93,7 +93,18 @@ public class PollMapperProfile : Profile
             .ForMember(d => d.CreatedAt, o => o.Ignore())
             .ForMember(d => d.UpdatedAt, o => o.Ignore())
             .ForMember(d => d.PollQuestionId, o => o.Ignore())
-            .ForMember(d => d.PollQuestion, o => o.Ignore());
+            .ForMember(d => d.PollQuestion, o => o.Ignore())
+            .ForMember(d => d.Medias, o => o.Ignore());
+
+        // The files an answer carries are attached by PollService, which resolves
+        // the ids to tracked media rows the DTO knows nothing about.
+        CreateMap<CreatePollAnswerDTO, PollAnswerModel>()
+            .ForMember(d => d.Id, o => o.Ignore())
+            .ForMember(d => d.CreatedAt, o => o.Ignore())
+            .ForMember(d => d.UpdatedAt, o => o.Ignore())
+            .ForMember(d => d.PollQuestion, o => o.Ignore())
+            .ForMember(d => d.Medias, o => o.Ignore())
+            .ForMember(d => d.Value, o => o.MapFrom(s => s.Value ?? default));
 
         // Participation
         CreateMap<PollParticipationModel, DTO.PollParticipationDTO>();
@@ -108,6 +119,9 @@ public class PollMapperProfile : Profile
             .ForMember(d => d.Answers, o => o.Ignore())
             .ForMember(d => d.UserExternalData, o => o.Ignore());
 
+        // The answers are built by PollService rather than mapped here: each one is
+        // checked against the question it answers, and a file answer's media have to
+        // be resolved to tracked rows before the participation can be stored.
         CreateMap<CreatePollParticipationDTO, PollParticipationModel>()
             .ForMember(d => d.Id, o => o.Ignore())
             .ForMember(d => d.CreatedAt, o => o.Ignore())

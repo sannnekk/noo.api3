@@ -15,7 +15,9 @@ public static class MediaEnumDbDataTypes
         "'AssignedWorkMentorRichText'," +
         "'AssignedWorkStudentCommentRichText'," +
         "'AssignedWorkMentorCommentRichText'," +
-        "'HelpRichText'" +
+        "'HelpRichText'," +
+        "'SnippetRichText'," +
+        "'PollAnswerFile'" +
         ")";
 
     public const string MediaStatus = "ENUM('Pending','Completed')";

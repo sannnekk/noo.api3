@@ -6,6 +6,7 @@ using Noo.Api.Core.DataAbstraction.Model.Attributes;
 using Noo.Api.Courses.Models;
 using Noo.Api.Media.Types;
 using Noo.Api.NooTube.Models;
+using Noo.Api.Polls.Models;
 using Noo.Api.Users.Models;
 using Noo.Api.UserSettings.Models;
 using IndexAttribute = Microsoft.EntityFrameworkCore.IndexAttribute;
@@ -82,6 +83,8 @@ public class MediaModel : OrderedModel
     public ICollection<CourseMaterialContentModel>? CourseMaterialContents { get; set; }
 
     public UserSettingsModel? UserSettingsWithBackgroundImage { get; set; }
+
+    public ICollection<PollAnswerModel>? PollAnswers { get; set; }
 
     #endregion
 }

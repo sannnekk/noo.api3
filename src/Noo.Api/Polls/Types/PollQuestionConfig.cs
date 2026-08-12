@@ -50,7 +50,7 @@ public struct PollQuestionConfig
     public string[]? AllowedFileTypes { get; set; }
 
     [JsonPropertyName("maxFileCount")]
-    [Range(1, 10)]
+    [Range(1, PollFileAnswerLimits.MaxFileCount)]
     public int? MaxFileCount { get; set; }
 
     internal static PollQuestionConfig Deserialize(string v)

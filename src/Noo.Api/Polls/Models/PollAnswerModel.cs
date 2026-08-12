@@ -5,6 +5,7 @@ using Noo.Api.Core.DataAbstraction;
 using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
 using Noo.Api.Core.Utils.Json;
+using Noo.Api.Media.Models;
 using Noo.Api.Polls.Types;
 
 namespace Noo.Api.Polls.Models;
@@ -25,6 +26,13 @@ public class PollAnswerModel : BaseModel
 
     [DeleteBehavior(DeleteBehavior.Cascade)]
     public PollQuestionModel PollQuestion { get; set; } = default!;
+
+    /// <summary>
+    /// Files attached to the answer. Only a <see cref="PollQuestionType.Files"/>
+    /// question ever has them.
+    /// </summary>
+    [InverseProperty(nameof(MediaModel.PollAnswers))]
+    public ICollection<MediaModel>? Medias { get; set; }
 
     #endregion
 
@@ -57,7 +65,11 @@ public class PollAnswerModel : BaseModel
                     ? rating.ToString()
                     : null;
             case PollQuestionType.Files:
-                return "<Some files>"; // TODO: Implement file handling
+                // Exports are read by people, and a presigned URL would be dead by the
+                // time anyone opened the sheet, so the file names stand in for the files.
+                return Medias is { Count: > 0 }
+                    ? string.Join(", ", Medias.Select(media => media.ActualName))
+                    : null;
             default:
                 return "<Unknown question type>";
         }

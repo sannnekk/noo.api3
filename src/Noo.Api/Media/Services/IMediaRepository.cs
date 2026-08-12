@@ -5,4 +5,5 @@ namespace Noo.Api.Media.Services;
 
 public interface IMediaRepository : IRepository<MediaModel>
 {
+    public Task<List<MediaModel>> GetByIdsAsync(IEnumerable<Ulid> ids);
 }

@@ -1,5 +1,10 @@
 using AutoMapper;
+using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Media.Models;
+using Noo.Api.Media.Services;
+using Noo.Api.Media.Types;
 using Noo.Api.Polls.DTO;
+using Noo.Api.Polls.Exceptions;
 using Noo.Api.Polls.Filters;
 using Noo.Api.Polls.Models;
 using Noo.Api.Polls.Services;
@@ -46,9 +51,10 @@ public class PollServiceTests
         var pollRepo = new PollRepository(context);
         var pollParticipationRepo = new PollParticipationRepository(context);
         var pollAnswerRepo = new PollAnswerRepository(context);
+        var mediaRepo = new MediaRepository(context);
         var currentUser = new TestCurrentUser(null, UserRoles.Admin);
         var jsonPatch = new JsonPatchUpdateService(mapper);
-        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, currentUser, jsonPatch);
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, currentUser, jsonPatch);
 
         // Create poll with one question
         var create = new CreatePollDTO
@@ -102,7 +108,8 @@ public class PollServiceTests
         var deletePollAnswerRepo = new PollAnswerRepository(deleteContext);
         var deleteCurrentUser = new TestCurrentUser(null, UserRoles.Admin);
         var deleteJsonPatch = new JsonPatchUpdateService(mapper);
-        var deleteService = new PollService(mapper, deletePollRepo, deletePollParticipationRepo, deletePollAnswerRepo, deleteCurrentUser, deleteJsonPatch);
+        var deleteMediaRepo = new MediaRepository(deleteContext);
+        var deleteService = new PollService(mapper, deletePollRepo, deletePollParticipationRepo, deletePollAnswerRepo, deleteMediaRepo, deleteCurrentUser, deleteJsonPatch);
         deleteService.DeletePoll(pollId);
         await deleteUow.CommitAsync();
 
@@ -113,7 +120,8 @@ public class PollServiceTests
         var verifyPollAnswerRepo = new PollAnswerRepository(verifyContext);
         var verifyCurrentUser = new TestCurrentUser(null, UserRoles.Admin);
         var verifyJsonPatch = new JsonPatchUpdateService(mapper);
-        var verifyService = new PollService(mapper, verifyPollRepo, verifyPollParticipationRepo, verifyPollAnswerRepo, verifyCurrentUser, verifyJsonPatch);
+        var verifyMediaRepo = new MediaRepository(verifyContext);
+        var verifyService = new PollService(mapper, verifyPollRepo, verifyPollParticipationRepo, verifyPollAnswerRepo, verifyMediaRepo, verifyCurrentUser, verifyJsonPatch);
         await Assert.ThrowsAsync<NotFoundException>(() => verifyService.GetPollAsync(pollId));
     }
 
@@ -127,9 +135,10 @@ public class PollServiceTests
         var pollRepo = new PollRepository(context);
         var pollParticipationRepo = new PollParticipationRepository(context);
         var pollAnswerRepo = new PollAnswerRepository(context);
+        var mediaRepo = new MediaRepository(context);
         var currentUser = new TestCurrentUser(null, UserRoles.Admin);
         var jsonPatch = new JsonPatchUpdateService(mapper);
-        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, currentUser, jsonPatch);
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, currentUser, jsonPatch);
 
         // Seed poll
         var poll = new PollModel { Title = "P", IsActive = true, IsAuthRequired = false };
@@ -140,7 +149,7 @@ public class PollServiceTests
         const string extId = "ext-42";
 
         // 1) By userId: create with a current user, then attempt duplicate with the same user
-        var withUser = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId), jsonPatch);
+        var withUser = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, new TestCurrentUser(userId), jsonPatch);
         await withUser.ParticipateAsync(poll.Id, new CreatePollParticipationDTO
         {
             UserType = ParticipatingUserType.AuthenticatedUser,
@@ -183,6 +192,7 @@ public class PollServiceTests
         var pollRepo = new PollRepository(context);
         var pollParticipationRepo = new PollParticipationRepository(context);
         var pollAnswerRepo = new PollAnswerRepository(context);
+        var mediaRepo = new MediaRepository(context);
         var jsonPatch = new JsonPatchUpdateService(mapper);
 
         var userId = Ulid.NewUlid();
@@ -203,14 +213,16 @@ public class PollServiceTests
         );
         await context.SaveChangesAsync();
 
-        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId, UserRoles.Student), jsonPatch);
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, new TestCurrentUser(userId, UserRoles.Student), jsonPatch);
 
         var result = await service.GetUserParticipationsAsync(userId, new PollParticipationFilter { Page = 1, PerPage = 10 });
 
         Assert.Equal(2, result.Total);
         Assert.All(result.Items, participation => Assert.Equal(userId, participation.UserId));
+        // Ulids minted in the same millisecond are ordered by their random tail, so the
+        // expected ids are sorted alongside the actual ones rather than listed as created.
         Assert.Equal(
-            [pollA.Id, pollC.Id],
+            new Ulid?[] { pollA.Id, pollC.Id }.Order(),
             result.Items.Select(participation => participation.PollId).Order()
         );
         Assert.All(result.Items, participation => Assert.NotNull(participation.Poll));
@@ -226,6 +238,7 @@ public class PollServiceTests
         var pollRepo = new PollRepository(context);
         var pollParticipationRepo = new PollParticipationRepository(context);
         var pollAnswerRepo = new PollAnswerRepository(context);
+        var mediaRepo = new MediaRepository(context);
         var jsonPatch = new JsonPatchUpdateService(mapper);
 
         var userId = Ulid.NewUlid();
@@ -244,7 +257,7 @@ public class PollServiceTests
             await context.SaveChangesAsync();
         }
 
-        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId, UserRoles.Student), jsonPatch);
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, new TestCurrentUser(userId, UserRoles.Student), jsonPatch);
 
         var page = await service.GetUserParticipationsAsync(userId, new PollParticipationFilter { Page = 1, PerPage = 2 });
 
@@ -262,19 +275,20 @@ public class PollServiceTests
         var pollRepo = new PollRepository(context);
         var pollParticipationRepo = new PollParticipationRepository(context);
         var pollAnswerRepo = new PollAnswerRepository(context);
+        var mediaRepo = new MediaRepository(context);
         var jsonPatch = new JsonPatchUpdateService(mapper);
 
         var userId = Ulid.NewUlid();
         var otherUserId = Ulid.NewUlid();
         var filter = new PollParticipationFilter { Page = 1, PerPage = 10 };
 
-        var student = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId, UserRoles.Student), jsonPatch);
+        var student = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, new TestCurrentUser(userId, UserRoles.Student), jsonPatch);
 
         await Assert.ThrowsAsync<ForbiddenException>(
             () => student.GetUserParticipationsAsync(otherUserId, filter)
         );
 
-        var teacher = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(userId, UserRoles.Teacher), jsonPatch);
+        var teacher = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, new TestCurrentUser(userId, UserRoles.Teacher), jsonPatch);
 
         var result = await teacher.GetUserParticipationsAsync(otherUserId, filter);
 
@@ -291,9 +305,10 @@ public class PollServiceTests
         var pollRepo = new PollRepository(context);
         var pollParticipationRepo = new PollParticipationRepository(context);
         var pollAnswerRepo = new PollAnswerRepository(context);
+        var mediaRepo = new MediaRepository(context);
         var currentUser = new TestCurrentUser(null, UserRoles.Admin);
         var jsonPatch = new JsonPatchUpdateService(mapper);
-        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, currentUser, jsonPatch);
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, currentUser, jsonPatch);
 
         // Seed question + answer
         var poll = new PollModel { Title = "P", IsActive = true, IsAuthRequired = false };
@@ -320,6 +335,7 @@ public class PollServiceTests
         var pollRepo = new PollRepository(context);
         var pollParticipationRepo = new PollParticipationRepository(context);
         var pollAnswerRepo = new PollAnswerRepository(context);
+        var mediaRepo = new MediaRepository(context);
         var jsonPatch = new JsonPatchUpdateService(mapper);
 
         var poll = new PollModel { Title = "P", IsActive = true, IsAuthRequired = false };
@@ -335,7 +351,7 @@ public class PollServiceTests
         );
         await context.SaveChangesAsync();
 
-        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(null, UserRoles.Admin), jsonPatch);
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, new TestCurrentUser(null, UserRoles.Admin), jsonPatch);
 
         var all = await service.GetPollParticipationsAsync(poll.Id, new PollParticipationFilter { Page = 1, PerPage = 10 });
         Assert.Equal(3, all.Total);
@@ -363,6 +379,7 @@ public class PollServiceTests
         var pollRepo = new PollRepository(context);
         var pollParticipationRepo = new PollParticipationRepository(context);
         var pollAnswerRepo = new PollAnswerRepository(context);
+        var mediaRepo = new MediaRepository(context);
         var jsonPatch = new JsonPatchUpdateService(mapper);
 
         var poll = new PollModel { Title = "P", IsActive = true, IsAuthRequired = false };
@@ -388,7 +405,7 @@ public class PollServiceTests
         context.Add(participation);
         await context.SaveChangesAsync();
 
-        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, new TestCurrentUser(null, UserRoles.Admin), jsonPatch);
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, new TestCurrentUser(null, UserRoles.Admin), jsonPatch);
 
         var result = await service.GetPollParticipationAsync(participation.Id);
 
@@ -400,5 +417,173 @@ public class PollServiceTests
         // Round-tripped through the JSON converter, so the value comes back as a
         // JsonElement rather than the string it was stored as.
         Assert.Equal("hello", answer.Value.Value?.ToString());
+    }
+
+    [Fact]
+    public async Task Participate_Stores_Answers_And_Attaches_Files()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = TestHelpers.CreateInMemoryDb(dbName);
+        var uow = TestHelpers.CreateUowMock(context).Object;
+        var mapper = CreateMapper();
+        var pollRepo = new PollRepository(context);
+        var pollParticipationRepo = new PollParticipationRepository(context);
+        var pollAnswerRepo = new PollAnswerRepository(context);
+        var mediaRepo = new MediaRepository(context);
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+
+        var userId = Ulid.NewUlid();
+        var (poll, textQuestion, filesQuestion) = SeedPollWithFileQuestion(context);
+        var media = SeedAnswerFile(context, userId);
+        await context.SaveChangesAsync();
+
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, new TestCurrentUser(userId), jsonPatch);
+
+        await service.ParticipateAsync(poll.Id, new CreatePollParticipationDTO
+        {
+            UserType = ParticipatingUserType.AuthenticatedUser,
+            Answers =
+            [
+                new CreatePollAnswerDTO
+                {
+                    PollQuestionId = textQuestion.Id,
+                    Value = new PollAnswerValue { Type = PollQuestionType.Text, Value = "hello" }
+                },
+                new CreatePollAnswerDTO
+                {
+                    PollQuestionId = filesQuestion.Id,
+                    Value = new PollAnswerValue { Type = PollQuestionType.Files, Value = null },
+                    MediaIds = [media.Id]
+                }
+            ]
+        });
+        await uow.CommitAsync();
+
+        var participation = await service.GetPollParticipationsAsync(poll.Id, new PollParticipationFilter { Page = 1, PerPage = 10 });
+        var stored = await service.GetPollParticipationAsync(participation.Items.Single().Id);
+
+        Assert.NotNull(stored);
+        Assert.Equal(2, stored!.Answers.Count);
+
+        var fileAnswer = stored.Answers.Single(answer => answer.PollQuestionId == filesQuestion.Id);
+        Assert.Equal(PollQuestionType.Files, fileAnswer.Value.Type);
+        Assert.Equal(media.Id, Assert.Single(fileAnswer.Medias!).Id);
+    }
+
+    [Fact]
+    public async Task Participate_Rejects_Files_Of_Another_Owner()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = TestHelpers.CreateInMemoryDb(dbName);
+        var mapper = CreateMapper();
+        var pollRepo = new PollRepository(context);
+        var pollParticipationRepo = new PollParticipationRepository(context);
+        var pollAnswerRepo = new PollAnswerRepository(context);
+        var mediaRepo = new MediaRepository(context);
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+
+        var (poll, _, filesQuestion) = SeedPollWithFileQuestion(context);
+        var media = SeedAnswerFile(context, Ulid.NewUlid());
+        await context.SaveChangesAsync();
+
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, new TestCurrentUser(Ulid.NewUlid()), jsonPatch);
+
+        await Assert.ThrowsAsync<InvalidPollAnswerException>(async () =>
+        {
+            await service.ParticipateAsync(poll.Id, new CreatePollParticipationDTO
+            {
+                UserType = ParticipatingUserType.AuthenticatedUser,
+                Answers =
+                [
+                    new CreatePollAnswerDTO
+                    {
+                        PollQuestionId = filesQuestion.Id,
+                        Value = new PollAnswerValue { Type = PollQuestionType.Files, Value = null },
+                        MediaIds = [media.Id]
+                    }
+                ]
+            });
+        });
+    }
+
+    [Fact]
+    public async Task Participate_Rejects_More_Files_Than_The_Question_Allows()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = TestHelpers.CreateInMemoryDb(dbName);
+        var mapper = CreateMapper();
+        var pollRepo = new PollRepository(context);
+        var pollParticipationRepo = new PollParticipationRepository(context);
+        var pollAnswerRepo = new PollAnswerRepository(context);
+        var mediaRepo = new MediaRepository(context);
+        var jsonPatch = new JsonPatchUpdateService(mapper);
+
+        var userId = Ulid.NewUlid();
+        var (poll, _, filesQuestion) = SeedPollWithFileQuestion(context);
+        var first = SeedAnswerFile(context, userId);
+        var second = SeedAnswerFile(context, userId);
+        await context.SaveChangesAsync();
+
+        var service = new PollService(mapper, pollRepo, pollParticipationRepo, pollAnswerRepo, mediaRepo, new TestCurrentUser(userId), jsonPatch);
+
+        await Assert.ThrowsAsync<InvalidPollAnswerException>(async () =>
+        {
+            await service.ParticipateAsync(poll.Id, new CreatePollParticipationDTO
+            {
+                UserType = ParticipatingUserType.AuthenticatedUser,
+                Answers =
+                [
+                    new CreatePollAnswerDTO
+                    {
+                        PollQuestionId = filesQuestion.Id,
+                        Value = new PollAnswerValue { Type = PollQuestionType.Files, Value = null },
+                        MediaIds = [first.Id, second.Id]
+                    }
+                ]
+            });
+        });
+    }
+
+    private static (PollModel Poll, PollQuestionModel TextQuestion, PollQuestionModel FilesQuestion) SeedPollWithFileQuestion(NooDbContext context)
+    {
+        var poll = new PollModel { Title = "P", IsActive = true, IsAuthRequired = false };
+        var textQuestion = new PollQuestionModel { Poll = poll, Title = "Q1", Type = PollQuestionType.Text, Order = 0 };
+        var filesQuestion = new PollQuestionModel
+        {
+            Poll = poll,
+            Title = "Q2",
+            Type = PollQuestionType.Files,
+            Order = 1,
+            Config = new PollQuestionConfig
+            {
+                Type = PollQuestionType.Files,
+                MaxFileCount = 1,
+                MaxFileSize = 1024,
+                AllowedFileTypes = ["application/pdf"]
+            }
+        };
+
+        context.AddRange(textQuestion, filesQuestion);
+
+        return (poll, textQuestion, filesQuestion);
+    }
+
+    private static MediaModel SeedAnswerFile(NooDbContext context, Ulid ownerId)
+    {
+        var media = new MediaModel
+        {
+            Path = $"poll-answer-file/{ownerId}/{Ulid.NewUlid()}.pdf",
+            Name = "answer.pdf",
+            ActualName = "answer.pdf",
+            Extension = "pdf",
+            Size = 512,
+            Category = MediaCategory.PollAnswerFile,
+            Status = MediaStatus.Completed,
+            OwnerId = ownerId
+        };
+
+        context.Add(media);
+
+        return media;
     }
 }

@@ -16,4 +16,5 @@ public enum MediaCategory
     AssignedWorkMentorCommentRichText,
     HelpRichText,
     SnippetRichText,
+    PollAnswerFile,
 }

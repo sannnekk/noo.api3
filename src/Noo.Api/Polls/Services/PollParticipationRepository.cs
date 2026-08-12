@@ -19,6 +19,7 @@ public class PollParticipationRepository : Repository<PollParticipationModel>, I
             .Where(p => p.Id == participationId)
             .Include(p => p.User)
             .Include(p => p.Answers)
+                .ThenInclude(a => a.Medias)
             .FirstOrDefaultAsync();
     }
 
@@ -29,6 +30,7 @@ public class PollParticipationRepository : Repository<PollParticipationModel>, I
             .Where(p => p.PollId == pollId)
             .Include(p => p.User)
             .Include(p => p.Answers)
+                .ThenInclude(a => a.Medias)
             .ToListAsync();
     }
 
