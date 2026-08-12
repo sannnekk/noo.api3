@@ -176,7 +176,7 @@ public class PollService : IPollService
     )
     {
         var questions = poll.Questions.ToDictionary(question => question.Id);
-        var files = await LoadAnswerFilesAsync(answerDtos);
+        var files = await LoadAnswerFilesAsync(answerDtos.SelectMany(answer => answer.MediaIds));
         var answers = new List<PollAnswerModel>();
         var answered = new HashSet<Ulid>();
 
@@ -218,10 +218,10 @@ public class PollService : IPollService
     }
 
     private async Task<IReadOnlyDictionary<Ulid, MediaModel>> LoadAnswerFilesAsync(
-        IEnumerable<CreatePollAnswerDTO> answerDtos
+        IEnumerable<Ulid> mediaIds
     )
     {
-        var ids = answerDtos.SelectMany(answer => answer.MediaIds).Distinct().ToArray();
+        var ids = mediaIds.Distinct().ToArray();
 
         if (ids.Length == 0)
         {
@@ -238,11 +238,16 @@ public class PollService : IPollService
     /// allow. Uploads are a separate step, so the ids arrive unvouched for: a file only
     /// counts as an answer when the participant uploaded it themselves, for this purpose,
     /// and it fits what the question asks for.
+    ///
+    /// <paramref name="keptFileIds"/> are the files the answer already carries. Someone
+    /// correcting another person's answer did not upload them and never could have, so
+    /// those are kept on their own account rather than on who owns them.
     /// </summary>
     private ICollection<MediaModel> ResolveAnswerFiles(
         PollQuestionModel question,
         IEnumerable<Ulid> mediaIds,
-        IReadOnlyDictionary<Ulid, MediaModel> files
+        IReadOnlyDictionary<Ulid, MediaModel> files,
+        IReadOnlySet<Ulid>? keptFileIds = null
     )
     {
         var config = question.Config ?? new PollQuestionConfig();
@@ -265,10 +270,13 @@ public class PollService : IPollService
                 throw new InvalidPollAnswerException("Attached file was not found.");
             }
 
+            var isUsable =
+                media.OwnerId == _currentUser.UserId || keptFileIds?.Contains(id) == true;
+
             if (
                 media.Category != MediaCategory.PollAnswerFile
                 || media.Status != MediaStatus.Completed
-                || media.OwnerId != _currentUser.UserId
+                || !isUsable
             )
             {
                 throw new InvalidPollAnswerException("Attached file cannot be used as an answer.");
@@ -302,11 +310,30 @@ public class PollService : IPollService
         JsonPatchDocument<UpdatePollAnswerDTO> updateAnswerDto
     )
     {
-        var model = await _pollAnswerRepository.GetByIdAsync(answerId);
+        var model = await _pollAnswerRepository.GetForUpdateAsync(answerId);
 
         model.ThrowNotFoundIfNull();
 
-        _jsonPatchUpdateService.ApplyPatch(model, updateAnswerDto);
+        var question = model!.PollQuestion;
+        var keptFileIds = model.Medias?.Select(media => media.Id).ToHashSet() ?? [];
+
+        var dto = _jsonPatchUpdateService.ApplyPatch(model, updateAnswerDto);
+
+        // The question stays the authority on the answer's type, just as it is when the
+        // participation is first submitted: a corrected answer cannot read back as
+        // something the question never asked for.
+        model.Value = new PollAnswerValue { Type = question.Type, Value = dto.Value.Value };
+
+        if (question.Type == PollQuestionType.Files)
+        {
+            var files = await LoadAnswerFilesAsync(dto.MediaIds);
+
+            model.Medias = ResolveAnswerFiles(question, dto.MediaIds, files, keptFileIds);
+        }
+        else if (dto.MediaIds.Any())
+        {
+            throw new InvalidPollAnswerException("This question does not accept files.");
+        }
     }
 
     public async Task UpdatePollAsync(Ulid id, JsonPatchDocument<UpdatePollDTO> updatePollDto)

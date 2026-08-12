@@ -544,6 +544,91 @@ public class PollServiceTests
         });
     }
 
+    [Fact]
+    public async Task UpdatePollAnswer_Keeps_The_Type_Of_The_Question()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = TestHelpers.CreateInMemoryDb(dbName);
+        var mapper = CreateMapper();
+        var pollAnswerRepo = new PollAnswerRepository(context);
+        var service = new PollService(mapper, new PollRepository(context), new PollParticipationRepository(context), pollAnswerRepo, new MediaRepository(context), new TestCurrentUser(Ulid.NewUlid(), UserRoles.Teacher), new JsonPatchUpdateService(mapper));
+
+        var poll = new PollModel { Title = "P", IsActive = true, IsAuthRequired = false };
+        var question = new PollQuestionModel { Poll = poll, Title = "Q", Type = PollQuestionType.Rating, Order = 0 };
+        var answer = new PollAnswerModel { PollQuestion = question, Value = new PollAnswerValue { Type = PollQuestionType.Rating, Value = 3 } };
+        context.Add(answer);
+        await context.SaveChangesAsync();
+
+        // A staff member editing the answer cannot relabel it as another kind of answer.
+        var patch = new JsonPatchDocument<UpdatePollAnswerDTO>();
+        patch.Replace(x => x.Value, new PollAnswerValue { Type = PollQuestionType.Text, Value = 5 });
+
+        await service.UpdatePollAnswerAsync(answer.Id, patch);
+        await context.SaveChangesAsync();
+
+        var stored = await context.Set<PollAnswerModel>().FindAsync(answer.Id);
+        Assert.Equal(PollQuestionType.Rating, stored!.Value.Type);
+        Assert.Equal("5", stored.Value.Value?.ToString());
+    }
+
+    [Fact]
+    public async Task UpdatePollAnswer_Keeps_Files_The_Participant_Uploaded()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = TestHelpers.CreateInMemoryDb(dbName);
+        var mapper = CreateMapper();
+        var pollAnswerRepo = new PollAnswerRepository(context);
+
+        var participantId = Ulid.NewUlid();
+        var (_, _, filesQuestion) = SeedPollWithFileQuestion(context);
+        var media = SeedAnswerFile(context, participantId);
+        var answer = new PollAnswerModel
+        {
+            PollQuestion = filesQuestion,
+            Value = new PollAnswerValue { Type = PollQuestionType.Files, Value = null },
+            Medias = [media]
+        };
+        context.Add(answer);
+        await context.SaveChangesAsync();
+
+        // The teacher never uploaded the file, so keeping it has to be allowed on the
+        // strength of it already answering this question.
+        var service = new PollService(mapper, new PollRepository(context), new PollParticipationRepository(context), pollAnswerRepo, new MediaRepository(context), new TestCurrentUser(Ulid.NewUlid(), UserRoles.Teacher), new JsonPatchUpdateService(mapper));
+
+        var patch = new JsonPatchDocument<UpdatePollAnswerDTO>();
+        patch.Replace(x => x.MediaIds, [media.Id]);
+
+        await service.UpdatePollAnswerAsync(answer.Id, patch);
+        await context.SaveChangesAsync();
+
+        Assert.Equal(media.Id, Assert.Single(answer.Medias!).Id);
+    }
+
+    [Fact]
+    public async Task UpdatePollAnswer_Rejects_Files_On_A_Question_That_Takes_None()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = TestHelpers.CreateInMemoryDb(dbName);
+        var mapper = CreateMapper();
+        var pollAnswerRepo = new PollAnswerRepository(context);
+
+        var teacherId = Ulid.NewUlid();
+        var (_, textQuestion, _) = SeedPollWithFileQuestion(context);
+        var media = SeedAnswerFile(context, teacherId);
+        var answer = new PollAnswerModel { PollQuestion = textQuestion, Value = new PollAnswerValue { Type = PollQuestionType.Text, Value = "hello" } };
+        context.Add(answer);
+        await context.SaveChangesAsync();
+
+        var service = new PollService(mapper, new PollRepository(context), new PollParticipationRepository(context), pollAnswerRepo, new MediaRepository(context), new TestCurrentUser(teacherId, UserRoles.Teacher), new JsonPatchUpdateService(mapper));
+
+        var patch = new JsonPatchDocument<UpdatePollAnswerDTO>();
+        patch.Replace(x => x.MediaIds, [media.Id]);
+
+        await Assert.ThrowsAsync<InvalidPollAnswerException>(
+            () => service.UpdatePollAnswerAsync(answer.Id, patch)
+        );
+    }
+
     private static (PollModel Poll, PollQuestionModel TextQuestion, PollQuestionModel FilesQuestion) SeedPollWithFileQuestion(NooDbContext context)
     {
         var poll = new PollModel { Title = "P", IsActive = true, IsAuthRequired = false };

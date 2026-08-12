@@ -86,8 +86,20 @@ public class PollMapperProfile : Profile
 
         // Answer
         CreateMap<PollAnswerModel, PollAnswerDTO>();
-        CreateMap<PollAnswerModel, UpdatePollAnswerDTO>();
 
+        CreateMap<PollAnswerModel, UpdatePollAnswerDTO>()
+            .ForMember(
+                d => d.MediaIds,
+                o =>
+                    o.MapFrom(s =>
+                        s.Medias == null
+                            ? Enumerable.Empty<Ulid>()
+                            : s.Medias.Select(media => media.Id)
+                    )
+            );
+
+        // Like on creation, the files are attached by PollService: it resolves the ids
+        // to tracked media rows the DTO knows nothing about.
         CreateMap<UpdatePollAnswerDTO, PollAnswerModel>()
             .ForMember(d => d.Id, o => o.Ignore())
             .ForMember(d => d.CreatedAt, o => o.Ignore())
