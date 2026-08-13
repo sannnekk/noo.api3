@@ -141,6 +141,13 @@ The configuration is done in the `appsettings.json` file. An example (all possib
     "ServiceUrl": "http://localhost:9000",
     "ForcePathStyle": true
   },
+  "Google": {
+    "ClientId": "....apps.googleusercontent.com",
+    "ClientSecret": "...",
+    "RedirectUri": "https://noo-school.ru/google-auth-callback",
+    "TokenEncryptionKey": "...",
+    "MaxExportRows": 200000
+  },
   "Swagger": {
     "Title": "API v1",
     "Description": "Noo.Api module",
@@ -184,6 +191,8 @@ The configuration is done in the `appsettings.json` file. An example (all possib
 `RateLimiting` controls the fixed-window limits for the global pipeline plus `LoginPolicy` and `RegistrationPolicy`. Adjust `PermitLimit`, `WindowSeconds`, and queue settings per environment as needed.
 
 `Sessions` config drives TTLs for online/active tracking and cleanup cadence; tune per environment to match expected activity and retention.
+
+`Google` configures the Google Sheets export integrations. `ClientId` / `ClientSecret` come from a Google Cloud OAuth 2.0 client of type *Web application*, and `RedirectUri` must be registered on that client and match the frontend's `/google-auth-callback` route exactly. Only the non-sensitive `drive.file` scope is requested, so the platform can read and write only the spreadsheets it created itself — no Google app verification is required. `TokenEncryptionKey` is a base64-encoded 256-bit key used to encrypt stored refresh tokens at rest; generate one with `openssl rand -base64 32`. Rotating it invalidates every stored token and forces users to reconnect their Google account. `MaxExportRows` caps a single export and makes oversized exports fail loudly instead of hanging.
 
 `Events` configures the in-memory domain event bus. `QueueCapacity` is the bounded channel size; `HandlerTimeoutSeconds` caps the execution time of an individual handler; `MaxConcurrentEvents` limits how many events are dispatched in parallel; `MaxConcurrentHandlersPerEvent` limits how many handlers run in parallel for a single event.
 

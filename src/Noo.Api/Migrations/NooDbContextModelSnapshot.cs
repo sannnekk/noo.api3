@@ -969,18 +969,16 @@ namespace Noo.Api.Migrations
                         .HasColumnType("BINARY(16)")
                         .HasColumnName("id");
 
+                    b.Property<byte>("ConsecutiveFailureCount")
+                        .HasColumnType("TINYINT UNSIGNED")
+                        .HasColumnName("consecutive_failure_count");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TIMESTAMP(6)")
                         .HasColumnName("created_at");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
-
-                    b.Property<string>("CronPattern")
-                        .IsRequired()
-                        .HasMaxLength(63)
-                        .HasColumnType("VARCHAR(63)")
-                        .HasColumnName("cron_pattern");
 
                     b.Property<string>("GoogleAuthData")
                         .IsRequired()
@@ -990,6 +988,10 @@ namespace Noo.Api.Migrations
                     b.Property<string>("LastErrorText")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_error_text");
+
+                    b.Property<int?>("LastRowCount")
+                        .HasColumnType("INT(11)")
+                        .HasColumnName("last_row_count");
 
                     b.Property<DateTime?>("LastRunAt")
                         .HasColumnType("DATETIME(0)")
@@ -1001,9 +1003,33 @@ namespace Noo.Api.Migrations
                         .HasColumnType("VARCHAR(255)")
                         .HasColumnName("name");
 
-                    b.Property<string>("SelectorValue")
-                        .HasColumnType("VARCHAR(63)")
-                        .HasColumnName("selector_value");
+                    b.Property<DateTime?>("NextRunAt")
+                        .HasColumnType("DATETIME(0)")
+                        .HasColumnName("next_run_at");
+
+                    b.Property<byte[]>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("Parameters")
+                        .IsRequired()
+                        .HasColumnType("json")
+                        .HasColumnName("parameters");
+
+                    b.Property<DateTime?>("RunStartedAt")
+                        .HasColumnType("DATETIME(0)")
+                        .HasColumnName("run_started_at");
+
+                    b.Property<string>("RunState")
+                        .IsRequired()
+                        .HasColumnType("ENUM('Idle', 'Queued', 'Running')")
+                        .HasColumnName("run_state");
+
+                    b.Property<string>("Schedule")
+                        .IsRequired()
+                        .HasColumnType("ENUM('Manual', 'Hourly', 'Daily', 'Weekly')")
+                        .HasColumnName("schedule");
 
                     b.Property<string>("SpreadsheetId")
                         .HasColumnType("VARCHAR(127)")
@@ -1016,7 +1042,7 @@ namespace Noo.Api.Migrations
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("ENUM('UserCourse', 'UserWork', 'UserRole', 'PollResults')")
+                        .HasColumnType("ENUM('Users', 'Courses', 'PollResults', 'AssignedWorks')")
                         .HasColumnName("type");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -1025,6 +1051,8 @@ namespace Noo.Api.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
 
                     b.ToTable("google_sheets_integration");
                 });
@@ -2577,6 +2605,17 @@ namespace Noo.Api.Migrations
                     b.Navigation("CourseMaterialContent");
 
                     b.Navigation("Work");
+                });
+
+            modelBuilder.Entity("Noo.Api.GoogleSheetsIntegrations.Models.GoogleSheetsIntegrationModel", b =>
+                {
+                    b.HasOne("Noo.Api.Users.Models.UserModel", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
                 });
 
             modelBuilder.Entity("Noo.Api.NooTube.Models.NooTubeVideoCommentModel", b =>

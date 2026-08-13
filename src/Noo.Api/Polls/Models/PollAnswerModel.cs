@@ -38,40 +38,6 @@ public class PollAnswerModel : BaseModel
 
     public string? StringValue()
     {
-        switch (Value.Type)
-        {
-            case PollQuestionType.Text:
-            case PollQuestionType.SingleChoice:
-            case PollQuestionType.Number:
-                return Value.Value?.ToString();
-            case PollQuestionType.MultipleChoice:
-                return Value.Value is IEnumerable<string> choices
-                    ? string.Join(", ", choices)
-                    : null;
-            case PollQuestionType.Date:
-                return Value.Value is DateTime date
-                    ? date.ToString("yyyy.MM.dd")
-                    : null;
-            case PollQuestionType.DateTime:
-                return Value.Value is DateTimeOffset dateTimeOffset
-                    ? dateTimeOffset.ToString("yyyy.MM.dd HH:mm:ss zzz")
-                    : null;
-            case PollQuestionType.Checkbox:
-                return Value.Value is bool boolValue
-                    ? (boolValue ? "Да" : "Нет")
-                    : null;
-            case PollQuestionType.Rating:
-                return Value.Value is int rating
-                    ? rating.ToString()
-                    : null;
-            case PollQuestionType.Files:
-                // Exports are read by people, and a presigned URL would be dead by the
-                // time anyone opened the sheet, so the file names stand in for the files.
-                return Medias is { Count: > 0 }
-                    ? string.Join(", ", Medias.Select(media => media.ActualName))
-                    : null;
-            default:
-                return "<Unknown question type>";
-        }
+        return PollAnswerFormatter.Stringify(Value, Medias?.Select(media => media.ActualName));
     }
 }

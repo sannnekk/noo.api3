@@ -29,7 +29,24 @@ public class GoogleSheetsIntegrationController : ApiController
     }
 
     /// <summary>
-    /// Retrieves a list of Google Sheets integrations based on the provided criteria.
+    /// Builds the Google consent URL to open before creating an integration.
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpGet("oauth-url")]
+    [Authorize(Policy = GoogleSheetsIntegrationPolicies.CanCreateGoogleSheetsIntegration)]
+    [Produces(
+        typeof(ApiResponseDTO<GoogleOAuthUrlDTO>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden
+    )]
+    public IActionResult GetOAuthUrl()
+    {
+        return SendResponse(_googleSheetsIntegrationService.CreateOAuthUrl());
+    }
+
+    /// <summary>
+    /// Retrieves Google Sheets integrations. Mentors only ever see their own.
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpGet]
@@ -51,7 +68,7 @@ public class GoogleSheetsIntegrationController : ApiController
     }
 
     /// <summary>
-    /// Creates a new Google Sheets integration.
+    /// Creates a new Google Sheets integration from a freshly granted Google consent.
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpPost]
@@ -64,20 +81,24 @@ public class GoogleSheetsIntegrationController : ApiController
         StatusCodes.Status403Forbidden
     )]
     public async Task<IActionResult> CreateIntegrationAsync(
-        [FromBody] CreateGoogleSheetsIntegrationDTO request
+        [FromBody] CreateGoogleSheetsIntegrationDTO request,
+        CancellationToken ct
     )
     {
-        var integrationId = await _googleSheetsIntegrationService.CreateIntegrationAsync(request);
+        var integrationId = await _googleSheetsIntegrationService.CreateIntegrationAsync(
+            request,
+            ct
+        );
 
         return SendResponse(integrationId);
     }
 
     /// <summary>
-    /// Runs a Google Sheets integration by its ID.
+    /// Changes an integration's name, schedule, or enabled state.
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
-    [HttpPost("{integrationId}/run")]
-    [Authorize(Policy = GoogleSheetsIntegrationPolicies.CanRunGoogleSheetsIntegration)]
+    [HttpPatch("{integrationId}")]
+    [Authorize(Policy = GoogleSheetsIntegrationPolicies.CanUpdateGoogleSheetsIntegration)]
     [Produces(
         null,
         StatusCodes.Status204NoContent,
@@ -86,15 +107,43 @@ public class GoogleSheetsIntegrationController : ApiController
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public async Task<IActionResult> RunIntegrationAsync([FromRoute] Ulid integrationId)
+    public async Task<IActionResult> UpdateIntegrationAsync(
+        [FromRoute] Ulid integrationId,
+        [FromBody] UpdateGoogleSheetsIntegrationDTO request
+    )
     {
-        await _googleSheetsIntegrationService.RunIntegrationAsync(integrationId);
+        await _googleSheetsIntegrationService.UpdateIntegrationAsync(integrationId, request);
 
         return SendResponse();
     }
 
     /// <summary>
-    /// Deletes a Google Sheets integration by its ID.
+    /// Queues an integration to run. The export itself happens in the background, so this
+    /// returns as soon as the run is scheduled rather than when the sheet is written.
+    /// </summary>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpPost("{integrationId}/run")]
+    [Authorize(Policy = GoogleSheetsIntegrationPolicies.CanRunGoogleSheetsIntegration)]
+    [Produces(
+        null,
+        StatusCodes.Status202Accepted,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> RunIntegrationAsync(
+        [FromRoute] Ulid integrationId,
+        CancellationToken ct
+    )
+    {
+        await _googleSheetsIntegrationService.QueueIntegrationAsync(integrationId, ct);
+
+        return Accepted();
+    }
+
+    /// <summary>
+    /// Deletes a Google Sheets integration. The spreadsheet itself is left untouched.
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpDelete("{integrationId}")]
@@ -104,11 +153,12 @@ public class GoogleSheetsIntegrationController : ApiController
         StatusCodes.Status204NoContent,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
     )]
-    public IActionResult DeleteIntegration([FromRoute] Ulid integrationId)
+    public async Task<IActionResult> DeleteIntegrationAsync([FromRoute] Ulid integrationId)
     {
-        _googleSheetsIntegrationService.DeleteIntegration(integrationId);
+        await _googleSheetsIntegrationService.DeleteIntegrationAsync(integrationId);
 
         return SendResponse();
     }

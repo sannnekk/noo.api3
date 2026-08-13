@@ -15,6 +15,7 @@ using Microsoft.Extensions.Options;
 using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.System.Email;
 using Noo.Api.Core.Storage;
+using Noo.Api.Core.ThirdPartyServices.Google;
 
 namespace Noo.IntegrationTests;
 
@@ -76,6 +77,15 @@ public class ApiFactory : WebApplicationFactory<Program>
             // Replace S3 with a deterministic fake so the presigning filter never touches AWS
             services.RemoveAll<IS3Storage>();
             services.AddSingleton<IS3Storage, FakeS3Storage>();
+
+            // Replace every outbound Google call so no test reaches Google. The OAuth state
+            // signing and all authorization still run for real — only the network is faked.
+            services.RemoveAll<IGoogleOAuthExchangeService>();
+            services.AddSingleton<IGoogleOAuthExchangeService, FakeGoogleOAuthExchangeService>();
+            services.RemoveAll<IGoogleTokenProvider>();
+            services.AddSingleton<IGoogleTokenProvider, FakeGoogleTokenProvider>();
+            services.RemoveAll<IGoogleSheetsWriter>();
+            services.AddSingleton<IGoogleSheetsWriter, FakeGoogleSheetsWriter>();
             // 0) Remove any mysql registrations
             services.RemoveAll<NooDbContext>();
             services.RemoveAll<DbContextOptions<NooDbContext>>();
@@ -159,6 +169,44 @@ internal sealed class FakeEmailClient : IEmailClient
 
     public void Dispose()
     {
+    }
+}
+
+internal sealed class FakeGoogleOAuthExchangeService : IGoogleOAuthExchangeService
+{
+    public const string RefreshToken = "fake-refresh-token";
+    public const string AccountEmail = "exporter@example.com";
+
+    public string BuildConsentUrl(string state)
+        => $"https://accounts.google.test/consent?state={Uri.EscapeDataString(state)}";
+
+    public Task<GoogleOAuthResult> ExchangeCodeAsync(string code, CancellationToken ct = default)
+        => Task.FromResult(new GoogleOAuthResult(RefreshToken, AccountEmail));
+}
+
+internal sealed class FakeGoogleTokenProvider : IGoogleTokenProvider
+{
+    public Task<GoogleAuth> GetAuthAsync(GoogleAuthData authData, CancellationToken ct = default)
+        => Task.FromResult(default(GoogleAuth));
+}
+
+internal sealed class FakeGoogleSheetsWriter : IGoogleSheetsWriter
+{
+    public async Task<SheetWriteResult> WriteAsync(
+        GoogleAuth auth,
+        string? spreadsheetId,
+        string title,
+        SheetData data,
+        CancellationToken ct = default)
+    {
+        var rowCount = 0;
+
+        await foreach (var _ in data.Rows.WithCancellation(ct))
+        {
+            rowCount++;
+        }
+
+        return new SheetWriteResult(spreadsheetId ?? $"fake-sheet-{Guid.NewGuid():N}", rowCount);
     }
 }
 

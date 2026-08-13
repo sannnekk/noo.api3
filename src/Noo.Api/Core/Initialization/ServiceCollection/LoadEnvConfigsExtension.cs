@@ -19,6 +19,7 @@ public static class LoadEnvConfigsExtension
         AddConfig<SwaggerConfig>(services, configuration, SwaggerConfig.SectionName);
         AddConfig<TelegramConfig>(services, configuration, TelegramConfig.SectionName);
         AddConfig<KinescopeConfig>(services, configuration, KinescopeConfig.SectionName);
+        AddConfig<GoogleConfig>(services, configuration, GoogleConfig.SectionName);
         AddConfig<EventsConfig>(services, configuration, EventsConfig.SectionName);
         AddConfig<S3Config>(services, configuration, S3Config.SectionName);
         AddConfig<HttpClientResilienceConfig>(services, configuration, HttpClientResilienceConfig.SectionName);

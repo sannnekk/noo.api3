@@ -1,14 +1,16 @@
 using AutoMapper;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions.Http;
+using Noo.Api.Core.Security;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.ThirdPartyServices.Google;
 using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.GoogleSheetsIntegrations.DTO;
-using Noo.Api.GoogleSheetsIntegrations.Exceptions;
+using Noo.Api.GoogleSheetsIntegrations.Exports;
 using Noo.Api.GoogleSheetsIntegrations.Filters;
 using Noo.Api.GoogleSheetsIntegrations.Models;
+using Noo.Api.GoogleSheetsIntegrations.Specifications;
 using Noo.Api.GoogleSheetsIntegrations.Types;
 
 namespace Noo.Api.GoogleSheetsIntegrations.Services;
@@ -16,158 +18,231 @@ namespace Noo.Api.GoogleSheetsIntegrations.Services;
 [RegisterScoped(typeof(IGoogleSheetsIntegrationService))]
 public class GoogleSheetsIntegrationService : IGoogleSheetsIntegrationService
 {
-    private readonly IUnitOfWork _unitOfWork;
+    private static readonly TimeSpan _stateLifetime = TimeSpan.FromMinutes(30);
 
     private readonly IGoogleSheetsIntegrationRepository _integrationRepository;
 
-    private readonly IMapper _mapper;
+    private readonly IExportProfileRegistry _profiles;
 
-    private readonly IGoogleAuthService _googleAuth;
-
-    private readonly IGoogleSheetsService _googleSheets;
-
-    private readonly IPollDataCollector _pollDataCollector;
-
-    private readonly IUserDataCollector _userDataCollector;
     private readonly IGoogleOAuthExchangeService _oauthExchange;
 
+    private readonly ISecretProtector _secretProtector;
+
+    private readonly IHashService _hashService;
+
+    private readonly ICurrentUser _currentUser;
+
+    private readonly IMapper _mapper;
+
     public GoogleSheetsIntegrationService(
-        IUnitOfWork unitOfWork,
         IGoogleSheetsIntegrationRepository integrationRepository,
-        IMapper mapper,
-        IGoogleAuthService googleAuth,
-        IGoogleSheetsService googleSheets,
-        IPollDataCollector pollDataCollector,
-        IUserDataCollector userDataCollector,
-        IGoogleOAuthExchangeService oauthExchange
+        IExportProfileRegistry profiles,
+        IGoogleOAuthExchangeService oauthExchange,
+        ISecretProtector secretProtector,
+        IHashService hashService,
+        ICurrentUser currentUser,
+        IMapper mapper
     )
     {
-        _unitOfWork = unitOfWork;
         _integrationRepository = integrationRepository;
-        _mapper = mapper;
-        _googleAuth = googleAuth;
-        _googleSheets = googleSheets;
-        _pollDataCollector = pollDataCollector;
-        _userDataCollector = userDataCollector;
+        _profiles = profiles;
         _oauthExchange = oauthExchange;
+        _secretProtector = secretProtector;
+        _hashService = hashService;
+        _currentUser = currentUser;
+        _mapper = mapper;
     }
 
-    public async Task<Ulid> CreateIntegrationAsync(CreateGoogleSheetsIntegrationDTO request)
+    public GoogleOAuthUrlDTO CreateOAuthUrl()
     {
-        // TODO: refactor!!!
-        var model = _mapper.Map<GoogleSheetsIntegrationModel>(request);
+        var state = CreateState(_currentUser.RequireUserId());
 
-        // Build GoogleAuthData. Preference: explicit service-account json string if provided.
-        if (!string.IsNullOrWhiteSpace(request.GoogleAuthData))
+        return new GoogleOAuthUrlDTO
         {
-            try
-            {
-                model.GoogleAuthData = GoogleAuthData.Deserialize(request.GoogleAuthData!);
-            }
-            catch
-            {
-                throw new BadRequestException("Invalid googleAuthData JSON");
-            }
-        }
-        else if (
-            request.GoogleCredentials is not null
-            && !string.IsNullOrWhiteSpace(request.GoogleCredentials.Code)
-        )
-        {
-            // Exchange auth code for tokens
-            var (accessToken, refreshToken) = await _oauthExchange.ExchangeCodeAsync(
-                request.GoogleCredentials.Code
-            );
-            model.GoogleAuthData = new GoogleAuthData
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-            };
-        }
-        else
-        {
-            throw new BadRequestException(
-                "Provide either service account googleAuthData or googleCredentials.code"
-            );
-        }
-
-        _integrationRepository.Add(model);
-
-        return model.Id;
-    }
-
-    public void DeleteIntegration(Ulid integrationId)
-    {
-        _integrationRepository.DeleteById(integrationId);
+            Url = _oauthExchange.BuildConsentUrl(state),
+            State = state,
+        };
     }
 
     public Task<SearchResult<GoogleSheetsIntegrationModel>> GetIntegrationsAsync(
         GoogleSheetsIntegrationFilter filter
     )
     {
-        return _integrationRepository.SearchAsync(filter);
+        // Admins and teachers manage the platform's integrations as a whole; a mentor only ever
+        // sees the ones they created.
+        var specifications = _currentUser.IsInRole(UserRoles.Mentor)
+            ? new[] { new IntegrationsByOwnerSpecification(_currentUser.RequireUserId()) }
+            : null;
+
+        return _integrationRepository.SearchAsync(filter, specifications);
     }
 
-    public async Task RunIntegrationAsync(Ulid integrationId)
+    public async Task<Ulid> CreateIntegrationAsync(
+        CreateGoogleSheetsIntegrationDTO request,
+        CancellationToken ct = default
+    )
     {
-        var integration = await _integrationRepository.GetByIdAsync(integrationId);
+        var userId = _currentUser.RequireUserId();
+        var role = _currentUser.RequireUserRole();
 
-        if (integration is null)
+        if (!IsStateValid(request.GoogleAuthState, userId))
         {
-            throw new NotFoundException();
+            throw new BadRequestException(
+                "Сессия авторизации Google недействительна или истекла. Подключите аккаунт заново."
+            );
         }
+
+        var profile = _profiles.Get(request.Type);
+        var parameters = _mapper.Map<ExportParameters>(request.Parameters);
+
+        profile.Validate(parameters);
+
+        if (!await profile.AuthorizeAsync(userId, role, parameters, ct))
+        {
+            throw new ForbiddenException();
+        }
+
+        var oauth = await _oauthExchange.ExchangeCodeAsync(request.GoogleAuthCode, ct);
+
+        var model = new GoogleSheetsIntegrationModel
+        {
+            Name = request.Name,
+            Type = request.Type,
+            Parameters = parameters,
+            Schedule = request.Schedule,
+            NextRunAt = request.Schedule.NextRunAt(),
+            OwnerId = userId,
+            GoogleAuthData = new GoogleAuthData
+            {
+                RefreshTokenEncrypted = _secretProtector.Protect(oauth.RefreshToken),
+                AccountEmail = oauth.AccountEmail,
+                Scopes = GoogleScopes.Required,
+            },
+        };
+
+        _integrationRepository.Add(model);
+
+        return model.Id;
+    }
+
+    public async Task UpdateIntegrationAsync(
+        Ulid integrationId,
+        UpdateGoogleSheetsIntegrationDTO request
+    )
+    {
+        // Error is a state the dispatcher assigns after repeated failures, not something a
+        // client may claim for itself.
+        if (request.Status == GoogleSheetsIntegrationStatus.Error)
+        {
+            throw new BadRequestException("Статус «Ошибка» нельзя установить вручную.");
+        }
+
+        var integration = await RequireAccessAsync(integrationId);
+
+        integration.Name = request.Name ?? integration.Name;
+        integration.Schedule = request.Schedule ?? integration.Schedule;
+
+        if (request.Status is { } status)
+        {
+            // Re-enabling clears the failure streak, so a previously broken integration gets
+            // judged on its next run rather than being disabled again immediately.
+            if (
+                status == GoogleSheetsIntegrationStatus.Active
+                && integration.Status != GoogleSheetsIntegrationStatus.Active
+            )
+            {
+                integration.ConsecutiveFailureCount = 0;
+                integration.LastErrorText = null;
+            }
+
+            integration.Status = status;
+        }
+
+        integration.NextRunAt =
+            integration.Status == GoogleSheetsIntegrationStatus.Active
+                ? integration.Schedule.NextRunAt()
+                : null;
+    }
+
+    public async Task QueueIntegrationAsync(Ulid integrationId, CancellationToken ct = default)
+    {
+        var integration = await RequireAccessAsync(integrationId);
+
+        // Only queue an idle integration: asking again while a run is already in flight should
+        // not stack up a second one. No atomic guard is needed here — the dispatcher's claim is
+        // what actually decides who runs it.
+        if (integration.RunState == GoogleSheetsIntegrationRunState.Idle)
+        {
+            integration.RunState = GoogleSheetsIntegrationRunState.Queued;
+        }
+    }
+
+    public async Task DeleteIntegrationAsync(Ulid integrationId)
+    {
+        await RequireAccessAsync(integrationId);
+
+        _integrationRepository.DeleteById(integrationId);
+    }
+
+    private async Task<GoogleSheetsIntegrationModel> RequireAccessAsync(Ulid integrationId)
+    {
+        var integration =
+            await _integrationRepository.GetByIdAsync(integrationId)
+            ?? throw new NotFoundException();
+
+        if (
+            _currentUser.IsInRole(UserRoles.Mentor)
+            && integration.OwnerId != _currentUser.RequireUserId()
+        )
+        {
+            throw new ForbiddenException();
+        }
+
+        return integration;
+    }
+
+    /// <summary>
+    /// Binds the OAuth state to the requesting user and to a moment in time, so an authorization
+    /// code obtained through someone else's consent screen cannot be attached to this account.
+    /// </summary>
+    private string CreateState(Ulid userId)
+    {
+        var payload = $"{userId}:{Clock.Now.Ticks}";
+        var signature = _hashService.Hash(payload);
+
+        return $"{Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(payload))}.{signature}";
+    }
+
+    internal bool IsStateValid(string state, Ulid userId)
+    {
+        var parts = state.Split('.');
+
+        if (parts.Length != 2)
+        {
+            return false;
+        }
+
+        string payload;
 
         try
         {
-            // TODO: Implement refresh token exchange for new access token when expired.
-            // Currently using stored access token (or service account data) directly.
-            var auth = await _googleAuth.AuthenticateAsync(integration.GoogleAuthData);
-            var data = await PrepareDataAsync(integration);
-
-            if (integration.SpreadsheetId is null)
-            {
-                var sheet = _googleSheets.CreateSheet(auth, integration.Name);
-
-                sheet.AddTags(GoogleSheetsIntegrationConfig.SheetTags);
-                sheet.AddTable(data);
-
-                integration.SpreadsheetId = await _googleSheets.SaveAsync(auth, sheet);
-            }
-            else
-            {
-                var sheet = await _googleSheets.GetSheetAsync(auth, integration.SpreadsheetId);
-                sheet.UpdateTable(data);
-                await _googleSheets.SaveAsync(auth, sheet);
-            }
-
-            integration.LastRunAt = Clock.Now;
+            payload = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(parts[0]));
         }
-        catch (Exception exception)
+        catch (FormatException)
         {
-            integration.LastErrorText = exception.Message ?? "Unknown error";
-
-            throw new GoogleServiceException();
+            return false;
         }
-    }
 
-    private Task<DataTable> PrepareDataAsync(GoogleSheetsIntegrationModel integration)
-    {
-        switch (integration.Type)
+        if (!_hashService.Verify(payload, parts[1]))
         {
-            case GoogleSheetsIntegrationType.UserRole:
-                var role = Enum.Parse<UserRoles>(integration.SelectorValue!);
-                return _userDataCollector.GetUsersFromRoleAsync(role);
-            case GoogleSheetsIntegrationType.UserCourse:
-                var courseId = Ulid.Parse(integration.SelectorValue);
-                return _userDataCollector.GetUsersFromCourseAsync(courseId);
-            case GoogleSheetsIntegrationType.UserWork:
-                var workId = Ulid.Parse(integration.SelectorValue);
-                return _userDataCollector.GetUsersFromWorkAsync(workId);
-            case GoogleSheetsIntegrationType.PollResults:
-                var pollId = Ulid.Parse(integration.SelectorValue);
-                return _pollDataCollector.GetPollResultsAsync(pollId);
-            default:
-                throw new UnknownDataSelectorException();
+            return false;
         }
+
+        var fields = payload.Split(':');
+
+        return fields.Length == 2
+            && fields[0] == userId.ToString()
+            && long.TryParse(fields[1], out var ticks)
+            && Clock.Now - new DateTime(ticks) < _stateLifetime;
     }
 }

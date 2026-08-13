@@ -12,7 +12,7 @@ public record GoogleSheetsIntegrationDTO
 
     [Required]
     [JsonPropertyName("id")]
-    public Guid Id { get; set; }
+    public Ulid Id { get; set; }
 
     [Required]
     [JsonPropertyName("name")]
@@ -23,26 +23,43 @@ public record GoogleSheetsIntegrationDTO
     public GoogleSheetsIntegrationType Type { get; set; } = default!;
 
     [Required]
-    [JsonPropertyName("selectorValue")]
-    public string SelectorValue { get; set; } = string.Empty;
+    [JsonPropertyName("parameters")]
+    public ExportParametersDTO Parameters { get; set; } = new();
+
+    [Required]
+    [JsonPropertyName("schedule")]
+    public GoogleSheetsIntegrationSchedule Schedule { get; set; }
+
+    [JsonPropertyName("nextRunAt")]
+    public DateTime? NextRunAt { get; set; }
 
     [JsonPropertyName("lastRunAt")]
     public DateTime? LastRunAt { get; set; }
 
     [Required]
     [JsonPropertyName("status")]
-    public GoogleSheetsIntegrationStatus Status { get; set; } = GoogleSheetsIntegrationStatus.Active;
+    public GoogleSheetsIntegrationStatus Status { get; set; } =
+        GoogleSheetsIntegrationStatus.Active;
+
+    [Required]
+    [JsonPropertyName("runState")]
+    public GoogleSheetsIntegrationRunState RunState { get; set; }
 
     [JsonPropertyName("lastErrorText")]
     public string? LastErrorText { get; set; }
 
-    [Required]
-    [JsonPropertyName("cronPattern")]
-    public string CronPattern { get; set; } = string.Empty;
+    [JsonPropertyName("lastRowCount")]
+    public int? LastRowCount { get; set; }
+
+    [JsonPropertyName("googleAccount")]
+    public string? GoogleAccount { get; set; }
+
+    [JsonPropertyName("spreadsheetUrl")]
+    public string? SpreadsheetUrl { get; set; }
 
     [Required]
-    [JsonPropertyName("googleAccount")]
-    public string GoogleAccount { get; set; } = string.Empty;
+    [JsonPropertyName("ownerId")]
+    public Ulid OwnerId { get; set; }
 
     [Required]
     [JsonPropertyName("createdAt")]

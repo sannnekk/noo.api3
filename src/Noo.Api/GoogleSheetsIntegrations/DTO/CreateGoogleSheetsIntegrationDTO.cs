@@ -13,37 +13,32 @@ public record CreateGoogleSheetsIntegrationDTO
     public string Name { get; set; } = string.Empty;
 
     [JsonPropertyName("type")]
+    [Required]
     public GoogleSheetsIntegrationType Type { get; set; }
 
-    [JsonPropertyName("selectorValue")]
-    public string? SelectorValue { get; set; }
+    [JsonPropertyName("parameters")]
+    public ExportParametersDTO Parameters { get; set; } = new();
 
-    [JsonPropertyName("spreadsheetId")]
-    public string? SpreadsheetId { get; set; }
-
-    [JsonPropertyName("cronPattern")]
+    [JsonPropertyName("schedule")]
     [Required]
-    public string CronPattern { get; set; } = string.Empty;
+    public GoogleSheetsIntegrationSchedule Schedule { get; set; } =
+        GoogleSheetsIntegrationSchedule.Manual;
 
-    // Legacy service-account based auth payload (JSON string with client_email/private_key). Optional now.
-    [JsonPropertyName("googleAuthData")]
-    public string? GoogleAuthData { get; set; }
+    /// <summary>
+    /// The one-time authorization code from the Google consent popup. Required on every create:
+    /// each integration gets its own freshly granted refresh token rather than reusing one.
+    /// </summary>
+    [JsonPropertyName("googleAuthCode")]
+    [Required]
+    [MinLength(1)]
+    public string GoogleAuthCode { get; set; } = string.Empty;
 
-    // New interactive OAuth credential details passed from frontend (auth code flow metadata).
-    [JsonPropertyName("googleCredentials")]
-    public GoogleOAuthCredentialsDTO? GoogleCredentials { get; set; }
-
-    // Access token obtained on the client after OAuth consent. (Name kept as provided by the user request.)
-    // NOTE: Token will be stored server-side only as part of serialized GoogleAuthData (access_token) for immediate run.
-    // Subsequent runs will re-use the (possibly expired) token until refresh support is implemented.
-    [JsonPropertyName("googleOAthToken")]
-    public string? GoogleOAuthToken { get; set; }
-}
-
-public record GoogleOAuthCredentialsDTO
-{
-    [JsonPropertyName("authuser")] public string? AuthUser { get; set; }
-    [JsonPropertyName("code")] public string? Code { get; set; }
-    [JsonPropertyName("prompt")] public string? Prompt { get; set; }
-    [JsonPropertyName("scope")] public string? Scope { get; set; }
+    /// <summary>
+    /// The <c>state</c> handed out with the consent URL and echoed back by Google. Proves the
+    /// code was obtained by this user through this platform.
+    /// </summary>
+    [JsonPropertyName("googleAuthState")]
+    [Required]
+    [MinLength(1)]
+    public string GoogleAuthState { get; set; } = string.Empty;
 }
