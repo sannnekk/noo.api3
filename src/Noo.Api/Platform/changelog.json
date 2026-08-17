@@ -1,7 +1,53 @@
 [
   {
+    "version": "1.3.1-alpha",
+    "date": "2026-08-13T14:05:43+02:00",
+    "changes": [
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "polls: Added poll answers edit for teachers & admins"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "polls: Added file support in polls"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "polls: Mentors and student can now see their participations & fixed permissions"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "user-history: Added user history module & refactored event system"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "polls: Added better handling for user not participating twice"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "assigned-works: Fixed issue with overall counting used in tabs & refactored filter logic"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "google-sheets-integrations: Created a framework for entity exports & implemented the export in the google sheets"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "polls: Refactored polls module & fixed permissions"
+      }
+    ]
+  },
+  {
     "version": "1.3.0-alpha",
-    "date": "2026-08-08T03:02:22+02:00",
+    "date": "2026-08-08T11:06:55+02:00",
     "changes": [
       {
         "type": "feature",
