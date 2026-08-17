@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Noo.Api.AssignedWorks.Models;
+using Noo.Api.Auth.External.Models;
 using Noo.Api.Calendar.Models;
 using Noo.Api.Core.DataAbstraction;
 using Noo.Api.Core.DataAbstraction.Model;
@@ -83,6 +84,8 @@ public class UserModel : BaseModel
     public ICollection<CourseModel> CoursesAsEditor { get; set; } = [];
 
     public UserAvatarModel? Avatar { get; set; }
+
+    public ICollection<UserIdentityModel> ExternalIdentities { get; set; } = [];
 
     [InverseProperty(nameof(CourseMembershipModel.Student))]
     public ICollection<CourseMembershipModel> CoursesAsMember { get; set; } = [];

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Noo.Api.Auth.External.Types;
 using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.Utils.DI;
 
@@ -27,5 +28,10 @@ public class AuthUrlGenerator : IAuthUrlGenerator
     public string GenerateEmailChangeUrl(string token)
     {
         return $"{_appConfig.BaseUrl}/auth/verify-email?token={token}";
+    }
+
+    public string GenerateExternalAuthCallbackUrl(ExternalAuthProviderType provider)
+    {
+        return $"{_appConfig.BaseUrl}/auth/callback/{provider.ToString().ToLowerInvariant()}";
     }
 }
