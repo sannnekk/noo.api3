@@ -79,6 +79,11 @@ public class AuthService : IAuthService
             throw new UserIsNotVerifiedException();
         }
 
+        return await IssueSessionAsync(user);
+    }
+
+    public async Task<AuthTokensResult> IssueSessionAsync(UserModel user)
+    {
         if (user.IsBlocked)
         {
             throw new UserIsBlockedException();
