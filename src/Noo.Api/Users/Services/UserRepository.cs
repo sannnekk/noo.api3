@@ -26,6 +26,12 @@ public class UserRepository : Repository<UserModel>, IUserRepository
     {
         var repository = Context.GetDbSet<UserModel>();
 
+        // Email is nullable, so an empty needle would match every external-provider account.
+        if (string.IsNullOrEmpty(usernameOrEmail))
+        {
+            return Task.FromResult<UserModel?>(null);
+        }
+
         return repository
             .Where(x => x.Username == usernameOrEmail || x.Email == usernameOrEmail)
             .FirstOrDefaultAsync();

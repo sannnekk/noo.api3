@@ -10,7 +10,7 @@ namespace Noo.Api.GoogleSheetsIntegrations.Exports.Profiles;
 
 public sealed record AssignedWorksExportRow(
     string StudentName,
-    string StudentEmail,
+    string? StudentEmail,
     string? StudentTelegram,
     string Title,
     string? SubjectName,

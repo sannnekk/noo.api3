@@ -39,10 +39,10 @@ public class UserModel : BaseModel
     [Column("username", TypeName = DbDataTypes.Varchar63)]
     public string Username { get; set; } = string.Empty;
 
-    [Required]
+    /// <summary>Null for external-provider accounts that supplied no address (VK makes it optional).</summary>
     [EmailAddress]
     [Column("email", TypeName = DbDataTypes.Varchar255)]
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
 
     [MinLength(1)]
     [MaxLength(30)]
@@ -57,11 +57,10 @@ public class UserModel : BaseModel
     [MaxLength(255)]
     public string? TelegramUsername { get; set; }
 
-    [Required]
-    [MinLength(1)]
+    /// <summary>Null for accounts that only sign in through an external provider.</summary>
     [MaxLength(255)]
     [Column("password_hash", TypeName = DbDataTypes.Varchar255)]
-    public string PasswordHash { get; set; } = string.Empty;
+    public string? PasswordHash { get; set; }
 
     [Required]
     [Column("role", TypeName = DbDataTypes.UserRolesEnum)]

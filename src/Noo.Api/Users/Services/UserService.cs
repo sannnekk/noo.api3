@@ -112,6 +112,14 @@ public class UserService : IUserService
         var user =
             await _userRepository.GetByIdAsync(currentUserId) ?? throw new NotFoundException();
 
+        // No password to confirm with, so say so instead of an unactionable 401.
+        if (user.PasswordHash is null)
+        {
+            throw new BadRequestException(
+                "У аккаунта не задан пароль. Задайте пароль, чтобы удалить аккаунт."
+            );
+        }
+
         if (!_hashService.VerifyPassword(password, user.PasswordHash))
         {
             throw new UnauthorizedException();

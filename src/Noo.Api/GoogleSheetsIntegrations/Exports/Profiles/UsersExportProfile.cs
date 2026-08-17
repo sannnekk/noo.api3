@@ -9,7 +9,7 @@ namespace Noo.Api.GoogleSheetsIntegrations.Exports.Profiles;
 public sealed record UsersExportRow(
     string Name,
     string Username,
-    string Email,
+    string? Email,
     string? Phone,
     string? TelegramUsername,
     UserRoles Role,

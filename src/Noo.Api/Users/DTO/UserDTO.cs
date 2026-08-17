@@ -26,7 +26,7 @@ public record UserDTO : IHasPresignedMedia
 
     [JsonPropertyName("email")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
 
     [JsonPropertyName("phone")]
     public string? Phone { get; set; }

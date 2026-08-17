@@ -24,7 +24,10 @@ public class PollParticipationSearchSpecification : Specification<PollParticipat
                     && (
                         participation.User.Name.ToLower().Contains(term)
                         || participation.User.Username.ToLower().Contains(term)
-                        || participation.User.Email.ToLower().Contains(term)
+                        || (
+                            participation.User.Email != null
+                            && participation.User.Email.ToLower().Contains(term)
+                        )
                         || (
                             participation.User.TelegramUsername != null
                             && participation.User.TelegramUsername.ToLower().Contains(term)

@@ -6,9 +6,9 @@ namespace Noo.Api.Auth.Events;
 
 /// <summary>
 /// Raised once the change is confirmed, not when it is requested — an unconfirmed request
-/// changes nothing about the account.
+/// changes nothing about the account. <c>OldEmail</c> is null when the account had none.
 /// </summary>
-public sealed record UserEmailChangedEvent(Ulid UserId, string OldEmail, string NewEmail)
+public sealed record UserEmailChangedEvent(Ulid UserId, string? OldEmail, string NewEmail)
     : IDomainEvent;
 
 public sealed class UserEmailChangedUserHistoryHandler : IEventHandler<UserEmailChangedEvent>
@@ -28,7 +28,7 @@ public sealed class UserEmailChangedUserHistoryHandler : IEventHandler<UserEmail
             UserHistoryType.EmailChanged,
             new Dictionary<string, string>
             {
-                ["oldEmail"] = @event.OldEmail,
+                ["oldEmail"] = @event.OldEmail ?? string.Empty,
                 ["newEmail"] = @event.NewEmail,
             }
         );
