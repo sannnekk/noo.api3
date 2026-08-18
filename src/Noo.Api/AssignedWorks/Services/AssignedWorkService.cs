@@ -17,6 +17,7 @@ using Noo.Api.Core.Utils.DI;
 using Noo.Api.Courses.Services;
 using Noo.Api.Users.Models;
 using Noo.Api.Users.Services;
+using Noo.Api.Works.Models;
 
 namespace Noo.Api.AssignedWorks.Services;
 
@@ -230,13 +231,15 @@ public class AssignedWorkService : IAssignedWorkService
             throw new AssignedWorkAlreadyCheckedException();
         }
 
-        foreach (var answer in assignedWork.Answers)
-        {
-            answer.Status = AssignedWorkAnswerStatus.Checked;
-        }
+        var checkedAt = Clock.Now;
 
-        assignedWork.CheckedAt = Clock.Now;
-        assignedWork.CheckStatus = AssignedWorkCheckStatus.Checked;
+        MarkAnswersAsChecked(assignedWork);
+
+        assignedWork.CheckedAt = checkedAt;
+        assignedWork.CheckStatus = AssignedWorkStatuses.CheckedAt(
+            checkedAt,
+            assignedWork.CheckDeadlineAt
+        );
 
         await _events.PublishAsync(new CheckedEvent(assignedWork.Id, userId));
     }
@@ -264,16 +267,31 @@ public class AssignedWorkService : IAssignedWorkService
             answer.Status = AssignedWorkAnswerStatus.Submitted;
         }
 
-        var score = _taskCheckService.CheckTasks(
+        var check = _taskCheckService.CheckTasks(
             assignedWork.Answers,
-            assignedWork.Work?.Tasks ?? []
+            AssignedTasksOf(assignedWork)
         );
 
-        assignedWork.Score = score;
-        assignedWork.SolvedAt = Clock.Now;
-        assignedWork.SolveStatus = AssignedWorkSolveStatus.Solved;
+        var solvedAt = Clock.Now;
+
+        assignedWork.Score = check.Score;
+        assignedWork.SolvedAt = solvedAt;
+        assignedWork.SolveStatus = AssignedWorkStatuses.SolvedAt(
+            solvedAt,
+            assignedWork.SolveDeadlineAt
+        );
 
         await _events.PublishAsync(new SolvedEvent(assignedWork.Id, assignedWork.StudentId));
+
+        if (check.IsComplete)
+        {
+            MarkAnswersAsChecked(assignedWork);
+
+            assignedWork.CheckedAt = solvedAt;
+            assignedWork.CheckStatus = AssignedWorkCheckStatus.CheckedAutomatically;
+
+            await _events.PublishAsync(new CheckedEvent(assignedWork.Id, null));
+        }
     }
 
     public async Task<Ulid> RemakeAsync(Ulid assignedWorkId, RemakeAssignedWorkOptionsDTO options)
@@ -475,10 +493,12 @@ public class AssignedWorkService : IAssignedWorkService
             case UserRoles.Student:
                 AssertCorrectStudentDeadlineShift(assignedWork, options.NewDeadline);
                 assignedWork.SolveDeadlineAt = options.NewDeadline;
+                assignedWork.IsSolveDeadlineShifted = true;
                 break;
             case UserRoles.Mentor:
                 AssertCorrectMentorDeadlineShift(assignedWork, options.NewDeadline);
                 assignedWork.CheckDeadlineAt = options.NewDeadline;
+                assignedWork.IsCheckDeadlineShifted = true;
                 break;
             default:
                 throw new ForbiddenException();
@@ -548,6 +568,27 @@ public class AssignedWorkService : IAssignedWorkService
             default:
                 throw new ForbiddenException();
         }
+    }
+
+    private static void MarkAnswersAsChecked(AssignedWorkModel assignedWork)
+    {
+        foreach (var answer in assignedWork.Answers)
+        {
+            answer.Status = AssignedWorkAnswerStatus.Checked;
+        }
+    }
+
+    /// <summary>
+    /// The tasks the student actually got: a remake may leave out the ones already answered
+    /// correctly, and those must not count towards the work being fully auto-checkable.
+    /// </summary>
+    private static IEnumerable<WorkTaskModel> AssignedTasksOf(AssignedWorkModel assignedWork)
+    {
+        var tasks = assignedWork.Work?.Tasks ?? [];
+
+        return assignedWork.ExcludedTaskIds is { Length: > 0 } excluded
+            ? tasks.Where(task => !excluded.Contains(task.Id))
+            : tasks;
     }
 
     private void AssertCorrectStudentDeadlineShift(

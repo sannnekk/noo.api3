@@ -56,7 +56,7 @@ public class AssignedWorkAccessServiceTests
     {
         var (svc, ctx, _, user) = Create(UserRoles.Student);
         var sid = user.Object.UserId!.Value;
-        var aw = Seed(ctx, sid, Ulid.NewUlid(), solve: AssignedWorkSolveStatus.Solved);
+        var aw = Seed(ctx, sid, Ulid.NewUlid(), solve: AssignedWorkSolveStatus.SolvedInDeadline);
         Assert.False(await svc.CanDeleteAssignedWorkAsync(aw.Id));
     }
 
@@ -65,7 +65,7 @@ public class AssignedWorkAccessServiceTests
     {
         var (svc, ctx, _, user) = Create(UserRoles.Mentor);
         var mid = user.Object.UserId!.Value;
-        var aw = Seed(ctx, Ulid.NewUlid(), mid, solve: AssignedWorkSolveStatus.Solved, check: AssignedWorkCheckStatus.InProgress);
+        var aw = Seed(ctx, Ulid.NewUlid(), mid, solve: AssignedWorkSolveStatus.SolvedInDeadline, check: AssignedWorkCheckStatus.InProgress);
         Assert.True(await svc.CanSaveAssignedWorkAsync(aw.Id));
     }
 
@@ -74,7 +74,7 @@ public class AssignedWorkAccessServiceTests
     {
         var (svc, ctx, _, user) = Create(UserRoles.Mentor);
         var mid = user.Object.UserId!.Value;
-        var aw = Seed(ctx, Ulid.NewUlid(), mid, solve: AssignedWorkSolveStatus.Solved, check: AssignedWorkCheckStatus.Checked);
+        var aw = Seed(ctx, Ulid.NewUlid(), mid, solve: AssignedWorkSolveStatus.SolvedInDeadline, check: AssignedWorkCheckStatus.CheckedInDeadline);
         Assert.False(await svc.CanSaveAssignedWorkAsync(aw.Id));
     }
 

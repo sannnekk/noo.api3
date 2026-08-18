@@ -4,5 +4,7 @@ public enum AssignedWorkCheckStatus
 {
     NotChecked,
     InProgress,
-    Checked,
+    CheckedInDeadline,
+    CheckedAfterDeadline,
+    CheckedAutomatically,
 }

@@ -9,7 +9,11 @@ using Noo.Api.UserHistory.Types;
 
 namespace Noo.Api.AssignedWorks.Events;
 
-public sealed record CheckedEvent(Ulid AssignedWorkId, Ulid MentorId) : IDomainEvent;
+/// <summary>
+/// A work has been checked. <paramref name="MentorId"/> is <c>null</c> when every task was
+/// checked automatically and no mentor was involved.
+/// </summary>
+public sealed record CheckedEvent(Ulid AssignedWorkId, Ulid? MentorId) : IDomainEvent;
 
 public sealed class CheckedHistoryHandler : IEventHandler<CheckedEvent>
 {

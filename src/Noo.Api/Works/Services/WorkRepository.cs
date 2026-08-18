@@ -27,7 +27,7 @@ public class WorkRepository : Repository<WorkModel>, IWorkRepository
     public Task<int> CountSolvedAsync(Ulid id)
     {
         return AssignedWorksOf(id)
-            .CountAsync(aw => aw.SolveStatus == AssignedWorkSolveStatus.Solved);
+            .CountAsync(aw => AssignedWorkStatuses.Solved.Contains(aw.SolveStatus));
     }
 
     public Task<List<int>> GetScoresAsync(Ulid id)

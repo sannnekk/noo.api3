@@ -11,6 +11,7 @@ using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.System.Events;
+using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Courses.Models;
 using Noo.Api.Courses.Services;
@@ -86,7 +87,7 @@ public class AssignedWorkServiceTests
         IsVerified = true
     };
 
-    private static AssignedWorkModel SeedAssignedWork(NooDbContext ctx, Ulid studentId, Ulid mainMentorId, Ulid? helperMentorId = null, WorkType type = WorkType.Test, AssignedWorkSolveStatus solveStatus = AssignedWorkSolveStatus.NotSolved, AssignedWorkCheckStatus checkStatus = AssignedWorkCheckStatus.NotChecked)
+    private static AssignedWorkModel SeedAssignedWork(NooDbContext ctx, Ulid studentId, Ulid mainMentorId, Ulid? helperMentorId = null, WorkType type = WorkType.Test, AssignedWorkSolveStatus solveStatus = AssignedWorkSolveStatus.NotSolved, AssignedWorkCheckStatus checkStatus = AssignedWorkCheckStatus.NotChecked, DateTime? solveDeadlineAt = null, DateTime? checkDeadlineAt = null)
     {
         var aw = new AssignedWorkModel
         {
@@ -98,13 +99,48 @@ public class AssignedWorkServiceTests
             HelperMentorId = helperMentorId,
             SolveStatus = solveStatus,
             CheckStatus = checkStatus,
-            SolveDeadlineAt = DateTime.UtcNow.AddDays(1),
-            CheckDeadlineAt = DateTime.UtcNow.AddDays(2),
+            SolveDeadlineAt = solveDeadlineAt ?? Clock.Now.AddDays(1),
+            CheckDeadlineAt = checkDeadlineAt ?? Clock.Now.AddDays(2),
             MaxScore = 100
         };
         ctx.GetDbSet<AssignedWorkModel>().Add(aw);
         ctx.SaveChanges();
         return aw;
+    }
+
+    private static List<WorkTaskModel> SeedWorkWithAnswers(NooDbContext ctx, AssignedWorkModel aw, params WorkTaskType[] taskTypes)
+    {
+        var work = new WorkModel { Title = "WorkTitle", Type = aw.Type };
+        ctx.GetDbSet<WorkModel>().Add(work);
+        ctx.SaveChanges();
+
+        aw.WorkId = work.Id;
+
+        var tasks = taskTypes
+            .Select((type, order) => new WorkTaskModel
+            {
+                Content = new DeltaRichText(),
+                Type = type,
+                CheckStrategy = WorkTaskCheckStrategy.ExactMatchOrZero,
+                RightAnswers = ["answer"],
+                Order = order,
+                MaxScore = 10,
+                WorkId = work.Id
+            })
+            .ToList();
+        ctx.GetDbSet<WorkTaskModel>().AddRange(tasks);
+
+        ctx.GetDbSet<AssignedWorkAnswerModel>().AddRange(tasks.Select(task => new AssignedWorkAnswerModel
+        {
+            AssignedWorkId = aw.Id,
+            TaskId = task.Id,
+            WordContent = "answer",
+            MaxScore = 10,
+            Status = AssignedWorkAnswerStatus.NotSubmitted
+        }));
+        ctx.SaveChanges();
+
+        return tasks;
     }
 
     [Fact]
@@ -148,7 +184,7 @@ public class AssignedWorkServiceTests
 
         await svc.MarkAsSolvedAsync(aw.Id);
         var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
-        Assert.Equal(AssignedWorkSolveStatus.Solved, updated!.SolveStatus);
+        Assert.Equal(AssignedWorkSolveStatus.SolvedInDeadline, updated!.SolveStatus);
         Assert.NotNull(updated.SolvedAt);
 
         var solved = Assert.Single(publisher.Published.OfType<SolvedEvent>());
@@ -157,13 +193,75 @@ public class AssignedWorkServiceTests
     }
 
     [Fact]
+    public async Task MarkAsSolved_Past_Deadline_Sets_SolvedAfterDeadline()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, mainMentorId: Ulid.NewUlid(), solveDeadlineAt: Clock.Now.AddDays(-1));
+
+        await svc.MarkAsSolvedAsync(aw.Id);
+        var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
+        Assert.Equal(AssignedWorkSolveStatus.SolvedAfterDeadline, updated!.SolveStatus);
+    }
+
+    [Fact]
+    public async Task MarkAsSolved_Checks_Work_Automatically_When_Every_Task_Is_Automatic()
+    {
+        var (svc, ctx, _, currentUser, publisher) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, mainMentorId: Ulid.NewUlid());
+        SeedWorkWithAnswers(ctx, aw, WorkTaskType.Word, WorkTaskType.Word);
+
+        await svc.MarkAsSolvedAsync(aw.Id);
+        var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
+        Assert.Equal(AssignedWorkCheckStatus.CheckedAutomatically, updated!.CheckStatus);
+        Assert.NotNull(updated.CheckedAt);
+
+        var checkedEvent = Assert.Single(publisher.Published.OfType<CheckedEvent>());
+        Assert.Null(checkedEvent.MentorId);
+    }
+
+    [Fact]
+    public async Task MarkAsSolved_Leaves_Work_Unchecked_When_A_Task_Needs_A_Mentor()
+    {
+        var (svc, ctx, _, currentUser, publisher) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, mainMentorId: Ulid.NewUlid());
+        SeedWorkWithAnswers(ctx, aw, WorkTaskType.Word, WorkTaskType.Essay);
+
+        await svc.MarkAsSolvedAsync(aw.Id);
+        var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
+        Assert.Equal(AssignedWorkCheckStatus.NotChecked, updated!.CheckStatus);
+        Assert.Null(updated.CheckedAt);
+        Assert.Empty(publisher.Published.OfType<CheckedEvent>());
+    }
+
+    [Fact]
+    public async Task MarkAsSolved_Ignores_Excluded_Tasks_When_Deciding_On_Automatic_Check()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, mainMentorId: Ulid.NewUlid());
+        var tasks = SeedWorkWithAnswers(ctx, aw, WorkTaskType.Word, WorkTaskType.Essay);
+        aw.ExcludedTaskIds = [tasks[1].Id]; ctx.SaveChanges();
+
+        await svc.MarkAsSolvedAsync(aw.Id);
+        var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
+        Assert.Equal(AssignedWorkCheckStatus.CheckedAutomatically, updated!.CheckStatus);
+    }
+
+    [Fact]
     public async Task MarkAsSolved_AlreadySolved_Throws()
     {
         var (svc, ctx, _, currentUser, publisher) = CreateService(UserRoles.Student);
         var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(student.Id);
-        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid(), solveStatus: AssignedWorkSolveStatus.Solved);
-        aw.SolvedAt = DateTime.UtcNow; ctx.SaveChanges();
+        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid(), solveStatus: AssignedWorkSolveStatus.SolvedInDeadline);
+        aw.SolvedAt = Clock.Now; ctx.SaveChanges();
 
         await Assert.ThrowsAsync<AssignedWorkAlreadySolvedException>(() => svc.MarkAsSolvedAsync(aw.Id));
         Assert.Empty(publisher.Published);
@@ -175,13 +273,27 @@ public class AssignedWorkServiceTests
         var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
         var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
-        var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id, solveStatus: AssignedWorkSolveStatus.Solved);
-        aw.SolvedAt = DateTime.UtcNow; ctx.SaveChanges();
+        var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id, solveStatus: AssignedWorkSolveStatus.SolvedInDeadline);
+        aw.SolvedAt = Clock.Now; ctx.SaveChanges();
 
         await svc.MarkAsCheckedAsync(aw.Id);
         var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
-        Assert.Equal(AssignedWorkCheckStatus.Checked, updated!.CheckStatus);
+        Assert.Equal(AssignedWorkCheckStatus.CheckedInDeadline, updated!.CheckStatus);
         Assert.NotNull(updated.CheckedAt);
+    }
+
+    [Fact]
+    public async Task MarkAsChecked_Past_Deadline_Sets_CheckedAfterDeadline()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
+        var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
+        var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id, solveStatus: AssignedWorkSolveStatus.SolvedInDeadline, checkDeadlineAt: Clock.Now.AddDays(-1));
+        aw.SolvedAt = Clock.Now; ctx.SaveChanges();
+
+        await svc.MarkAsCheckedAsync(aw.Id);
+        var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
+        Assert.Equal(AssignedWorkCheckStatus.CheckedAfterDeadline, updated!.CheckStatus);
     }
 
     [Fact]
@@ -247,8 +359,8 @@ public class AssignedWorkServiceTests
         var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
         var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
-        var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id, solveStatus: AssignedWorkSolveStatus.Solved);
-        aw.SolvedAt = DateTime.UtcNow;
+        var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id, solveStatus: AssignedWorkSolveStatus.SolvedInDeadline);
+        aw.SolvedAt = Clock.Now;
         ctx.GetDbSet<AssignedWorkAnswerModel>().AddRange(
             new AssignedWorkAnswerModel { AssignedWorkId = aw.Id, TaskId = Ulid.NewUlid(), Status = AssignedWorkAnswerStatus.Submitted },
             new AssignedWorkAnswerModel { AssignedWorkId = aw.Id, TaskId = Ulid.NewUlid(), Status = AssignedWorkAnswerStatus.Submitted });
@@ -266,8 +378,8 @@ public class AssignedWorkServiceTests
         var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
         var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
-        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), mentor.Id, solveStatus: AssignedWorkSolveStatus.Solved);
-        aw.SolvedAt = DateTime.UtcNow; ctx.SaveChanges();
+        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), mentor.Id, solveStatus: AssignedWorkSolveStatus.SolvedInDeadline);
+        aw.SolvedAt = Clock.Now; ctx.SaveChanges();
 
         await svc.ReturnToSolveAsync(aw.Id);
         var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
@@ -281,8 +393,8 @@ public class AssignedWorkServiceTests
         var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
         var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
-        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), mentor.Id, solveStatus: AssignedWorkSolveStatus.Solved, checkStatus: AssignedWorkCheckStatus.Checked);
-        aw.SolvedAt = DateTime.UtcNow; aw.CheckedAt = DateTime.UtcNow; ctx.SaveChanges();
+        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), mentor.Id, solveStatus: AssignedWorkSolveStatus.SolvedInDeadline, checkStatus: AssignedWorkCheckStatus.CheckedInDeadline);
+        aw.SolvedAt = Clock.Now; aw.CheckedAt = Clock.Now; ctx.SaveChanges();
 
         await svc.ReturnToCheckAsync(aw.Id);
         var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
@@ -296,8 +408,8 @@ public class AssignedWorkServiceTests
         var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
         var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(student.Id);
-        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid(), type: WorkType.Test, solveStatus: AssignedWorkSolveStatus.Solved, checkStatus: AssignedWorkCheckStatus.Checked);
-        aw.SolvedAt = DateTime.UtcNow; aw.CheckedAt = DateTime.UtcNow; ctx.SaveChanges();
+        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid(), type: WorkType.Test, solveStatus: AssignedWorkSolveStatus.SolvedInDeadline, checkStatus: AssignedWorkCheckStatus.CheckedInDeadline);
+        aw.SolvedAt = Clock.Now; aw.CheckedAt = Clock.Now; ctx.SaveChanges();
 
         var work = new WorkModel { Title = "WorkTitle", Type = WorkType.Test };
         ctx.GetDbSet<WorkModel>().Add(work);
@@ -584,8 +696,8 @@ public class AssignedWorkServiceTests
         var (svc, ctx, _, currentUser, publisher) = CreateService(UserRoles.Mentor);
         var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
-        var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id, solveStatus: AssignedWorkSolveStatus.Solved);
-        aw.SolvedAt = DateTime.UtcNow;
+        var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id, solveStatus: AssignedWorkSolveStatus.SolvedInDeadline);
+        aw.SolvedAt = Clock.Now;
         var answer = new AssignedWorkAnswerModel { AssignedWorkId = aw.Id, TaskId = Ulid.NewUlid(), Status = AssignedWorkAnswerStatus.Submitted, MaxScore = 10, Score = 4 };
         ctx.GetDbSet<AssignedWorkAnswerModel>().Add(answer);
         ctx.SaveChanges();
@@ -613,8 +725,8 @@ public class AssignedWorkServiceTests
         var (svc, ctx, _, currentUser, publisher) = CreateService(UserRoles.Mentor);
         var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
-        var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id, solveStatus: AssignedWorkSolveStatus.Solved);
-        aw.SolvedAt = DateTime.UtcNow; ctx.SaveChanges();
+        var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id, solveStatus: AssignedWorkSolveStatus.SolvedInDeadline);
+        aw.SolvedAt = Clock.Now; ctx.SaveChanges();
 
         await svc.MarkAsCheckedAsync(aw.Id);
 
@@ -629,8 +741,8 @@ public class AssignedWorkServiceTests
         var (svc, ctx, _, currentUser, publisher) = CreateService(UserRoles.Mentor);
         var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
-        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), mentor.Id, solveStatus: AssignedWorkSolveStatus.Solved, checkStatus: AssignedWorkCheckStatus.Checked);
-        aw.SolvedAt = DateTime.UtcNow; aw.CheckedAt = DateTime.UtcNow; ctx.SaveChanges();
+        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), mentor.Id, solveStatus: AssignedWorkSolveStatus.SolvedInDeadline, checkStatus: AssignedWorkCheckStatus.CheckedInDeadline);
+        aw.SolvedAt = Clock.Now; aw.CheckedAt = Clock.Now; ctx.SaveChanges();
 
         await svc.ReturnToCheckAsync(aw.Id);
 
@@ -645,8 +757,8 @@ public class AssignedWorkServiceTests
         var (svc, ctx, _, currentUser, publisher) = CreateService(UserRoles.Mentor);
         var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
         currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
-        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), mentor.Id, solveStatus: AssignedWorkSolveStatus.Solved);
-        aw.SolvedAt = DateTime.UtcNow; ctx.SaveChanges();
+        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), mentor.Id, solveStatus: AssignedWorkSolveStatus.SolvedInDeadline);
+        aw.SolvedAt = Clock.Now; ctx.SaveChanges();
 
         await svc.ReturnToSolveAsync(aw.Id);
 

@@ -1,6 +1,5 @@
-using System.Linq.Expressions;
-using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Services;
+using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Statistics.DTO;
 using Noo.Api.Works.Types;
@@ -24,17 +23,21 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
     )
     {
         var solvedWorks = await _assignedWorkRepository.GetByDateRangeAsync(
-            aw => aw.Type == workType,
+            aw =>
+                (workType == null || aw.Type == workType)
+                && AssignedWorkStatuses.Solved.Contains(aw.SolveStatus),
             from,
             to
         );
         var checkedWorks = await _assignedWorkRepository.GetByDateRangeAsync(
-            aw => aw.Type == workType,
+            aw =>
+                (workType == null || aw.Type == workType)
+                && AssignedWorkStatuses.Checked.Contains(aw.CheckStatus),
             from,
             to
         );
         var createdCount = await _assignedWorkRepository.GetCountAsync(
-            aw => aw.Type == workType,
+            aw => workType == null || aw.Type == workType,
             from,
             to
         );
@@ -85,7 +88,7 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
             aw =>
                 (aw.MainMentorId == mentorId || aw.HelperMentorId == mentorId)
                 && (workType == null || aw.Type == workType)
-                && aw.CheckedAt <= aw.CheckDeadlineAt,
+                && aw.CheckStatus == AssignedWorkCheckStatus.CheckedInDeadline,
             from,
             to
         );
@@ -93,7 +96,7 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
             aw =>
                 (aw.MainMentorId == mentorId || aw.HelperMentorId == mentorId)
                 && (workType == null || aw.Type == workType)
-                && aw.CheckedAt > aw.CheckDeadlineAt,
+                && aw.CheckStatus == AssignedWorkCheckStatus.CheckedAfterDeadline,
             from,
             to
         );
@@ -186,20 +189,30 @@ public class AssignedWorkStatisticsCollector : IAssignedWorkStatisticsCollector
         DateTime to
     )
     {
-        Expression<Func<AssignedWorkModel, bool>> predicate = aw =>
-            aw.StudentId == studentId && aw.Type == workType;
-
         var checkedInDeadline = await _assignedWorkRepository.GetByDateRangeAsync(
-            predicate,
+            aw =>
+                aw.StudentId == studentId
+                && (workType == null || aw.Type == workType)
+                && aw.CheckStatus == AssignedWorkCheckStatus.CheckedInDeadline,
             from,
             to
         );
         var checkedAfterDeadline = await _assignedWorkRepository.GetByDateRangeAsync(
-            predicate,
+            aw =>
+                aw.StudentId == studentId
+                && (workType == null || aw.Type == workType)
+                && aw.CheckStatus == AssignedWorkCheckStatus.CheckedAfterDeadline,
             from,
             to
         );
-        var deadlineShiftsCount = await _assignedWorkRepository.GetCountAsync(predicate, from, to);
+        var deadlineShiftsCount = await _assignedWorkRepository.GetCountAsync(
+            aw =>
+                aw.StudentId == studentId
+                && (workType == null || aw.Type == workType)
+                && aw.IsSolveDeadlineShifted,
+            from,
+            to
+        );
 
         var checkedInDeadlineTotal = checkedInDeadline.Values.Sum();
         var checkedAfterDeadlineTotal = checkedAfterDeadline.Values.Sum();

@@ -21,12 +21,12 @@ public static class AssignedWorkTabCriteria
         tab switch
         {
             AssignedWorkListTab.NotSolved => aw =>
-                aw.SolveStatus != AssignedWorkSolveStatus.Solved,
+                !AssignedWorkStatuses.Solved.Contains(aw.SolveStatus),
             AssignedWorkListTab.NotChecked => aw =>
-                aw.SolveStatus == AssignedWorkSolveStatus.Solved
-                && aw.CheckStatus != AssignedWorkCheckStatus.Checked,
+                AssignedWorkStatuses.Solved.Contains(aw.SolveStatus)
+                && !AssignedWorkStatuses.Checked.Contains(aw.CheckStatus),
             AssignedWorkListTab.Checked => aw =>
-                aw.CheckStatus == AssignedWorkCheckStatus.Checked,
+                AssignedWorkStatuses.Checked.Contains(aw.CheckStatus),
             // All, and anything a client sends that is none of the above.
             _ => _ => true,
         };

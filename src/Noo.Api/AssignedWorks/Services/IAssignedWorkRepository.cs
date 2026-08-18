@@ -24,11 +24,11 @@ public interface IAssignedWorkRepository : IRepository<AssignedWorkModel>
     public Task<bool> IsStudentOwnWorkAsync(Ulid assignedWorkId, Ulid userId);
     public Task<bool> IsWorkCheckStatusAsync(
         Ulid assignedWorkId,
-        params AssignedWorkCheckStatus[] statuses
+        IReadOnlyCollection<AssignedWorkCheckStatus> statuses
     );
     public Task<bool> IsWorkSolveStatusAsync(
         Ulid assignedWorkId,
-        params AssignedWorkSolveStatus[] statuses
+        IReadOnlyCollection<AssignedWorkSolveStatus> statuses
     );
     public Task<AssignedWorkModel?> GetWholeAsync(Ulid assignedWorkId);
 

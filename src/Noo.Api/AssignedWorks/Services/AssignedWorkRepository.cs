@@ -147,7 +147,7 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
 
     public async Task<bool> IsWorkCheckStatusAsync(
         Ulid assignedWorkId,
-        params AssignedWorkCheckStatus[] statuses
+        IReadOnlyCollection<AssignedWorkCheckStatus> statuses
     )
     {
         var assignedWork = await Context
@@ -160,7 +160,7 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
 
     public async Task<bool> IsWorkSolveStatusAsync(
         Ulid assignedWorkId,
-        params AssignedWorkSolveStatus[] statuses
+        IReadOnlyCollection<AssignedWorkSolveStatus> statuses
     )
     {
         var assignedWork = await Context
@@ -212,9 +212,7 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
         return Context
             .Set<AssignedWorkModel>()
             .Where(predicate)
-            .Where(aw =>
-                aw.CheckDeadlineAt >= aw.CheckedAt && aw.CreatedAt >= from && aw.CreatedAt <= to
-            )
+            .Where(aw => aw.CreatedAt >= from && aw.CreatedAt <= to)
             .GroupBy(aw => aw.CreatedAt.Date)
             .ToDictionaryAsync(g => g.Key, g => g.Count());
     }

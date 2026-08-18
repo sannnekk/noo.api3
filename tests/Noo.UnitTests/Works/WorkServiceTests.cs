@@ -375,8 +375,8 @@ public class WorkServiceTests
         var task2 = work.Tasks!.Single(t => t.Order == 1);
 
         // Two solved (scored 8 and 5), one in progress, one not solved.
-        var solvedHigh = AddAssignedWork(context, workId, AssignedWorkSolveStatus.Solved, 8);
-        var solvedLow = AddAssignedWork(context, workId, AssignedWorkSolveStatus.Solved, 5);
+        var solvedHigh = AddAssignedWork(context, workId, AssignedWorkSolveStatus.SolvedInDeadline, 8);
+        var solvedLow = AddAssignedWork(context, workId, AssignedWorkSolveStatus.SolvedInDeadline, 5);
         AddAssignedWork(context, workId, AssignedWorkSolveStatus.InProgress, null);
         AddAssignedWork(context, workId, AssignedWorkSolveStatus.NotSolved, null);
 

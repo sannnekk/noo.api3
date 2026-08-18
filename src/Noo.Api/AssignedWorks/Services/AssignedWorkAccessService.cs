@@ -43,11 +43,13 @@ public class AssignedWorkAccessService : IAssignedWorkAccessService
             UserRoles.Assistant => false,
             UserRoles.Student =>
                 await _assignedWorkRepository.IsStudentOwnWorkAsync(assignedWorkId, userId)
-                && await _assignedWorkRepository.IsWorkSolveStatusAsync(assignedWorkId, AssignedWorkSolveStatus.NotSolved, AssignedWorkSolveStatus.InProgress),
+                && await _assignedWorkRepository.IsWorkSolveStatusAsync(assignedWorkId, AssignedWorkStatuses.Unsolved),
+            // A mentor may write while the work is untouched or already handed in, but not
+            // while the student is in the middle of solving it.
             UserRoles.Mentor =>
                 await _assignedWorkRepository.IsMentorOwnWorkAsync(assignedWorkId, userId)
-                && await _assignedWorkRepository.IsWorkSolveStatusAsync(assignedWorkId, AssignedWorkSolveStatus.NotSolved, AssignedWorkSolveStatus.Solved)
-                && await _assignedWorkRepository.IsWorkCheckStatusAsync(assignedWorkId, AssignedWorkCheckStatus.NotChecked, AssignedWorkCheckStatus.InProgress),
+                && await _assignedWorkRepository.IsWorkSolveStatusAsync(assignedWorkId, [AssignedWorkSolveStatus.NotSolved, .. AssignedWorkStatuses.Solved])
+                && await _assignedWorkRepository.IsWorkCheckStatusAsync(assignedWorkId, AssignedWorkStatuses.Unchecked),
             _ => throw new UnauthorizedException(),
         };
     }
@@ -63,7 +65,7 @@ public class AssignedWorkAccessService : IAssignedWorkAccessService
             UserRoles.Assistant => false,
             UserRoles.Student =>
                 await _assignedWorkRepository.IsStudentOwnWorkAsync(assignedWorkId, userId)
-                && await _assignedWorkRepository.IsWorkSolveStatusAsync(assignedWorkId, AssignedWorkSolveStatus.NotSolved, AssignedWorkSolveStatus.InProgress),
+                && await _assignedWorkRepository.IsWorkSolveStatusAsync(assignedWorkId, AssignedWorkStatuses.Unsolved),
             UserRoles.Mentor => false,
             _ => throw new UnauthorizedException(),
         };
@@ -73,7 +75,7 @@ public class AssignedWorkAccessService : IAssignedWorkAccessService
     {
         var (_, userRole) = GetUserInfo();
 
-        if (!await _assignedWorkRepository.IsWorkCheckStatusAsync(assignedWorkId, AssignedWorkCheckStatus.NotChecked, AssignedWorkCheckStatus.InProgress))
+        if (!await _assignedWorkRepository.IsWorkCheckStatusAsync(assignedWorkId, AssignedWorkStatuses.Unchecked))
         {
             return false;
         }
@@ -93,7 +95,7 @@ public class AssignedWorkAccessService : IAssignedWorkAccessService
     {
         var (userId, userRole) = GetUserInfo();
 
-        if (!await _assignedWorkRepository.IsWorkCheckStatusAsync(assignedWorkId, AssignedWorkCheckStatus.NotChecked, AssignedWorkCheckStatus.InProgress))
+        if (!await _assignedWorkRepository.IsWorkCheckStatusAsync(assignedWorkId, AssignedWorkStatuses.Unchecked))
         {
             return false;
         }

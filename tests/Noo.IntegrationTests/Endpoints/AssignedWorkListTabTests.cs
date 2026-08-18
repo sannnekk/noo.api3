@@ -43,11 +43,12 @@ public class AssignedWorkListTabTests : IClassFixture<ApiFactory>
 
         var counts = await GetCountsAsync(client.AsUserId(studentId), studentId);
 
-        // The five seeded works, sliced the way the list page slices them.
-        counts["all"].Should().Be(5);
+        // The eight seeded works, sliced the way the list page slices them. Both "solved"
+        // statuses count as handed in and all three "checked" ones as checked.
+        counts["all"].Should().Be(8);
         counts["notSolved"].Should().Be(2);
-        counts["notChecked"].Should().Be(2);
-        counts["checked"].Should().Be(1);
+        counts["notChecked"].Should().Be(3);
+        counts["checked"].Should().Be(3);
 
         foreach (var (tab, counter) in TabsWithCounters)
         {
@@ -72,14 +73,14 @@ public class AssignedWorkListTabTests : IClassFixture<ApiFactory>
             _factory,
             studentId,
             otherMentorId,
-            AssignedWorkSolveStatus.Solved,
+            AssignedWorkSolveStatus.SolvedInDeadline,
             AssignedWorkCheckStatus.NotChecked,
             helperMentorId: mentorId
         );
 
         var counts = await GetCountsAsync(client.AsMentor(mentorId), mentorId);
 
-        counts["all"].Should().Be(6);
+        counts["all"].Should().Be(9);
 
         foreach (var (tab, counter) in TabsWithCounters)
         {
@@ -108,7 +109,7 @@ public class AssignedWorkListTabTests : IClassFixture<ApiFactory>
             _factory,
             studentId,
             mentorId,
-            AssignedWorkSolveStatus.Solved,
+            AssignedWorkSolveStatus.SolvedInDeadline,
             AssignedWorkCheckStatus.InProgress
         );
 
@@ -140,9 +141,12 @@ public class AssignedWorkListTabTests : IClassFixture<ApiFactory>
         {
             (AssignedWorkSolveStatus.NotSolved, AssignedWorkCheckStatus.NotChecked),
             (AssignedWorkSolveStatus.InProgress, AssignedWorkCheckStatus.NotChecked),
-            (AssignedWorkSolveStatus.Solved, AssignedWorkCheckStatus.NotChecked),
-            (AssignedWorkSolveStatus.Solved, AssignedWorkCheckStatus.InProgress),
-            (AssignedWorkSolveStatus.Solved, AssignedWorkCheckStatus.Checked),
+            (AssignedWorkSolveStatus.SolvedInDeadline, AssignedWorkCheckStatus.NotChecked),
+            (AssignedWorkSolveStatus.SolvedInDeadline, AssignedWorkCheckStatus.InProgress),
+            (AssignedWorkSolveStatus.SolvedInDeadline, AssignedWorkCheckStatus.CheckedInDeadline),
+            (AssignedWorkSolveStatus.SolvedAfterDeadline, AssignedWorkCheckStatus.NotChecked),
+            (AssignedWorkSolveStatus.SolvedAfterDeadline, AssignedWorkCheckStatus.CheckedAfterDeadline),
+            (AssignedWorkSolveStatus.SolvedInDeadline, AssignedWorkCheckStatus.CheckedAutomatically),
         };
 
         foreach (var (solveStatus, checkStatus) in statuses)

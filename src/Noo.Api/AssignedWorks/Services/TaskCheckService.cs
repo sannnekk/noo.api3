@@ -1,4 +1,5 @@
 using Noo.Api.AssignedWorks.Models;
+using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Works.Models;
 using Noo.Api.Works.Types;
@@ -8,17 +9,28 @@ namespace Noo.Api.AssignedWorks.Services;
 [RegisterTransient(typeof(ITaskCheckService))]
 public class TaskCheckService : ITaskCheckService
 {
-    public int CheckTasks(
+    public TaskCheckResult CheckTasks(
         IEnumerable<AssignedWorkAnswerModel> answers,
         IEnumerable<WorkTaskModel> tasks
     )
     {
         var totalScore = 0;
+        var taskCount = 0;
+        var automaticTaskCount = 0;
 
-        foreach (var task in tasks.Where(t => t.IsAutomaticallyCheckable))
+        foreach (var task in tasks)
         {
+            taskCount++;
+
+            if (!task.IsAutomaticallyCheckable)
+            {
+                continue;
+            }
+
+            automaticTaskCount++;
+
             var answer = answers.FirstOrDefault(a =>
-                a.TaskId == task.Id && a.Status == Types.AssignedWorkAnswerStatus.Submitted
+                a.TaskId == task.Id && a.Status == AssignedWorkAnswerStatus.Submitted
             );
 
             if (answer == null)
@@ -37,7 +49,7 @@ public class TaskCheckService : ITaskCheckService
             totalScore += score.Value;
         }
 
-        return totalScore;
+        return new TaskCheckResult(totalScore, taskCount > 0 && taskCount == automaticTaskCount);
     }
 
     public int? CheckWord(WorkTaskModel task, string? word)

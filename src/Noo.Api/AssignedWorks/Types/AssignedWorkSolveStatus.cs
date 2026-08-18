@@ -4,5 +4,6 @@ public enum AssignedWorkSolveStatus
 {
     NotSolved,
     InProgress,
-    Solved,
+    SolvedInDeadline,
+    SolvedAfterDeadline,
 }

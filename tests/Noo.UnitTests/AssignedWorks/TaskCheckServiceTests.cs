@@ -122,9 +122,9 @@ public class TaskCheckServiceTests
             WordContent = answer,
         };
 
-        var score = service.CheckTasks(new[] { workAnswer }, new[] { task });
+        var result = service.CheckTasks(new[] { workAnswer }, new[] { task });
 
-        Assert.Equal(expectedScore, score);
+        Assert.Equal(expectedScore, result.Score);
 
         // The answer is passed by reference and must carry its own computed score.
         Assert.Equal(expectedScore, workAnswer.Score);
@@ -151,9 +151,9 @@ public class TaskCheckServiceTests
             WordContent = "answer",
         };
 
-        var score = service.CheckTasks(new[] { workAnswer }, new[] { task });
+        var result = service.CheckTasks(new[] { workAnswer }, new[] { task });
 
-        Assert.Equal(0, score);
+        Assert.Equal(0, result.Score);
         Assert.Null(workAnswer.Score);
     }
 
@@ -179,9 +179,9 @@ public class TaskCheckServiceTests
             WordContent = "answer",
         };
 
-        var score = service.CheckTasks(new[] { workAnswer }, new[] { task });
+        var result = service.CheckTasks(new[] { workAnswer }, new[] { task });
 
-        Assert.Equal(0, score);
+        Assert.Equal(0, result.Score);
         Assert.Null(workAnswer.Score);
     }
 
@@ -224,13 +224,37 @@ public class TaskCheckServiceTests
             },
         };
 
-        var score = service.CheckTasks(answers, new[] { firstTask, secondTask });
+        var result = service.CheckTasks(answers, new[] { firstTask, secondTask });
 
         // 10 (exact match) + 5 (one wrong character) = 15
-        Assert.Equal(15, score);
+        Assert.Equal(15, result.Score);
 
         // Each answer must hold the score computed for its own task.
         Assert.Equal(10, answers[0].Score);
         Assert.Equal(5, answers[1].Score);
+    }
+
+    [Theory]
+    [InlineData(true, WorkTaskType.Word)]
+    [InlineData(true, WorkTaskType.Word, WorkTaskType.Word)]
+    [InlineData(false, WorkTaskType.Word, WorkTaskType.Essay)]
+    [InlineData(false, WorkTaskType.Essay)]
+    [InlineData(false)]
+    public void CheckTasks_Reports_Completeness_From_The_Task_Types(bool expected, params WorkTaskType[] taskTypes)
+    {
+        var service = new TaskCheckService();
+
+        var tasks = taskTypes.Select(type => new WorkTaskModel
+        {
+            Id = Ulid.NewUlid(),
+            Type = type,
+            CheckStrategy = WorkTaskCheckStrategy.ExactMatchOrZero,
+            RightAnswers = new[] { "answer" },
+            MaxScore = 10,
+        });
+
+        var result = service.CheckTasks(Array.Empty<AssignedWorkAnswerModel>(), tasks);
+
+        Assert.Equal(expected, result.IsComplete);
     }
 }
