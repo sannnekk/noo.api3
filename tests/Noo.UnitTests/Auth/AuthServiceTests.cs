@@ -201,7 +201,7 @@ public class AuthServiceTests
         var newUserId = Ulid.NewUlid();
         var h = new Harness();
         h.Users.Setup(s => s.UserExistsAsync("jane", "jane@example.com")).ReturnsAsync(false);
-        h.Users.Setup(s => s.CreateUserAsync(It.IsAny<UserCreationPayload>())).ReturnsAsync(newUserId);
+        h.Users.Setup(s => s.CreateUserAsync(It.IsAny<UserCreationPayload>())).ReturnsAsync(new UserModel { Id = newUserId });
         h.Token.Setup(t => t.CreateToken(It.IsAny<Ulid>(), TokenType.EmailVerification))
             .Returns(new TokenModel { Token = "vtoken", UserId = newUserId, Type = TokenType.EmailVerification, ExpiresAt = DateTime.UtcNow.AddDays(1) });
         h.Url.Setup(u => u.GenerateEmailVerificationUrl("vtoken")).Returns("/verify/vtoken");

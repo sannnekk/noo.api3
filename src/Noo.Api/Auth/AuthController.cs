@@ -1,11 +1,13 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Noo.Api.Auth.DTO;
 using Noo.Api.Auth.Services;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
+using Noo.Api.Core.Security.RateLimiter;
 using Noo.Api.Core.Utils.Versioning;
 using Noo.Api.Media;
 using ProducesAttribute = Noo.Api.Core.Documentation.ProducesAttribute;
@@ -42,6 +44,7 @@ public class AuthController : ApiController
     [HttpPost("login")]
     [MapToApiVersion(NooApiVersions.Current)]
     [AllowAnonymous]
+    [EnableRateLimiting(LoginRateLimitPolicy.Name)]
     [Produces(
         typeof(ApiResponseDTO<LoginResponseDTO>),
         StatusCodes.Status200OK,

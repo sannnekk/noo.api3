@@ -93,7 +93,7 @@ public class UserService : IUserService
         );
     }
 
-    public async Task<Ulid> CreateUserAsync(UserCreationPayload payload)
+    public async Task<UserModel> CreateUserAsync(UserCreationPayload payload)
     {
         var model = _mapper.Map<UserModel>(payload);
 
@@ -102,7 +102,7 @@ public class UserService : IUserService
         // Publishing here rather than from the registration endpoint covers every creation path.
         await _events.PublishAsync(new UserRegisteredEvent(model.Id, model.Username, model.Role));
 
-        return model.Id;
+        return model;
     }
 
     public async Task DeleteUserAsync(string password)

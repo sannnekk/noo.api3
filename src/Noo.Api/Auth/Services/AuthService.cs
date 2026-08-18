@@ -176,7 +176,7 @@ public class AuthService : IAuthService
 
         var passwordHash = _hashService.Hash(request.Password);
 
-        var userId = await _userService.CreateUserAsync(
+        var user = await _userService.CreateUserAsync(
             new UserCreationPayload
             {
                 Username = request.Username,
@@ -187,7 +187,7 @@ public class AuthService : IAuthService
             }
         );
 
-        var verificationToken = _tokenService.CreateToken(userId, TokenType.EmailVerification);
+        var verificationToken = _tokenService.CreateToken(user.Id, TokenType.EmailVerification);
         var verificationLink = _urlGenerator.GenerateEmailVerificationUrl(verificationToken.Token);
 
         await _emailService.SendEmailVerificationEmailAsync(

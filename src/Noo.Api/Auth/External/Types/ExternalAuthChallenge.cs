@@ -17,6 +17,9 @@ public sealed record ExternalAuthChallenge
 
     public required string RedirectUri { get; init; }
 
+    /// <summary>Where the frontend should land once the callback succeeds. Relative path or null.</summary>
+    public string? ReturnUrl { get; init; }
+
     /// <summary>The user who started a link; null for a login.</summary>
     public Ulid? UserId { get; init; }
 }

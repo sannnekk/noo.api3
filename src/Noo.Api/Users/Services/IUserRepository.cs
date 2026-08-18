@@ -9,6 +9,7 @@ public interface IUserRepository : IRepository<UserModel>
     public Task<bool> ExistsByUsernameOrEmailAsync(string? username, string? email);
     public Task<bool> MentorExistsAsync(Ulid mentorId);
     public Task<UserModel?> GetByUsernameOrEmailAsync(string usernameOrEmail);
+    public Task<UserModel?> GetByEmailAsync(string email);
     public Task<bool> IsBlockedAsync(Ulid id);
     public Task BlockUserAsync(Ulid id);
     public Task UnblockUserAsync(Ulid id);

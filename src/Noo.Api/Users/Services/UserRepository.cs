@@ -37,6 +37,20 @@ public class UserRepository : Repository<UserModel>, IUserRepository
             .FirstOrDefaultAsync();
     }
 
+    public Task<UserModel?> GetByEmailAsync(string email)
+    {
+        var repository = Context.GetDbSet<UserModel>();
+
+        // Matching on email alone, unlike GetByUsernameOrEmailAsync, so a username
+        // that happens to look like an address cannot be claimed by a provider.
+        if (string.IsNullOrEmpty(email))
+        {
+            return Task.FromResult<UserModel?>(null);
+        }
+
+        return repository.FirstOrDefaultAsync(x => x.Email == email);
+    }
+
     public Task<bool> ExistsByUsernameOrEmailAsync(string? username, string? email)
     {
         var repository = Context.GetDbSet<UserModel>();

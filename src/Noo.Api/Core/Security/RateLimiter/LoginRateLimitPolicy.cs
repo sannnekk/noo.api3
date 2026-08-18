@@ -12,7 +12,9 @@ public class LoginRateLimitPolicy : INamedRateLimitPolicy
         _config = config;
     }
 
-    public string PolicyName => "LoginPolicy";
+    public const string Name = "LoginPolicy";
+
+    public string PolicyName => Name;
 
     public Func<HttpContext, global::System.Threading.RateLimiting.RateLimitPartition<string>> Partitioner => context =>
     {

@@ -107,7 +107,7 @@ public class UserServiceTests
         var patchUpdateService = new JsonPatchUpdateService(mapper);
         var service = CreateService(userRepo, patchUpdateService, mapper);
 
-        var id = await service.CreateUserAsync(MakePayload());
+        var id = (await service.CreateUserAsync(MakePayload())).Id;
         await uow.CommitAsync();
         Assert.NotEqual(default, id);
 
@@ -164,7 +164,7 @@ public class UserServiceTests
         var patchUpdateService = new JsonPatchUpdateService(mapper);
         var service = CreateService(userRepo, patchUpdateService, mapper);
 
-        var studentId = await service.CreateUserAsync(MakePayload("stud", "stud@example.com", role: UserRoles.Student));
+        var studentId = (await service.CreateUserAsync(MakePayload("stud", "stud@example.com", role: UserRoles.Student))).Id;
         await uow.CommitAsync();
         await service.ChangeRoleAsync(studentId, UserRoles.Mentor);
         await uow.CommitAsync();
@@ -173,7 +173,7 @@ public class UserServiceTests
         Assert.Equal(UserRoles.Mentor, changed!.Role);
 
         // Make a mentor and try to change role -> should conflict
-        var mentorId = await service.CreateUserAsync(MakePayload("mentor", "mentor@example.com", role: UserRoles.Mentor));
+        var mentorId = (await service.CreateUserAsync(MakePayload("mentor", "mentor@example.com", role: UserRoles.Mentor))).Id;
         await uow.CommitAsync();
         await Assert.ThrowsAsync<CantChangeRoleException>(() => service.ChangeRoleAsync(mentorId, UserRoles.Admin));
     }
@@ -193,7 +193,7 @@ public class UserServiceTests
         await Assert.ThrowsAsync<NotFoundException>(() => service.ChangeRoleAsync(Ulid.NewUlid(), UserRoles.Mentor));
 
         // Blocked
-        var id = await service.CreateUserAsync(MakePayload("blocked", "blocked@example.com"));
+        var id = (await service.CreateUserAsync(MakePayload("blocked", "blocked@example.com"))).Id;
         await uow.CommitAsync();
 
         // Mark as blocked directly and persist
@@ -217,7 +217,7 @@ public class UserServiceTests
         var patchUpdateService = new JsonPatchUpdateService(mapper);
         var service = CreateService(userRepo, patchUpdateService, mapper);
 
-        var id = await service.CreateUserAsync(MakePayload("u1", "u1@example.com"));
+        var id = (await service.CreateUserAsync(MakePayload("u1", "u1@example.com"))).Id;
         await uow.CommitAsync();
 
         await service.UpdateUserEmailAsync(id, "new@example.com");
@@ -240,7 +240,7 @@ public class UserServiceTests
         var patchUpdateService = new JsonPatchUpdateService(mapper);
         var service = CreateService(userRepo, patchUpdateService, mapper);
 
-        var id = await service.CreateUserAsync(MakePayload("u2", "u2@example.com"));
+        var id = (await service.CreateUserAsync(MakePayload("u2", "u2@example.com"))).Id;
 
         await service.BlockUserAsync(id);
         using (var verifyCtx = TestHelpers.CreateInMemoryDb(dbName))
@@ -275,7 +275,7 @@ public class UserServiceTests
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.UserExistsAsync(null, null));
 
-        var id = await service.CreateUserAsync(MakePayload("exists-user", "exists@example.com"));
+        var id = (await service.CreateUserAsync(MakePayload("exists-user", "exists@example.com"))).Id;
         await uow.CommitAsync();
 
         Assert.True(await service.UserExistsAsync("exists-user", null));
@@ -302,7 +302,7 @@ public class UserServiceTests
         var patchUpdateService = new JsonPatchUpdateService(mapper);
         var service = CreateService(userRepo, patchUpdateService, mapper);
 
-        var id = await service.CreateUserAsync(MakePayload("verify", "verify@example.com"));
+        var id = (await service.CreateUserAsync(MakePayload("verify", "verify@example.com"))).Id;
         await uow.CommitAsync();
         await service.VerifyUserAsync(id);
         await uow.CommitAsync();

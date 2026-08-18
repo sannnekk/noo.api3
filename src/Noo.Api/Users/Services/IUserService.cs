@@ -11,7 +11,8 @@ namespace Noo.Api.Users.Services;
 public interface IUserService
 {
     public Task<bool> UserExistsAsync(string? username, string? email);
-    public Task<Ulid> CreateUserAsync(UserCreationPayload payload);
+    /// <summary>Returns the tracked entity so callers can finish setting it up before the commit.</summary>
+    public Task<UserModel> CreateUserAsync(UserCreationPayload payload);
     public Task<UserModel?> GetUserByIdAsync(Ulid id);
     public Task<UserModel?> GetUserByUsernameOrEmailAsync(string usernameOrEmail);
     public Task<SearchResult<UserModel>> GetUsersAsync(UserFilter filter);

@@ -16,6 +16,8 @@ using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.System.Email;
 using Noo.Api.Core.Storage;
 using Noo.Api.Core.ThirdPartyServices.Google;
+using Noo.Api.Auth.External.Providers;
+using Noo.Api.Auth.External.Types;
 
 namespace Noo.IntegrationTests;
 
@@ -86,6 +88,14 @@ public class ApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<IGoogleTokenProvider, FakeGoogleTokenProvider>();
             services.RemoveAll<IGoogleSheetsWriter>();
             services.AddSingleton<IGoogleSheetsWriter, FakeGoogleSheetsWriter>();
+            // Replace the identity providers so no test reaches Yandex or VK. The registry,
+            // the challenge store and every account decision they feed stay real.
+            services.RemoveAll<IExternalAuthProvider>();
+            services.AddScoped<IExternalAuthProvider>(
+                _ => new FakeExternalAuthProvider(ExternalAuthProviderType.Yandex));
+            services.AddScoped<IExternalAuthProvider>(
+                _ => new FakeExternalAuthProvider(ExternalAuthProviderType.Vk));
+
             // 0) Remove any mysql registrations
             services.RemoveAll<NooDbContext>();
             services.RemoveAll<DbContextOptions<NooDbContext>>();
@@ -160,6 +170,46 @@ public class ApiFactory : WebApplicationFactory<Program>
             IsBlocked = false,
             IsVerified = true
         };
+}
+
+/// <summary>
+/// Derives the profile from the callback <c>code</c>, so a test states exactly who comes back
+/// from the provider: <c>subjectId</c>, or <c>subjectId|email</c>, or <c>subjectId|email|name</c>.
+/// </summary>
+internal sealed class FakeExternalAuthProvider : IExternalAuthProvider
+{
+    public FakeExternalAuthProvider(ExternalAuthProviderType type)
+    {
+        Type = type;
+    }
+
+    public ExternalAuthProviderType Type { get; }
+
+    public string DisplayName => $"Fake {Type}";
+
+    public bool IsEnabled => true;
+
+    public bool EmailIsTrusted => true;
+
+    public string BuildAuthorizationUrl(ExternalAuthChallenge challenge, string codeChallenge)
+        => $"https://{Type}.test/authorize?state={challenge.State}&code_challenge={codeChallenge}";
+
+    public Task<ExternalUserProfile> ResolveProfileAsync(
+        ExternalAuthCallback callback,
+        ExternalAuthChallenge challenge,
+        CancellationToken ct = default)
+    {
+        var parts = callback.Require("code").Split('|');
+
+        return Task.FromResult(new ExternalUserProfile
+        {
+            SubjectId = parts[0],
+            Email = parts.Length > 1 && parts[1].Length > 0 ? parts[1] : null,
+            EmailIsVerified = true,
+            DisplayName = parts.Length > 2 ? parts[2] : null,
+            ProviderLogin = parts[0],
+        });
+    }
 }
 
 internal sealed class FakeEmailClient : IEmailClient
