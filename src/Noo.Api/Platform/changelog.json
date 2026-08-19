@@ -1,7 +1,98 @@
 [
   {
+    "version": "1.4.0-alpha",
+    "date": "2026-08-19T21:22:44+02:00",
+    "changes": [
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "assigned-works: Added answer reveal and one-by-one checking for tasks that allow them"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "assigned-works: Implemented assigned work comments"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "auth: Added external auth service, challenge store and endpoints"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "auth: Implemented Yandex ID & VK ID providers with unit tests"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "auth: Added external identity model & provider abstraction with a keyed registry"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "users: Made email and password optional to support external identity providers"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "works: Numbered work tasks by position so a removal does not leave a gap"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "courses: Made a student's course membership unique, reviving it instead of adding another"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "google-sheets: Scoped integrations to their owner for every role, not just mentors"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "db: Gave migrations their own command timeout instead of the request-sized one"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "assigned-works: Registered the missing policies, closed the cross-user read and widened the answer status column"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "tests: Fixed the truncated token encryption key that broke every Google Sheets endpoint test"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "richtext: Dropped Quill Delta support, leaving the rich text abstraction in place"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "user-settings: Dropped the server-side theme, it is a preference of the browser now"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "assigned-works: Split the assigned work service into four and removed the dead code around it"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "assigned-works: Moved from solved and checked statuses to more detailed ones"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "auth: Extracted session issuance from LoginAsync for reuse by other auth paths"
+      }
+    ]
+  },
+  {
     "version": "1.3.1-alpha",
-    "date": "2026-08-13T14:05:43+02:00",
+    "date": "2026-08-17T14:17:20+02:00",
     "changes": [
       {
         "type": "feature",
