@@ -148,6 +148,13 @@ public class AssignedWorkModel : BaseModel
 
     public bool IsChecked => CheckedAt.HasValue;
 
+    /// <summary>
+    /// Whether the user takes part in this work, as its student or as either of its mentors.
+    /// Everyone else is a bystander, however privileged.
+    /// </summary>
+    public bool IsParticipant(Ulid userId) =>
+        StudentId == userId || MainMentorId == userId || HelperMentorId == userId;
+
     public bool IsSolved => SolvedAt.HasValue;
 
     public bool IsRemakeable => IsChecked && Type == WorkType.Test;

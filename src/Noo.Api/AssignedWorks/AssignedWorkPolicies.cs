@@ -102,5 +102,111 @@ public class AssignedWorkPolicies : IPolicyRegistrar
                 policy.RequireRole(nameof(UserRoles.Mentor)).RequireNotBlocked();
             }
         );
+
+        options.AddPolicy(
+            CanArchiveAssignedWork,
+            policy =>
+            {
+                policy
+                    .RequireRole(
+                        [
+                            nameof(UserRoles.Student),
+                            nameof(UserRoles.Mentor),
+                            nameof(UserRoles.Assistant),
+                            nameof(UserRoles.Teacher),
+                            nameof(UserRoles.Admin),
+                        ]
+                    )
+                    .RequireNotBlocked();
+            }
+        );
+
+        options.AddPolicy(
+            CanUnarchiveAssignedWork,
+            policy =>
+            {
+                policy
+                    .RequireRole(
+                        [
+                            nameof(UserRoles.Student),
+                            nameof(UserRoles.Mentor),
+                            nameof(UserRoles.Assistant),
+                            nameof(UserRoles.Teacher),
+                            nameof(UserRoles.Admin),
+                        ]
+                    )
+                    .RequireNotBlocked();
+            }
+        );
+
+        options.AddPolicy(
+            CanAddHelperMentorToAssignedWork,
+            policy =>
+            {
+                policy
+                    .RequireRole(
+                        [
+                            nameof(UserRoles.Mentor),
+                            nameof(UserRoles.Teacher),
+                            nameof(UserRoles.Admin),
+                        ]
+                    )
+                    .RequireNotBlocked();
+            }
+        );
+
+        options.AddPolicy(
+            CanReplaceMainMentorOfAssignedWork,
+            policy =>
+            {
+                policy
+                    .RequireRole(
+                        [
+                            nameof(UserRoles.Assistant),
+                            nameof(UserRoles.Teacher),
+                            nameof(UserRoles.Admin),
+                        ]
+                    )
+                    .RequireNotBlocked();
+            }
+        );
+
+        options.AddPolicy(
+            CanShiftDeadlineOfAssignedWork,
+            policy =>
+            {
+                policy
+                    .RequireRole([nameof(UserRoles.Student), nameof(UserRoles.Mentor)])
+                    .RequireNotBlocked();
+            }
+        );
+
+        // Both "send back" actions are the checking mentor's call, and the service looks
+        // the work up as one of the caller's own, so only a mentor can reach them.
+        options.AddPolicy(
+            CanReturnAssignedWorkToSolve,
+            policy =>
+            {
+                policy.RequireRole(nameof(UserRoles.Mentor)).RequireNotBlocked();
+            }
+        );
+
+        options.AddPolicy(
+            CanReturnAssignedWorkToCheck,
+            policy =>
+            {
+                policy.RequireRole(nameof(UserRoles.Mentor)).RequireNotBlocked();
+            }
+        );
+
+        options.AddPolicy(
+            CanDeleteAssignedWork,
+            policy =>
+            {
+                policy
+                    .RequireRole([nameof(UserRoles.Student), nameof(UserRoles.Admin)])
+                    .RequireNotBlocked();
+            }
+        );
     }
 }

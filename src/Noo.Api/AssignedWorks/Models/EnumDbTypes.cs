@@ -11,5 +11,6 @@ public static class AssignedWorkEnumDbDataTypes
     public const string AssignedWorkCheckStatus =
         "ENUM('NotChecked', 'InProgress', 'CheckedInDeadline', 'CheckedAfterDeadline', 'CheckedAutomatically')";
 
-    public const string AssignedWorkAnswerStatus = "ENUM('NotSubmitted', 'Submitted')";
+    public const string AssignedWorkAnswerStatus =
+        "ENUM('NotSubmitted', 'Submitted', 'Checked')";
 }

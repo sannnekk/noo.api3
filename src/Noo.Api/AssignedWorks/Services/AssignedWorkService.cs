@@ -32,6 +32,7 @@ public class AssignedWorkService : IAssignedWorkService
     private readonly ICourseWorkAssignmentRepository _workAssignmentRepository;
     private readonly IMentorAssignmentRepository _mentorAssignmentRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IAssignedWorkAccessService _access;
     private readonly ITaskCheckService _taskCheckService;
     private readonly ICurrentUser _currentUser;
     private readonly IMapper _mapper;
@@ -45,6 +46,7 @@ public class AssignedWorkService : IAssignedWorkService
         ICourseWorkAssignmentRepository workAssignmentRepository,
         IMentorAssignmentRepository mentorAssignmentRepository,
         IUserRepository userRepository,
+        IAssignedWorkAccessService access,
         ITaskCheckService taskCheckService,
         ICurrentUser currentUser,
         IMapper mapper,
@@ -58,6 +60,7 @@ public class AssignedWorkService : IAssignedWorkService
         _workAssignmentRepository = workAssignmentRepository;
         _mentorAssignmentRepository = mentorAssignmentRepository;
         _userRepository = userRepository;
+        _access = access;
         _taskCheckService = taskCheckService;
         _currentUser = currentUser;
         _mapper = mapper;
@@ -115,6 +118,11 @@ public class AssignedWorkService : IAssignedWorkService
 
         assignedWork.ThrowNotFoundIfNull();
 
+        if (!_access.CanAssignHelperMentor(assignedWork))
+        {
+            throw new ForbiddenException();
+        }
+
         if (
             assignedWork.MainMentorId == options.MentorId
             || assignedWork.HelperMentorId == options.MentorId
@@ -126,11 +134,6 @@ public class AssignedWorkService : IAssignedWorkService
         if (!await _userRepository.MentorExistsAsync(options.MentorId))
         {
             throw new NotFoundException();
-        }
-
-        if (assignedWork.IsChecked)
-        {
-            throw new AssignedWorkAlreadyCheckedException();
         }
 
         assignedWork.HelperMentorId = options.MentorId;
@@ -146,20 +149,19 @@ public class AssignedWorkService : IAssignedWorkService
 
     public async Task DeleteAsync(Ulid assignedWorkId)
     {
-        var assignedWork = await _assignedWorkRepository.GetAsync(
-            assignedWorkId,
-            _currentUser.UserId
-        );
+        var assignedWork = await _assignedWorkRepository.GetByIdAsync(assignedWorkId);
 
         if (assignedWork == null)
         {
             return;
         }
 
-        if (assignedWork.CanBeDeleted)
+        if (!_access.CanDelete(assignedWork))
         {
-            _assignedWorkRepository.DeleteById(assignedWorkId);
+            throw new AssignedWorkAlreadySolvedException();
         }
+
+        _assignedWorkRepository.DeleteById(assignedWorkId);
     }
 
     public async Task<AssignedWorkModel?> GetAsync(Ulid assignedWorkId)
@@ -167,6 +169,14 @@ public class AssignedWorkService : IAssignedWorkService
         var assignedWork = await _assignedWorkRepository.GetWholeAsync(assignedWorkId);
 
         if (assignedWork == null)
+        {
+            return null;
+        }
+
+        // A work carries the student's answers, so who is allowed to open it is not something
+        // the role gate alone can settle. Reads by a bystander look like a work that isn't
+        // there, rather than one they are being kept out of.
+        if (!_access.CanRead(assignedWork))
         {
             return null;
         }
@@ -340,12 +350,16 @@ public class AssignedWorkService : IAssignedWorkService
         ReplaceMainMentorOptionsDTO options
     )
     {
-        var assignedWork = await _assignedWorkRepository.GetAsync(
-            assignedWorkId,
-            _currentUser.UserId
-        );
+        // Loaded whole rather than as one of the caller's own works: this is staff's call to
+        // make, and they are on nobody's work.
+        var assignedWork = await _assignedWorkRepository.GetByIdAsync(assignedWorkId);
 
         assignedWork.ThrowNotFoundIfNull();
+
+        if (!_access.CanAssignMainMentor(assignedWork))
+        {
+            throw new ForbiddenException();
+        }
 
         if (
             assignedWork.MainMentorId == options.MentorId
@@ -355,9 +369,9 @@ public class AssignedWorkService : IAssignedWorkService
             return; // Mentor is already assigned to this work, nothing to replace
         }
 
-        if (assignedWork.IsChecked)
+        if (!await _userRepository.MentorExistsAsync(options.MentorId))
         {
-            throw new AssignedWorkAlreadyCheckedException();
+            throw new NotFoundException();
         }
 
         var previousMainMentorId = assignedWork.MainMentorId;
@@ -553,53 +567,37 @@ public class AssignedWorkService : IAssignedWorkService
         );
     }
 
-    public async Task ArchiveAsync(Ulid assignedWorkId)
-    {
-        var userId = _currentUser.RequireUserId();
+    public Task ArchiveAsync(Ulid assignedWorkId) => SetArchivedAsync(assignedWorkId, true);
 
-        var assignedWork = await _assignedWorkRepository.GetAsync(assignedWorkId, userId);
+    public Task UnarchiveAsync(Ulid assignedWorkId) => SetArchivedAsync(assignedWorkId, false);
+
+    /// <summary>
+    /// Each side of a work archives it out of their own list only: a mentor tidying theirs
+    /// away leaves the student's list alone, and vice versa.
+    /// </summary>
+    private async Task SetArchivedAsync(Ulid assignedWorkId, bool isArchived)
+    {
+        var assignedWork = await _assignedWorkRepository.GetByIdAsync(assignedWorkId);
 
         assignedWork.ThrowNotFoundIfNull();
 
-        switch (_currentUser.UserRole)
+        if (!_access.CanArchive(assignedWork))
         {
-            case UserRoles.Student:
-                assignedWork.IsArchivedByStudent = true;
-                break;
-            case UserRoles.Mentor:
-                assignedWork.IsArchivedByMentors = true;
-                break;
-            case UserRoles.Admin:
-            case UserRoles.Assistant:
-            case UserRoles.Teacher:
-                assignedWork.IsArchivedByAssistants = true;
-                break;
-            default:
-                throw new ForbiddenException();
+            throw new ForbiddenException();
         }
-    }
-
-    public async Task UnarchiveAsync(Ulid assignedWorkId)
-    {
-        var assignedWork = await _assignedWorkRepository.GetAsync(
-            assignedWorkId,
-            _currentUser.UserId
-        );
-
-        assignedWork.ThrowNotFoundIfNull();
 
         switch (_currentUser.UserRole)
         {
             case UserRoles.Student:
-                assignedWork.IsArchivedByStudent = false;
+                assignedWork.IsArchivedByStudent = isArchived;
                 break;
             case UserRoles.Mentor:
-                assignedWork.IsArchivedByMentors = false;
+                assignedWork.IsArchivedByMentors = isArchived;
                 break;
             case UserRoles.Admin:
             case UserRoles.Assistant:
             case UserRoles.Teacher:
-                assignedWork.IsArchivedByAssistants = false;
+                assignedWork.IsArchivedByAssistants = isArchived;
                 break;
             default:
                 throw new ForbiddenException();

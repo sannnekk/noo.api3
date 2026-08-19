@@ -2,88 +2,129 @@ using Moq;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Services;
 using Noo.Api.AssignedWorks.Types;
-using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
-using Noo.UnitTests.Common;
 
 namespace Noo.UnitTests.AssignedWorks;
 
 public class AssignedWorkAccessServiceTests
 {
-    private static (AssignedWorkAccessService svc, NooDbContext ctx, Mock<IUnitOfWork> uowMock, Mock<ICurrentUser> user) Create(UserRoles role)
+    private static (AssignedWorkAccessService svc, Ulid userId) Create(UserRoles role)
     {
-        var ctx = TestHelpers.CreateInMemoryDb();
-        var uow = TestHelpers.CreateUowMock(ctx);
+        var userId = Ulid.NewUlid();
         var user = new Mock<ICurrentUser>();
-        user.SetupGet(x => x.UserId).Returns(Ulid.NewUlid());
+        user.SetupGet(x => x.UserId).Returns(userId);
         user.SetupGet(x => x.UserRole).Returns(role);
         user.SetupGet(x => x.IsAuthenticated).Returns(true);
-        var repo = new AssignedWorkRepository(ctx);
-        var svc = new AssignedWorkAccessService(repo, user.Object);
-        return (svc, ctx, uow, user);
+
+        return (new AssignedWorkAccessService(user.Object), userId);
     }
 
-    private static AssignedWorkModel Seed(NooDbContext ctx, Ulid student, Ulid mentor, AssignedWorkSolveStatus solve = AssignedWorkSolveStatus.NotSolved, AssignedWorkCheckStatus check = AssignedWorkCheckStatus.NotChecked)
+    private static AssignedWorkModel Work(
+        Ulid student,
+        Ulid mainMentor,
+        Ulid? helperMentor = null,
+        AssignedWorkSolveStatus solve = AssignedWorkSolveStatus.NotSolved,
+        AssignedWorkCheckStatus check = AssignedWorkCheckStatus.NotChecked
+    ) => new()
     {
-        var aw = new AssignedWorkModel
-        {
-            Title = "A",
-            Type = Noo.Api.Works.Types.WorkType.Test,
-            Attempt = 1,
-            StudentId = student,
-            MainMentorId = mentor,
-            SolveStatus = solve,
-            CheckStatus = check,
-            MaxScore = 10
-        };
-        ctx.GetDbSet<AssignedWorkModel>().Add(aw);
-        ctx.SaveChanges();
-        return aw;
+        Title = "A",
+        Type = Noo.Api.Works.Types.WorkType.Test,
+        Attempt = 1,
+        StudentId = student,
+        MainMentorId = mainMentor,
+        HelperMentorId = helperMentor,
+        SolveStatus = solve,
+        CheckStatus = check,
+        CheckedAt = AssignedWorkStatuses.Checked.Contains(check) ? Noo.Api.Core.Utils.Clock.Now : null,
+        MaxScore = 10
+    };
+
+    [Fact]
+    public void Student_Reads_Own_Work_Only()
+    {
+        var (svc, studentId) = Create(UserRoles.Student);
+
+        Assert.True(svc.CanRead(Work(studentId, Ulid.NewUlid())));
+        Assert.False(svc.CanRead(Work(Ulid.NewUlid(), Ulid.NewUlid())));
     }
 
     [Fact]
-    public async Task Student_Can_Get_And_Save_Own_InProgress()
+    public void Mentor_Reads_Work_They_Are_On_As_Either_Mentor()
     {
-        var (svc, ctx, _, user) = Create(UserRoles.Student);
-        var sid = user.Object.UserId!.Value;
-        var aw = Seed(ctx, sid, Ulid.NewUlid(), solve: AssignedWorkSolveStatus.InProgress);
-        Assert.True(await svc.CanGetAssignedWorkAsync(aw.Id));
-        Assert.True(await svc.CanSaveAssignedWorkAsync(aw.Id));
+        var (svc, mentorId) = Create(UserRoles.Mentor);
+
+        Assert.True(svc.CanRead(Work(Ulid.NewUlid(), mentorId)));
+        Assert.True(svc.CanRead(Work(Ulid.NewUlid(), Ulid.NewUlid(), helperMentor: mentorId)));
+        Assert.False(svc.CanRead(Work(Ulid.NewUlid(), Ulid.NewUlid())));
+    }
+
+    [Theory]
+    [InlineData(UserRoles.Admin)]
+    [InlineData(UserRoles.Teacher)]
+    [InlineData(UserRoles.Assistant)]
+    public void Staff_Read_Any_Work(UserRoles role)
+    {
+        var (svc, _) = Create(role);
+
+        Assert.True(svc.CanRead(Work(Ulid.NewUlid(), Ulid.NewUlid())));
     }
 
     [Fact]
-    public async Task Student_Cannot_Delete_Solved()
+    public void Student_Deletes_Own_Work_Only_Before_Handing_It_In()
     {
-        var (svc, ctx, _, user) = Create(UserRoles.Student);
-        var sid = user.Object.UserId!.Value;
-        var aw = Seed(ctx, sid, Ulid.NewUlid(), solve: AssignedWorkSolveStatus.SolvedInDeadline);
-        Assert.False(await svc.CanDeleteAssignedWorkAsync(aw.Id));
+        var (svc, studentId) = Create(UserRoles.Student);
+
+        Assert.True(svc.CanDelete(Work(studentId, Ulid.NewUlid())));
+        Assert.False(
+            svc.CanDelete(
+                Work(studentId, Ulid.NewUlid(), solve: AssignedWorkSolveStatus.SolvedInDeadline)
+            )
+        );
+        Assert.False(svc.CanDelete(Work(Ulid.NewUlid(), Ulid.NewUlid())));
     }
 
     [Fact]
-    public async Task Mentor_Can_Save_When_NotChecked()
+    public void Mentor_Never_Deletes()
     {
-        var (svc, ctx, _, user) = Create(UserRoles.Mentor);
-        var mid = user.Object.UserId!.Value;
-        var aw = Seed(ctx, Ulid.NewUlid(), mid, solve: AssignedWorkSolveStatus.SolvedInDeadline, check: AssignedWorkCheckStatus.InProgress);
-        Assert.True(await svc.CanSaveAssignedWorkAsync(aw.Id));
+        var (svc, mentorId) = Create(UserRoles.Mentor);
+
+        Assert.False(svc.CanDelete(Work(Ulid.NewUlid(), mentorId)));
     }
 
     [Fact]
-    public async Task Mentor_Cannot_Save_When_Checked()
+    public void Mentors_Are_Assigned_Only_While_The_Work_Is_Unchecked()
     {
-        var (svc, ctx, _, user) = Create(UserRoles.Mentor);
-        var mid = user.Object.UserId!.Value;
-        var aw = Seed(ctx, Ulid.NewUlid(), mid, solve: AssignedWorkSolveStatus.SolvedInDeadline, check: AssignedWorkCheckStatus.CheckedInDeadline);
-        Assert.False(await svc.CanSaveAssignedWorkAsync(aw.Id));
+        var (admin, _) = Create(UserRoles.Admin);
+        var unchecked_ = Work(Ulid.NewUlid(), Ulid.NewUlid());
+        var checked_ = Work(
+            Ulid.NewUlid(),
+            Ulid.NewUlid(),
+            check: AssignedWorkCheckStatus.CheckedInDeadline
+        );
+
+        Assert.True(admin.CanAssignMainMentor(unchecked_));
+        Assert.True(admin.CanAssignHelperMentor(unchecked_));
+        Assert.False(admin.CanAssignMainMentor(checked_));
+        Assert.False(admin.CanAssignHelperMentor(checked_));
     }
 
     [Fact]
-    public async Task Admin_Can_Add_Helper_And_Main()
+    public void Mentor_Brings_In_A_Helper_Only_On_Their_Own_Work_And_Never_Replaces_The_Main_One()
     {
-        var (svc, ctx, _, user) = Create(UserRoles.Admin);
-        var aw = Seed(ctx, Ulid.NewUlid(), Ulid.NewUlid());
-        Assert.True(await svc.CanAddHelperMentorAsync(aw.Id));
-        Assert.True(await svc.CanAddMainMentorAsync(aw.Id));
+        var (svc, mentorId) = Create(UserRoles.Mentor);
+
+        Assert.True(svc.CanAssignHelperMentor(Work(Ulid.NewUlid(), mentorId)));
+        Assert.False(svc.CanAssignHelperMentor(Work(Ulid.NewUlid(), Ulid.NewUlid())));
+        Assert.False(svc.CanAssignMainMentor(Work(Ulid.NewUlid(), mentorId)));
+    }
+
+    [Fact]
+    public void Assistant_Replaces_The_Main_Mentor_But_Does_Not_Add_Helpers()
+    {
+        var (svc, _) = Create(UserRoles.Assistant);
+        var work = Work(Ulid.NewUlid(), Ulid.NewUlid());
+
+        Assert.True(svc.CanAssignMainMentor(work));
+        Assert.False(svc.CanAssignHelperMentor(work));
     }
 }

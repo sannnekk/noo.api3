@@ -62,6 +62,7 @@ public class AssignedWorkServiceTests
         var courseWorkAssignmentRepo = new Mock<ICourseWorkAssignmentRepository>();
         var mentorAssignmentRepo = new Mock<IMentorAssignmentRepository>();
         var userRepo = new UserRepository(ctx);
+        var access = new AssignedWorkAccessService(currentUser.Object);
         var svc = new AssignedWorkService(
             assignedWorkRepo,
             assignedWorkAnswerRepo,
@@ -69,6 +70,7 @@ public class AssignedWorkServiceTests
             courseWorkAssignmentRepo.Object,
             mentorAssignmentRepo.Object,
             userRepo,
+            access,
             new TaskCheckService(),
             currentUser.Object,
             mapper,
@@ -613,6 +615,100 @@ public class AssignedWorkServiceTests
         await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(() => svc.SaveAnswerAsync(ownAw.Id, dto));
     }
 
+
+    [Fact]
+    public async Task Get_Returns_Nothing_To_Someone_Who_Is_Not_On_The_Work()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        // Someone else's work: the seeded student owns it, the caller does not.
+        currentUser.SetupGet(c => c.UserId).Returns(Ulid.NewUlid());
+        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
+
+        Assert.Null(await svc.GetAsync(aw.Id));
+    }
+
+    [Theory]
+    [InlineData(UserRoles.Admin)]
+    [InlineData(UserRoles.Teacher)]
+    [InlineData(UserRoles.Assistant)]
+    public async Task Get_Lets_Staff_Read_A_Work_They_Are_Not_On(UserRoles role)
+    {
+        var (svc, ctx, _, _, _) = CreateService(role);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
+
+        Assert.NotNull(await svc.GetAsync(aw.Id));
+    }
+
+    [Fact]
+    public async Task Archive_Puts_The_Work_Away_For_Staff_Who_Are_Not_On_It()
+    {
+        var (svc, ctx, _, _, _) = CreateService(UserRoles.Assistant);
+        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), Ulid.NewUlid());
+
+        await svc.ArchiveAsync(aw.Id);
+        await ctx.SaveChangesAsync();
+
+        var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
+        Assert.True(updated!.IsArchivedByAssistants);
+        // Each side archives out of their own list only.
+        Assert.False(updated.IsArchivedByStudent);
+        Assert.False(updated.IsArchivedByMentors);
+    }
+
+    [Fact]
+    public async Task Archive_Is_Refused_To_A_Student_Who_Is_Not_On_The_Work()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        currentUser.SetupGet(c => c.UserId).Returns(Ulid.NewUlid());
+        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), Ulid.NewUlid());
+
+        await Assert.ThrowsAsync<ForbiddenException>(() => svc.ArchiveAsync(aw.Id));
+    }
+
+    [Fact]
+    public async Task Delete_Of_A_Handed_In_Work_Reports_The_Conflict_Instead_Of_Passing_Silently()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid(), solveStatus: AssignedWorkSolveStatus.SolvedInDeadline);
+
+        await Assert.ThrowsAsync<AssignedWorkAlreadySolvedException>(() => svc.DeleteAsync(aw.Id));
+        Assert.NotNull(await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id));
+    }
+
+    [Fact]
+    public async Task ReplaceMainMentor_Is_Staff_Work_Even_Though_They_Are_On_No_Work()
+    {
+        var (svc, ctx, _, _, publisher) = CreateService(UserRoles.Assistant);
+        var newMentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(newMentor); ctx.SaveChanges();
+        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), Ulid.NewUlid());
+
+        await svc.ReplaceMainMentorAsync(aw.Id, new ReplaceMainMentorOptionsDTO { MentorId = newMentor.Id });
+        await ctx.SaveChangesAsync();
+
+        var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
+        Assert.Equal(newMentor.Id, updated!.MainMentorId);
+        Assert.Single(publisher.Published.OfType<MainMentorChangedEvent>());
+    }
+
+    [Fact]
+    public async Task ReplaceMainMentor_Is_Refused_To_A_Mentor()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
+        var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor);
+        var other = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(other);
+        ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
+        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), mentor.Id);
+
+        await Assert.ThrowsAsync<ForbiddenException>(
+            () => svc.ReplaceMainMentorAsync(aw.Id, new ReplaceMainMentorOptionsDTO { MentorId = other.Id })
+        );
+    }
+
     // Builds a service that exposes the work-assignment repository mock, needed only by CreateAsync.
     private static (AssignedWorkService svc, NooDbContext ctx, Mock<ICourseWorkAssignmentRepository> workAssignmentMock, CapturingPublisher publisher) CreateServiceWithWorkAssignment(UserRoles role, Ulid userId)
     {
@@ -631,6 +727,7 @@ public class AssignedWorkServiceTests
             workAssignmentMock.Object,
             new Mock<IMentorAssignmentRepository>().Object,
             new UserRepository(ctx),
+            new AssignedWorkAccessService(currentUser.Object),
             new TaskCheckService(),
             currentUser.Object,
             mapper,
@@ -903,12 +1000,13 @@ public class AssignedWorkServiceTests
     [Fact]
     public async Task ReplaceMainMentor_Publishes_MainMentorChangedEvent()
     {
-        var (svc, ctx, _, currentUser, publisher) = CreateService(UserRoles.Mentor);
+        var (svc, ctx, _, currentUser, publisher) = CreateService(UserRoles.Teacher);
+        var teacher = MakeUser(UserRoles.Teacher); ctx.GetDbSet<UserModel>().Add(teacher);
         var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student);
         var oldMentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(oldMentor);
         var newMentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(newMentor);
         ctx.SaveChanges();
-        currentUser.SetupGet(c => c.UserId).Returns(oldMentor.Id);
+        currentUser.SetupGet(c => c.UserId).Returns(teacher.Id);
         var aw = SeedAssignedWork(ctx, student.Id, oldMentor.Id);
 
         await svc.ReplaceMainMentorAsync(aw.Id, new ReplaceMainMentorOptionsDTO { MentorId = newMentor.Id });
@@ -919,7 +1017,7 @@ public class AssignedWorkServiceTests
         Assert.Equal(aw.Id, evt.AssignedWorkId);
         Assert.Equal(newMentor.Id, evt.NewMentorId);
         Assert.Equal(oldMentor.Id, evt.OldMentorId);
-        Assert.Equal(oldMentor.Id, evt.ChangedById);
+        Assert.Equal(teacher.Id, evt.ChangedById);
     }
 
     [Fact]
