@@ -304,4 +304,35 @@ public class WorkNestedPatchTests : IClassFixture<ApiFactory>
         tasks.Select(task => task.GetProperty("id").GetString())
             .Should().Equal(firstId, thirdId);
     }
+
+    [Fact(DisplayName = "PATCH /work reordering tasks keeps the sequence the client asked for")]
+    public async Task Patch_Work_Reorder_Tasks_Keeps_The_Requested_Sequence()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+        var workId = await CreateWorkWithTaskAsync(client, subjectId, maxScore: 4);
+        var firstId = await GetSingleTaskIdAsync(client, workId);
+
+        var secondId = Ulid.NewUlid().ToString();
+
+        (await PatchAsync(client.AsTeacher(), $"/work/{workId}", $$"""
+            [ { "op": "add", "path": "/tasks/{{secondId}}", "value": {
+                  "id": "{{secondId}}", "type": "word", "order": 2, "maxScore": 5,
+                  "content": {"$type":"tiptap","type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"second"}]}]} } } ]
+            """)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // What the editor sends after the second task is dragged above the first.
+        (await PatchAsync(client.AsTeacher(), $"/work/{workId}", $$"""
+            [ { "op": "replace", "path": "/tasks/{{secondId}}/order", "value": 1 },
+              { "op": "replace", "path": "/tasks/{{firstId}}/order", "value": 2 } ]
+            """)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var data = await GetWorkDataAsync(client, workId);
+        var tasks = data.GetProperty("tasks").EnumerateArray().ToList();
+
+        // Returned in order, so the sequence is what the reader sees on reload.
+        tasks.Select(task => task.GetProperty("id").GetString())
+            .Should().Equal(secondId, firstId);
+        tasks.Select(task => task.GetProperty("order").GetInt32()).Should().Equal(1, 2);
+    }
 }
