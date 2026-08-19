@@ -24,6 +24,8 @@ public class AssignedWorkPolicies : IPolicyRegistrar
     public const string CanReturnAssignedWorkToSolve = nameof(CanReturnAssignedWorkToSolve);
     public const string CanReturnAssignedWorkToCheck = nameof(CanReturnAssignedWorkToCheck);
     public const string CanDeleteAssignedWork = nameof(CanDeleteAssignedWork);
+    public const string CanRevealTaskAnswer = nameof(CanRevealTaskAnswer);
+    public const string CanCheckOwnTask = nameof(CanCheckOwnTask);
 
     public void RegisterPolicies(AuthorizationOptions options)
     {
@@ -196,6 +198,24 @@ public class AssignedWorkPolicies : IPolicyRegistrar
             policy =>
             {
                 policy.RequireRole(nameof(UserRoles.Mentor)).RequireNotBlocked();
+            }
+        );
+
+        // Both are the student's own doing while they solve; the service narrows it
+        // further to the work actually being theirs.
+        options.AddPolicy(
+            CanRevealTaskAnswer,
+            policy =>
+            {
+                policy.RequireRole(nameof(UserRoles.Student)).RequireNotBlocked();
+            }
+        );
+
+        options.AddPolicy(
+            CanCheckOwnTask,
+            policy =>
+            {
+                policy.RequireRole(nameof(UserRoles.Student)).RequireNotBlocked();
             }
         );
 

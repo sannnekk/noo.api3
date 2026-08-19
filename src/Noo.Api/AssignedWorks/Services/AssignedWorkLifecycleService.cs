@@ -54,7 +54,11 @@ public class AssignedWorkLifecycleService : IAssignedWorkLifecycleService
 
         foreach (var answer in assignedWork.Answers)
         {
-            answer.Status = AssignedWorkAnswerStatus.Submitted;
+            // Answers already checked one at a time stay checked; the rest are handed in.
+            if (answer.Status != AssignedWorkAnswerStatus.Checked)
+            {
+                answer.Status = AssignedWorkAnswerStatus.Submitted;
+            }
         }
 
         var check = _taskCheckService.CheckTasks(

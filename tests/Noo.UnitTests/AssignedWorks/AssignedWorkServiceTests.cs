@@ -768,6 +768,84 @@ public class AssignedWorkServiceTests
         );
     }
 
+
+    [Fact]
+    public async Task Get_Does_Not_Hand_The_Answer_Key_To_A_Student_Still_Solving()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
+        SeedWorkWithAnswers(ctx, aw, WorkTaskType.Word);
+        ctx.SaveChanges();
+
+        var fetched = await svc.Work.GetAsync(aw.Id);
+
+        var task = Assert.Single(fetched!.Work!.Tasks!);
+        Assert.Null(task.RightAnswers);
+    }
+
+    [Fact]
+    public async Task Get_Hands_The_Answer_Key_To_The_Mentor_Checking_The_Work()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Mentor);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student);
+        var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor);
+        ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, mentor.Id);
+        SeedWorkWithAnswers(ctx, aw, WorkTaskType.Word);
+        ctx.SaveChanges();
+
+        var fetched = await svc.Work.GetAsync(aw.Id);
+
+        var task = Assert.Single(fetched!.Work!.Tasks!);
+        Assert.Equal(["answer"], task.RightAnswers);
+    }
+
+    [Fact]
+    public async Task Get_Hands_The_Answer_Key_Back_Once_The_Work_Has_Been_Checked()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid(), checkStatus: AssignedWorkCheckStatus.CheckedInDeadline);
+        SeedWorkWithAnswers(ctx, aw, WorkTaskType.Word);
+        ctx.SaveChanges();
+
+        var fetched = await svc.Work.GetAsync(aw.Id);
+
+        var task = Assert.Single(fetched!.Work!.Tasks!);
+        Assert.Equal(["answer"], task.RightAnswers);
+    }
+
+    [Fact]
+    public async Task MarkAsSolved_Leaves_A_Task_Already_Checked_On_Its_Own_Alone()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
+        var tasks = SeedWorkWithAnswers(ctx, aw, WorkTaskType.Word, WorkTaskType.Word);
+
+        // One task was checked on its own while solving, and got it wrong.
+        var answers = ctx.GetDbSet<AssignedWorkAnswerModel>().Where(a => a.AssignedWorkId == aw.Id).ToList();
+        var checkedEarly = answers.First(a => a.TaskId == tasks[0].Id);
+        checkedEarly.Status = AssignedWorkAnswerStatus.Checked;
+        checkedEarly.Score = 3;
+        ctx.SaveChanges();
+
+        await svc.Lifecycle.MarkAsSolvedAsync(aw.Id);
+        await ctx.SaveChangesAsync();
+
+        var stored = await ctx.GetDbSet<AssignedWorkAnswerModel>().FindAsync(checkedEarly.Id);
+        Assert.Equal(AssignedWorkAnswerStatus.Checked, stored!.Status);
+        // The verdict stands, and its points still count towards the work.
+        Assert.Equal(3, stored.Score);
+        var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
+        Assert.Equal(3 + 10, updated!.Score);
+    }
+
     // Builds a service that exposes the work-assignment repository mock, needed only by CreateAsync.
     private static (AssignedWorkService svc, NooDbContext ctx, Mock<ICourseWorkAssignmentRepository> workAssignmentMock, CapturingPublisher publisher) CreateServiceWithWorkAssignment(UserRoles role, Ulid userId)
     {

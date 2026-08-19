@@ -26,6 +26,8 @@ public class AssignedWorkController : ApiController
 
     private readonly IAssignedWorkMentorService _mentorService;
 
+    private readonly IAssignedWorkTaskService _taskService;
+
     private readonly IAssignedWorkHistoryService _assignedWorkHistoryService;
 
     public AssignedWorkController(
@@ -33,6 +35,7 @@ public class AssignedWorkController : ApiController
         IAssignedWorkLifecycleService lifecycleService,
         IAssignedWorkEditingService editingService,
         IAssignedWorkMentorService mentorService,
+        IAssignedWorkTaskService taskService,
         IAssignedWorkHistoryService historyService,
         IMapper mapper
     )
@@ -42,6 +45,7 @@ public class AssignedWorkController : ApiController
         _lifecycleService = lifecycleService;
         _editingService = editingService;
         _mentorService = mentorService;
+        _taskService = taskService;
         _assignedWorkHistoryService = historyService;
     }
 
@@ -280,6 +284,65 @@ public class AssignedWorkController : ApiController
         var id = await _editingService.SaveCommentAsync(assignedWorkId, comment);
 
         return SendResponse(id);
+    }
+
+    /// <summary>
+    /// Gets the answer key of one task of an assigned work.
+    /// </summary>
+    /// <remarks>
+    /// Only for tasks that offer their answer before the work is checked. The key is not
+    /// part of the work itself: a student asks for it one task at a time.
+    /// </remarks>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpGet("{assignedWorkId}/task/{taskId}/answer-key")]
+    [Authorize(Policy = AssignedWorkPolicies.CanRevealTaskAnswer)]
+    [Produces(
+        typeof(ApiResponseDTO<AssignedWorkTaskAnswerKeyDTO>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound,
+        StatusCodes.Status409Conflict
+    )]
+    public async Task<IActionResult> GetTaskAnswerKeyAsync(
+        [FromRoute] Ulid assignedWorkId,
+        [FromRoute] Ulid taskId
+    )
+    {
+        var result = await _taskService.GetAnswerKeyAsync(assignedWorkId, taskId);
+
+        return SendResponse(result);
+    }
+
+    /// <summary>
+    /// Checks one task of an assigned work on its own and records the result.
+    /// </summary>
+    /// <remarks>
+    /// Only for tasks marked as checked one by one. The answer is scored against the task's
+    /// answer key and locked: from then on it is neither editable nor rechecked, and the
+    /// verdict stands when the work as a whole is handed in.
+    /// </remarks>
+    [MapToApiVersion(NooApiVersions.Current)]
+    [HttpPost("{assignedWorkId}/task/{taskId}/check")]
+    [Authorize(Policy = AssignedWorkPolicies.CanCheckOwnTask)]
+    [Produces(
+        typeof(ApiResponseDTO<AssignedWorkTaskCheckDTO>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound,
+        StatusCodes.Status409Conflict
+    )]
+    public async Task<IActionResult> CheckAssignedWorkTaskAsync(
+        [FromRoute] Ulid assignedWorkId,
+        [FromRoute] Ulid taskId
+    )
+    {
+        var result = await _taskService.CheckAsync(assignedWorkId, taskId);
+
+        return SendResponse(result);
     }
 
     /// <summary>

@@ -30,11 +30,20 @@ public class TaskCheckService : ITaskCheckService
             automaticTaskCount++;
 
             var answer = answers.FirstOrDefault(a =>
-                a.TaskId == task.Id && a.Status == AssignedWorkAnswerStatus.Submitted
+                a.TaskId == task.Id
+                && a.Status != AssignedWorkAnswerStatus.NotSubmitted
             );
 
             if (answer == null)
             {
+                continue;
+            }
+
+            // A task checked on its own already has its verdict, given while the student
+            // was still solving. Handing the work in does not reopen it.
+            if (answer.Status == AssignedWorkAnswerStatus.Checked)
+            {
+                totalScore += answer.Score ?? 0;
                 continue;
             }
 

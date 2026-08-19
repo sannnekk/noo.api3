@@ -136,6 +136,15 @@ public class AssignedWorkService : IAssignedWorkService
             assignedWork.MainMentorCommentId = null;
             assignedWork.HelperMentorComment = null;
             assignedWork.HelperMentorCommentId = null;
+
+            // The answer key does not travel with the work a student is still solving.
+            // Tasks that offer their answer up front hand it over one at a time, through
+            // IAssignedWorkTaskService, and a task checked on its own is checked by the
+            // server — neither works if the key is sitting in the page already.
+            foreach (var task in assignedWork.Work?.Tasks ?? [])
+            {
+                task.RightAnswers = null;
+            }
         }
 
         return assignedWork;
