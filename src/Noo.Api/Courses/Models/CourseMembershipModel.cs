@@ -6,10 +6,17 @@ using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
 using Noo.Api.Courses.Types;
 using Noo.Api.Users.Models;
+using IndexAttribute = Microsoft.EntityFrameworkCore.IndexAttribute;
 
 namespace Noo.Api.Courses.Models;
 
+/// <summary>
+/// One student's place on one course. A student holds at most one of these per course —
+/// leaving and coming back reuses the same row rather than adding another — which the
+/// unique index below is what actually guarantees.
+/// </summary>
 [Model("course_membership")]
+[Index(nameof(CourseId), nameof(StudentId), IsUnique = true)]
 public class CourseMembershipModel : BaseModel
 {
     [Required]

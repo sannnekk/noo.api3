@@ -6,6 +6,7 @@ using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Events;
+using Noo.Api.Courses.Exceptions;
 using Noo.Api.Courses.Filters;
 using Noo.Api.Courses.Models;
 using Noo.Api.Courses.QuerySpecifications;
@@ -36,21 +37,50 @@ public class CourseMembershipService : ICourseMembershipService
 
     public async Task<Ulid> CreateMembershipAsync(CreateCourseMembershipDTO dto)
     {
+        // A student keeps one membership per course for good: removing them only
+        // deactivates it, so putting them back on the course revives the row they
+        // already have rather than laying a second one on top of it. The unique index
+        // is what makes that true even if two of these run at once.
+        var existing = await _courseMembershipRepository.GetMembershipAsync(
+            dto.CourseId,
+            dto.StudentId
+        );
+
+        if (existing != null)
+        {
+            if (existing.IsActive)
+            {
+                throw new StudentAlreadyOnCourseException();
+            }
+
+            existing.IsActive = true;
+            existing.AssignerId = _currentUser.UserId;
+
+            await PublishCreatedAsync(existing);
+
+            return existing.Id;
+        }
+
         var model = _mapper.Map<CourseMembershipModel>(dto);
 
         model.AssignerId = _currentUser.UserId;
         _courseMembershipRepository.Add(model);
 
-        await _events.PublishAsync(
-            new CourseMembershipCreatedEvent(
-                model.Id,
-                model.StudentId,
-                model.CourseId,
-                model.AssignerId
-            )
-        );
+        await PublishCreatedAsync(model);
 
         return model.Id;
+    }
+
+    private Task PublishCreatedAsync(CourseMembershipModel membership)
+    {
+        return _events.PublishAsync(
+            new CourseMembershipCreatedEvent(
+                membership.Id,
+                membership.StudentId,
+                membership.CourseId,
+                membership.AssignerId
+            )
+        );
     }
 
     public Task<CourseMembershipModel?> GetMembershipAsync(Ulid courseId, Ulid userId)

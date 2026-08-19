@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
+using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Utils.DI;
 
 namespace Noo.Api.Core.DataAbstraction.Db;
@@ -13,10 +15,32 @@ public class UnitOfWork : IUnitOfWork
         Context = context;
     }
 
-    public Task<int> CommitAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Writes the request's work away. A unique index turning a duplicate away is an
+    /// answer, not a failure: it comes back as a conflict rather than as a server error,
+    /// so relying on the database to enforce uniqueness does not cost a 500.
+    /// </summary>
+    public async Task<int> CommitAsync(CancellationToken cancellationToken = default)
     {
-        return Context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            return await Context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (IsDuplicateKey(exception))
+        {
+            throw new ConflictException();
+        }
     }
+
+    private static bool IsDuplicateKey(DbUpdateException exception)
+    {
+        return exception.InnerException is MySqlException { Number: _duplicateKeyErrorNumber };
+    }
+
+    /// <summary>
+    /// MySQL's ER_DUP_ENTRY — a row rejected by a unique index.
+    /// </summary>
+    private const int _duplicateKeyErrorNumber = 1062;
 
     public void Rollback()
     {
