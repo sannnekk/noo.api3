@@ -1,7 +1,7 @@
+using Noo.Api.Core.Utils.Richtext;
 using AutoMapper;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request.Patching;
-using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Snippets;
 using Noo.Api.Snippets.DTO;
 using Noo.Api.Snippets.Models;
@@ -36,7 +36,7 @@ public class SnippetServiceAdditionalTests
             service.CreateSnippet(userId, new CreateSnippetDTO
             {
                 Name = $"S{i}",
-                Content = DeltaRichText.FromString("abc")
+                Content = RichTextFactory.Create("abc")
             });
         }
         await uow.CommitAsync();
@@ -88,7 +88,7 @@ public class SnippetServiceAdditionalTests
         var jsonPatchService = new JsonPatchUpdateService(mapper);
         var service = new SnippetService(repository, jsonPatchService, mapper);
         var userId = Ulid.NewUlid();
-        service.CreateSnippet(userId, new CreateSnippetDTO { Name = "Initial", Content = DeltaRichText.FromString("abc") });
+        service.CreateSnippet(userId, new CreateSnippetDTO { Name = "Initial", Content = RichTextFactory.Create("abc") });
         await uow.CommitAsync();
         var list = await service.GetSnippetsAsync(userId);
         var snippet = list.Items.First();
@@ -118,13 +118,13 @@ public class SnippetServiceAdditionalTests
         var jsonPatchService = new JsonPatchUpdateService(mapper);
         var service = new SnippetService(repository, jsonPatchService, mapper);
         var userId = Ulid.NewUlid();
-        service.CreateSnippet(userId, new CreateSnippetDTO { Name = "Initial", Content = DeltaRichText.FromString("abc") });
+        service.CreateSnippet(userId, new CreateSnippetDTO { Name = "Initial", Content = RichTextFactory.Create("abc") });
         await uow.CommitAsync();
         var list = await service.GetSnippetsAsync(userId);
         var snippet = list.Items.First();
 
         var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateSnippetDTO>();
-        var newContent = DeltaRichText.FromString("Updated content");
+        var newContent = RichTextFactory.Create("Updated content");
         patch.Replace(x => x.Content, newContent);
         await service.UpdateSnippetAsync(userId, snippet.Id, patch);
         await uow.CommitAsync();

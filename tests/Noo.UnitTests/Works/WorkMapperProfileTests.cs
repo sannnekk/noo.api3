@@ -1,5 +1,5 @@
+using Noo.Api.Core.Utils.Richtext;
 using AutoMapper;
-using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Courses.Models;
 using Noo.Api.Media.Models;
 using Noo.Api.NooTube.Models;
@@ -46,7 +46,7 @@ public class WorkMapperProfileTests
             SubjectId = Ulid.NewUlid(),
             Tasks =
             [
-                new CreateWorkTaskDTO { Type = WorkTaskType.Text, Order = 1, MaxScore = 5, Content = DeltaRichText.FromString("abc") }
+                new CreateWorkTaskDTO { Type = WorkTaskType.Text, Order = 1, MaxScore = 5, Content = RichTextFactory.Create("abc") }
             ]
         };
 
@@ -102,7 +102,7 @@ public class WorkMapperProfileTests
     public void Patch_Add_Task_Preserves_Existing_Tasks()
     {
         var existingTaskId = Ulid.NewUlid();
-        var existingContent = DeltaRichText.FromString("original");
+        var existingContent = RichTextFactory.Create("original");
 
         var model = new WorkModel
         {
@@ -135,7 +135,7 @@ public class WorkMapperProfileTests
             Order = 1,
             Type = WorkTaskType.Word,
             MaxScore = 3,
-            Content = DeltaRichText.FromString("brand new task"),
+            Content = RichTextFactory.Create("brand new task"),
         };
 
         _mapper.Map(dto, model);
@@ -172,7 +172,7 @@ public class WorkMapperProfileTests
                     Order = 0,
                     Type = WorkTaskType.Word,
                     MaxScore = 5,
-                    Content = DeltaRichText.FromString("v1"),
+                    Content = RichTextFactory.Create("v1"),
                 }
             }
         };
@@ -180,7 +180,7 @@ public class WorkMapperProfileTests
 
         var dto = _mapper.Map<UpdateWorkDTO>(model);
         dto.Tasks![taskId.ToString()].MaxScore = 99;
-        dto.Tasks![taskId.ToString()].Content = DeltaRichText.FromString("v2");
+        dto.Tasks![taskId.ToString()].Content = RichTextFactory.Create("v2");
 
         _mapper.Map(dto, model);
 
@@ -205,8 +205,8 @@ public class WorkMapperProfileTests
             SubjectId = Ulid.NewUlid(),
             Tasks = new List<WorkTaskModel>
             {
-                new() { Id = keepId, Order = 0, Type = WorkTaskType.Word, MaxScore = 1, Content = DeltaRichText.FromString("k") },
-                new() { Id = dropId, Order = 1, Type = WorkTaskType.Word, MaxScore = 1, Content = DeltaRichText.FromString("d") },
+                new() { Id = keepId, Order = 0, Type = WorkTaskType.Word, MaxScore = 1, Content = RichTextFactory.Create("k") },
+                new() { Id = dropId, Order = 1, Type = WorkTaskType.Word, MaxScore = 1, Content = RichTextFactory.Create("d") },
             }
         };
 
@@ -228,7 +228,7 @@ public class WorkMapperProfileTests
         var patchService = new JsonPatchUpdateService(_mapper);
 
         var existingTaskId = Ulid.NewUlid();
-        var existingContent = DeltaRichText.FromString("original content");
+        var existingContent = RichTextFactory.Create("original content");
         var model = new WorkModel
         {
             Id = Ulid.NewUlid(),
@@ -259,7 +259,7 @@ public class WorkMapperProfileTests
                 Order = 1,
                 Type = WorkTaskType.Word,
                 MaxScore = 3,
-                Content = DeltaRichText.FromString("brand new"),
+                Content = RichTextFactory.Create("brand new"),
             });
 
         patchService.ApplyPatch(model, patch);

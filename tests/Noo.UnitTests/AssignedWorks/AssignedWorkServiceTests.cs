@@ -13,7 +13,6 @@ using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.Richtext;
-using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Courses.Models;
 using Noo.Api.Courses.Services;
 using Noo.Api.Users.Models;
@@ -152,7 +151,7 @@ public class AssignedWorkServiceTests
         var tasks = taskTypes
             .Select((type, order) => new WorkTaskModel
             {
-                Content = new DeltaRichText(),
+                Content = RichTextFactory.Create(),
                 Type = type,
                 CheckStrategy = WorkTaskCheckStrategy.ExactMatchOrZero,
                 RightAnswers = ["answer"],
@@ -449,8 +448,8 @@ public class AssignedWorkServiceTests
         ctx.SaveChanges();
         aw.WorkId = work.Id;
         ctx.SaveChanges();
-        var task1 = new WorkTaskModel { Content = new DeltaRichText(), Type = WorkTaskType.Word, Order = 0, MaxScore = 10, WorkId = work.Id };
-        var task2 = new WorkTaskModel { Content = new DeltaRichText(), Type = WorkTaskType.Word, Order = 1, MaxScore = 10, WorkId = work.Id };
+        var task1 = new WorkTaskModel { Content = RichTextFactory.Create(), Type = WorkTaskType.Word, Order = 0, MaxScore = 10, WorkId = work.Id };
+        var task2 = new WorkTaskModel { Content = RichTextFactory.Create(), Type = WorkTaskType.Word, Order = 1, MaxScore = 10, WorkId = work.Id };
         ctx.GetDbSet<WorkTaskModel>().AddRange(task1, task2);
         ctx.GetDbSet<AssignedWorkAnswerModel>().AddRange(new AssignedWorkAnswerModel
         {

@@ -399,7 +399,7 @@ public class WorkTests : IClassFixture<ApiFactory>
                   "type": "word",
                   "order": 1,
                   "maxScore": 3,
-                  "content": {"$type":"delta","ops":[{"insert":"new task\n"}]}
+                  "content": {"$type":"tiptap","type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"new task"}]}]}
                 }
               }
             ]
@@ -476,7 +476,7 @@ public class WorkTests : IClassFixture<ApiFactory>
                   "type": "word",
                   "order": 1,
                   "maxScore": 2,
-                  "content": {"$type":"delta","ops":[{"insert":"to delete\n"}]}
+                  "content": {"$type":"tiptap","type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"to delete"}]}]}
                 }
               }
             ]

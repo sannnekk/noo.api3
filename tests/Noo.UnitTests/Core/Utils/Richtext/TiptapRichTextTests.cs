@@ -1,5 +1,4 @@
 using Noo.Api.Core.Utils.Richtext;
-using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Core.Utils.Richtext.Tiptap;
 
 namespace Noo.UnitTests.Core.Utils.Richtext;
@@ -31,18 +30,6 @@ public class TiptapRichTextTests
         Assert.Equal("doc", tiptap.Type);
         Assert.False(tiptap.IsEmpty());
         Assert.Equal("Hello world".Length, tiptap.Length());
-    }
-
-    [Fact]
-    public void Deserialize_DeltaJson_StillReturnsDeltaRichText()
-    {
-        const string json = """
-        { "$type": "delta", "ops": [{ "insert": "Hello" }] }
-        """;
-
-        var result = RichTextJsonSerializer.Deserialize(json);
-
-        Assert.IsType<DeltaRichText>(result);
     }
 
     [Fact]

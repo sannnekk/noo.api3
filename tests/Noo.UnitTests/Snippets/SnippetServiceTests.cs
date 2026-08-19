@@ -1,7 +1,7 @@
+using Noo.Api.Core.Utils.Richtext;
 using AutoMapper;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request.Patching;
-using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Snippets.DTO;
 using Noo.Api.Snippets.Models;
 using Noo.Api.Snippets.Services;
@@ -35,7 +35,7 @@ public class SnippetServiceTests
         var create = new CreateSnippetDTO
         {
             Name = "My first snippet",
-            Content = DeltaRichText.FromString("abc")
+            Content = RichTextFactory.Create("abc")
         };
         service.CreateSnippet(userId, create);
         await uow.CommitAsync();
@@ -95,7 +95,7 @@ public class SnippetServiceTests
         service.CreateSnippet(ownerId, new CreateSnippetDTO
         {
             Name = "Owner's snippet",
-            Content = DeltaRichText.FromString("abc")
+            Content = RichTextFactory.Create("abc")
         });
         await uow.CommitAsync();
 
@@ -124,7 +124,7 @@ public class SnippetServiceTests
         service.CreateSnippet(userId, new CreateSnippetDTO
         {
             Name = "Valid name",
-            Content = DeltaRichText.FromString("abc")
+            Content = RichTextFactory.Create("abc")
         });
         await uow.CommitAsync();
 
@@ -157,7 +157,7 @@ public class SnippetServiceTests
         service.CreateSnippet(ownerId, new CreateSnippetDTO
         {
             Name = "To delete",
-            Content = DeltaRichText.FromString("abc")
+            Content = RichTextFactory.Create("abc")
         });
         await uow.CommitAsync();
 
@@ -181,8 +181,8 @@ public class SnippetServiceTests
         var userA = Ulid.NewUlid();
         var userB = Ulid.NewUlid();
 
-        service.CreateSnippet(userA, new CreateSnippetDTO { Name = "A1", Content = DeltaRichText.FromString("abc") });
-        service.CreateSnippet(userB, new CreateSnippetDTO { Name = "B1", Content = DeltaRichText.FromString("abc") });
+        service.CreateSnippet(userA, new CreateSnippetDTO { Name = "A1", Content = RichTextFactory.Create("abc") });
+        service.CreateSnippet(userB, new CreateSnippetDTO { Name = "B1", Content = RichTextFactory.Create("abc") });
         await uow.CommitAsync();
 
         var listA = await service.GetSnippetsAsync(userA);

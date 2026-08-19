@@ -1,9 +1,9 @@
+using Noo.Api.Core.Utils.Richtext;
 using AutoMapper;
 using Noo.Api.AssignedWorks.Models;
 using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.Request.Patching;
-using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Courses.Models;
 using Noo.Api.Subjects.Models;
 using Noo.Api.Works.DTO;
@@ -63,7 +63,7 @@ public class WorkServiceTests
                     Type = WorkTaskType.Word,
                     Order = 0,
                     MaxScore = 1,
-                    Content = DeltaRichText.FromString("abc"),
+                    Content = RichTextFactory.Create("abc"),
                 },
             ],
         };
@@ -168,7 +168,7 @@ public class WorkServiceTests
                         Type = WorkTaskType.Word,
                         Order = 0,
                         MaxScore = 1,
-                        Content = DeltaRichText.FromString("abc"),
+                        Content = RichTextFactory.Create("abc"),
                     },
                 ],
             }
@@ -240,7 +240,7 @@ public class WorkServiceTests
                         Type = WorkTaskType.Word,
                         Order = 0,
                         MaxScore = 5,
-                        Content = DeltaRichText.FromString("Original task content"),
+                        Content = RichTextFactory.Create("Original task content"),
                     },
                 ],
             }
@@ -260,7 +260,7 @@ public class WorkServiceTests
             WorkId = workId,
         };
         context.GetDbSet<AssignedWorkModel>().Add(assignedWork);
-        var richTextContent = DeltaRichText.FromString("My answer text");
+        var richTextContent = RichTextFactory.Create("My answer text");
         var answer = new AssignedWorkAnswerModel
         {
             AssignedWorkId = assignedWork.Id,
@@ -286,7 +286,7 @@ public class WorkServiceTests
                 Type = WorkTaskType.Word,
                 Order = 1,
                 MaxScore = 3,
-                Content = DeltaRichText.FromString("New task content"),
+                Content = RichTextFactory.Create("New task content"),
             }
         );
         await service.UpdateWorkAsync(workId, patch);
@@ -356,14 +356,14 @@ public class WorkServiceTests
                         Type = WorkTaskType.Word,
                         Order = 0,
                         MaxScore = 6,
-                        Content = DeltaRichText.FromString("t1"),
+                        Content = RichTextFactory.Create("t1"),
                     },
                     new CreateWorkTaskDTO
                     {
                         Type = WorkTaskType.Word,
                         Order = 1,
                         MaxScore = 4,
-                        Content = DeltaRichText.FromString("t2"),
+                        Content = RichTextFactory.Create("t2"),
                     },
                 ],
             }

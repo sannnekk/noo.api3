@@ -1,10 +1,10 @@
+using Noo.Api.Core.Utils.Richtext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Utils;
-using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Support.DTO;
 using Noo.Api.Support.Models;
 using Noo.Api.Support.Services;
@@ -54,7 +54,7 @@ public class SupportServiceTests
         {
             Title = "How to use Noo",
             Order = 1,
-            Content = DeltaRichText.FromString("hello"),
+            Content = RichTextFactory.Create("hello"),
             IsActive = true,
             Category = SupportCategory.Works
         };

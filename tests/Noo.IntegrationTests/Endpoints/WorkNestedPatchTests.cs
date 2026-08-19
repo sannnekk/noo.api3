@@ -105,10 +105,10 @@ public class WorkNestedPatchTests : IClassFixture<ApiFactory>
             [
               { "op": "add", "path": "/tasks/{{t1}}", "value": {
                   "id": "{{t1}}", "type": "word", "order": 1, "maxScore": 3,
-                  "content": {"$type":"delta","ops":[{"insert":"t1\n"}]} } },
+                  "content": {"$type":"tiptap","type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"t1"}]}]} } },
               { "op": "add", "path": "/tasks/{{t2}}", "value": {
                   "id": "{{t2}}", "type": "word", "order": 2, "maxScore": 7,
-                  "content": {"$type":"delta","ops":[{"insert":"t2\n"}]} } }
+                  "content": {"$type":"tiptap","type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"t2"}]}]} } }
             ]
             """;
         (await PatchAsync(client.AsTeacher(), $"/work/{workId}", patch))
@@ -133,7 +133,7 @@ public class WorkNestedPatchTests : IClassFixture<ApiFactory>
         var patch = $$"""
             [
               { "op": "replace", "path": "/tasks/{{taskId}}/content",
-                "value": {"$type":"delta","ops":[{"insert":"updated question\n"}]} }
+                "value": {"$type":"tiptap","type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"updated question"}]}]} }
             ]
             """;
         (await PatchAsync(client.AsTeacher(), $"/work/{workId}", patch))
@@ -185,7 +185,7 @@ public class WorkNestedPatchTests : IClassFixture<ApiFactory>
               { "op": "replace", "path": "/title", "value": "Combined Update" },
               { "op": "add", "path": "/tasks/{{newTaskId}}", "value": {
                   "id": "{{newTaskId}}", "type": "word", "order": 1, "maxScore": 6,
-                  "content": {"$type":"delta","ops":[{"insert":"added\n"}]} } }
+                  "content": {"$type":"tiptap","type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"added"}]}]} } }
             ]
             """;
         (await PatchAsync(client.AsTeacher(), $"/work/{workId}", patch))
@@ -210,7 +210,7 @@ public class WorkNestedPatchTests : IClassFixture<ApiFactory>
         (await PatchAsync(client.AsTeacher(), $"/work/{workId}", $$"""
             [ { "op": "add", "path": "/tasks/{{dropId}}", "value": {
                   "id": "{{dropId}}", "type": "word", "order": 1, "maxScore": 10,
-                  "content": {"$type":"delta","ops":[{"insert":"x\n"}]} } } ]
+                  "content": {"$type":"tiptap","type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"x"}]}]} } } ]
             """)).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         (await PatchAsync(client.AsTeacher(), $"/work/{workId}",
@@ -254,7 +254,7 @@ public class WorkNestedPatchTests : IClassFixture<ApiFactory>
             [
               { "op": "replace", "path": "/tasks/{{taskId}}", "value": {
                   "id": "{{taskId}}", "type": "word", "order": 9, "maxScore": 11,
-                  "content": {"$type":"delta","ops":[{"insert":"rewritten\n"}]} } }
+                  "content": {"$type":"tiptap","type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"rewritten"}]}]} } }
             ]
             """;
         (await PatchAsync(client.AsTeacher(), $"/work/{workId}", patch))

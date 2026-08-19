@@ -1,5 +1,5 @@
+using Noo.Api.Core.Utils.Richtext;
 using AutoMapper;
-using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Snippets.DTO;
 using Noo.Api.Snippets.Models;
 using Noo.UnitTests.Common;
@@ -23,7 +23,7 @@ public class SnippetMapperProfileTests
         var dto = new CreateSnippetDTO
         {
             Name = "Title",
-            Content = DeltaRichText.FromString("abc")
+            Content = RichTextFactory.Create("abc")
         };
 
         var model = _mapper.Map<SnippetModel>(dto);
@@ -40,7 +40,7 @@ public class SnippetMapperProfileTests
         {
             Id = Ulid.NewUlid(),
             Name = "Old",
-            Content = DeltaRichText.FromString("abc"),
+            Content = RichTextFactory.Create("abc"),
             UserId = Ulid.NewUlid()
         };
 
@@ -62,7 +62,7 @@ public class SnippetMapperProfileTests
         {
             Id = Ulid.NewUlid(),
             Name = "N",
-            Content = DeltaRichText.FromString("abc"),
+            Content = RichTextFactory.Create("abc"),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

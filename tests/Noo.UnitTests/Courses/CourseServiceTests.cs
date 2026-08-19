@@ -1,3 +1,4 @@
+using Noo.Api.Core.Utils.Richtext;
 using AutoMapper;
 using Moq;
 using Noo.Api.Core.DataAbstraction.Db;
@@ -319,7 +320,7 @@ public class CourseServiceTests
 
         var dto = new CreateCourseMaterialContentDTO
         {
-            Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText(),
+            Content = Noo.Api.Core.Utils.Richtext.RichTextFactory.Create(),
         };
 
         var contentId = await service.CreateMaterialContentAsync(dto);
@@ -417,14 +418,14 @@ public class CourseServiceTests
             contentId = await service.CreateMaterialContentAsync(
                 new CreateCourseMaterialContentDTO
                 {
-                    Content = new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText(),
+                    Content = Noo.Api.Core.Utils.Richtext.RichTextFactory.Create(),
                 }
             );
             await uow.CommitAsync();
 
             var patch = new JsonPatchDocument<UpdateCourseMaterialContentDTO>();
 #pragma warning disable RCS1201 // Use met
-            patch.Replace(x => x.Content, new Noo.Api.Core.Utils.Richtext.Delta.DeltaRichText());
+            patch.Replace(x => x.Content, Noo.Api.Core.Utils.Richtext.RichTextFactory.Create());
 #pragma warning restore RCS1201 // Use method chaining
 
             await service.UpdateContentAsync(contentId, patch);
