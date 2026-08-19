@@ -181,6 +181,20 @@ public class AssignedWorkService : IAssignedWorkService
             }
         }
 
+        // A mentor's comment on the work is part of the check result: the student gets it
+        // once the work has been checked, not while it is still being written. Safe to strip
+        // in place only because the work is loaded untracked.
+        if (
+            _currentUser.UserRole == UserRoles.Student
+            && !AssignedWorkStatuses.Checked.Contains(assignedWork.CheckStatus)
+        )
+        {
+            assignedWork.MainMentorComment = null;
+            assignedWork.MainMentorCommentId = null;
+            assignedWork.HelperMentorComment = null;
+            assignedWork.HelperMentorCommentId = null;
+        }
+
         return assignedWork;
     }
 
@@ -442,39 +456,61 @@ public class AssignedWorkService : IAssignedWorkService
 
         assignedWork.ThrowNotFoundIfNull();
 
-        // Saving an answer is the implicit "started" signal: a student saving their answer starts
-        // solving, a mentor saving a comment/score starts checking. The event fires only on the
-        // first transition out of the not-started state.
-        switch (_currentUser.UserRole)
-        {
-            case UserRoles.Student:
-                if (assignedWork.SolveStatus == AssignedWorkSolveStatus.NotSolved)
-                {
-                    assignedWork.SolveStatus = AssignedWorkSolveStatus.InProgress;
-                    await _events.PublishAsync(
-                        new StartedSolvingEvent(assignedWork.Id, assignedWork.StudentId)
-                    );
-                }
-                break;
-            case UserRoles.Mentor:
-                if (assignedWork.CheckStatus == AssignedWorkCheckStatus.NotChecked)
-                {
-                    assignedWork.CheckStatus = AssignedWorkCheckStatus.InProgress;
-                    await _events.PublishAsync(
-                        new StartedCheckingEvent(assignedWork.Id, _currentUser.RequireUserId())
-                    );
-                }
-                break;
-        }
+        await MarkAsStartedAsync(assignedWork);
 
         return answerId;
     }
 
-    public Ulid SaveComment(Ulid assignedWorkId, UpsertAssignedWorkCommentDTO comment)
+    public async Task<Ulid> SaveCommentAsync(Ulid assignedWorkId, UpsertAssignedWorkCommentDTO dto)
     {
-        var commentEntity = _mapper.Map<AssignedWorkCommentModel>(comment);
-        _assignedWorkCommentRepository.Add(commentEntity);
-        return commentEntity.Id;
+        var userId = _currentUser.RequireUserId();
+
+        var assignedWork = await _assignedWorkRepository.GetWithCommentsAsync(
+            assignedWorkId,
+            userId
+        );
+
+        assignedWork.ThrowNotFoundIfNull();
+
+        // Everyone writing on a work has exactly one comment on it, and which one is decided
+        // by the seat they hold on that work — never by the id the client sent.
+        var seat = SeatOf(assignedWork, userId);
+
+        var comment = seat switch
+        {
+            CommentSeat.Student => assignedWork.StudentComment,
+            CommentSeat.MainMentor => assignedWork.MainMentorComment,
+            CommentSeat.HelperMentor => assignedWork.HelperMentorComment,
+            _ => throw new ForbiddenException(),
+        };
+
+        if (comment == null)
+        {
+            comment = _mapper.Map<AssignedWorkCommentModel>(dto);
+
+            _assignedWorkCommentRepository.Add(comment);
+
+            switch (seat)
+            {
+                case CommentSeat.Student:
+                    assignedWork.StudentComment = comment;
+                    break;
+                case CommentSeat.MainMentor:
+                    assignedWork.MainMentorComment = comment;
+                    break;
+                case CommentSeat.HelperMentor:
+                    assignedWork.HelperMentorComment = comment;
+                    break;
+            }
+        }
+        else
+        {
+            comment.Content = dto.Content;
+        }
+
+        await MarkAsStartedAsync(assignedWork);
+
+        return comment.Id;
     }
 
     public async Task ShiftDeadlineAsync(
@@ -567,6 +603,66 @@ public class AssignedWorkService : IAssignedWorkService
                 break;
             default:
                 throw new ForbiddenException();
+        }
+    }
+
+    /// <summary>
+    /// Which of the three comments on a work belongs to the given user.
+    /// </summary>
+    private enum CommentSeat
+    {
+        Student,
+        MainMentor,
+        HelperMentor,
+    }
+
+    private static CommentSeat SeatOf(AssignedWorkModel assignedWork, Ulid userId)
+    {
+        if (assignedWork.StudentId == userId)
+        {
+            return CommentSeat.Student;
+        }
+
+        if (assignedWork.MainMentorId == userId)
+        {
+            return CommentSeat.MainMentor;
+        }
+
+        if (assignedWork.HelperMentorId == userId)
+        {
+            return CommentSeat.HelperMentor;
+        }
+
+        throw new ForbiddenException();
+    }
+
+    /// <summary>
+    /// Writing on a work is the implicit "started" signal: a student saving an answer or a
+    /// comment starts solving, a mentor saving one starts checking. The event fires only on
+    /// the first transition out of the not-started state.
+    /// </summary>
+    private async Task MarkAsStartedAsync(AssignedWorkModel assignedWork)
+    {
+        switch (_currentUser.UserRole)
+        {
+            case UserRoles.Student:
+                if (assignedWork.SolveStatus == AssignedWorkSolveStatus.NotSolved)
+                {
+                    assignedWork.SolveStatus = AssignedWorkSolveStatus.InProgress;
+                    await _events.PublishAsync(
+                        new StartedSolvingEvent(assignedWork.Id, assignedWork.StudentId)
+                    );
+                }
+                break;
+            case UserRoles.Mentor:
+                if (assignedWork.CheckStatus == AssignedWorkCheckStatus.NotChecked)
+                {
+                    assignedWork.CheckStatus = AssignedWorkCheckStatus.InProgress;
+                    await _events.PublishAsync(
+                        new StartedCheckingEvent(assignedWork.Id, _currentUser.RequireUserId())
+                    );
+                }
+                break;
         }
     }
 

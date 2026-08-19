@@ -12,6 +12,7 @@ using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Utils;
+using Noo.Api.Core.Utils.Richtext;
 using Noo.Api.Core.Utils.Richtext.Delta;
 using Noo.Api.Courses.Models;
 using Noo.Api.Courses.Services;
@@ -612,18 +613,6 @@ public class AssignedWorkServiceTests
         await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(() => svc.SaveAnswerAsync(ownAw.Id, dto));
     }
 
-    [Fact]
-    public async Task SaveComment_Assumes_Behavior_Returns_Id()
-    {
-        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
-        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
-        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
-        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
-        var commentDto = new UpsertAssignedWorkCommentDTO();
-        var id = svc.SaveComment(aw.Id, commentDto);
-        Assert.NotEqual(default, id);
-    }
-
     // Builds a service that exposes the work-assignment repository mock, needed only by CreateAsync.
     private static (AssignedWorkService svc, NooDbContext ctx, Mock<ICourseWorkAssignmentRepository> workAssignmentMock, CapturingPublisher publisher) CreateServiceWithWorkAssignment(UserRoles role, Ulid userId)
     {
@@ -717,6 +706,116 @@ public class AssignedWorkServiceTests
         await svc.SaveAnswerAsync(aw.Id, new UpsertAssignedWorkAnswerDTO { Id = answer.Id, TaskId = answer.TaskId, Status = AssignedWorkAnswerStatus.Submitted, MaxScore = 10, Score = 8 });
         await ctx.SaveChangesAsync();
         Assert.Single(publisher.Published.OfType<StartedCheckingEvent>());
+    }
+
+    [Fact]
+    public async Task SaveComment_AsStudent_Creates_Then_Updates_The_Student_Comment()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid());
+
+        var id = await svc.SaveCommentAsync(aw.Id, new UpsertAssignedWorkCommentDTO { Content = RichTextFactory.Create("first") });
+        await ctx.SaveChangesAsync();
+
+        var created = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
+        Assert.Equal(id, created!.StudentCommentId);
+        Assert.Null(created.MainMentorCommentId);
+
+        // The same seat writing again must edit the comment in place, not add a second one.
+        var secondId = await svc.SaveCommentAsync(aw.Id, new UpsertAssignedWorkCommentDTO { Content = RichTextFactory.Create("second") });
+        await ctx.SaveChangesAsync();
+
+        Assert.Equal(id, secondId);
+        Assert.Single(ctx.GetDbSet<AssignedWorkCommentModel>());
+        var comment = await ctx.GetDbSet<AssignedWorkCommentModel>().FindAsync(id);
+        Assert.Equal("second", comment!.Content!.ToString());
+    }
+
+    [Fact]
+    public async Task SaveComment_Writes_The_Seat_The_Caller_Holds_On_The_Work()
+    {
+        var studentId = Ulid.NewUlid();
+        var mainMentor = Ulid.NewUlid();
+        var helperMentor = Ulid.NewUlid();
+
+        var (mainSvc, ctx, _, mainUser, _) = CreateService(UserRoles.Mentor, mainMentor);
+        var aw = SeedAssignedWork(ctx, studentId, mainMentor, helperMentor);
+        mainUser.SetupGet(c => c.UserId).Returns(mainMentor);
+
+        var mainId = await mainSvc.SaveCommentAsync(aw.Id, new UpsertAssignedWorkCommentDTO { Content = RichTextFactory.Create("main") });
+        await ctx.SaveChangesAsync();
+
+        var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
+        Assert.Equal(mainId, updated!.MainMentorCommentId);
+        Assert.Null(updated.HelperMentorCommentId);
+        Assert.Null(updated.StudentCommentId);
+
+        mainUser.SetupGet(c => c.UserId).Returns(helperMentor);
+
+        var helperId = await mainSvc.SaveCommentAsync(aw.Id, new UpsertAssignedWorkCommentDTO { Content = RichTextFactory.Create("helper") });
+        await ctx.SaveChangesAsync();
+
+        Assert.NotEqual(mainId, helperId);
+        Assert.Equal(helperId, updated.HelperMentorCommentId);
+    }
+
+    [Fact]
+    public async Task SaveComment_Throws_NotFound_When_Caller_Is_Not_On_The_Work()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        currentUser.SetupGet(c => c.UserId).Returns(Ulid.NewUlid());
+        var aw = SeedAssignedWork(ctx, Ulid.NewUlid(), Ulid.NewUlid());
+
+        await Assert.ThrowsAsync<Noo.Api.Core.Exceptions.Http.NotFoundException>(
+            () => svc.SaveCommentAsync(aw.Id, new UpsertAssignedWorkCommentDTO { Content = RichTextFactory.Create("nope") })
+        );
+    }
+
+    [Fact]
+    public async Task SaveComment_AsMentor_Publishes_StartedChecking_Only_On_First_Save()
+    {
+        var (svc, ctx, _, currentUser, publisher) = CreateService(UserRoles.Mentor);
+        var mentor = MakeUser(UserRoles.Mentor); ctx.GetDbSet<UserModel>().Add(mentor); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(mentor.Id);
+        var aw = SeedAssignedWork(ctx, studentId: Ulid.NewUlid(), mainMentorId: mentor.Id, solveStatus: AssignedWorkSolveStatus.SolvedInDeadline);
+
+        await svc.SaveCommentAsync(aw.Id, new UpsertAssignedWorkCommentDTO { Content = RichTextFactory.Create("checking") });
+        await ctx.SaveChangesAsync();
+
+        var started = Assert.Single(publisher.Published.OfType<StartedCheckingEvent>());
+        Assert.Equal(mentor.Id, started.MentorId);
+        var updated = await ctx.GetDbSet<AssignedWorkModel>().FindAsync(aw.Id);
+        Assert.Equal(AssignedWorkCheckStatus.InProgress, updated!.CheckStatus);
+
+        await svc.SaveCommentAsync(aw.Id, new UpsertAssignedWorkCommentDTO { Content = RichTextFactory.Create("still checking") });
+        await ctx.SaveChangesAsync();
+        Assert.Single(publisher.Published.OfType<StartedCheckingEvent>());
+    }
+
+    [Fact]
+    public async Task Get_Hides_Mentor_Comments_From_The_Student_Until_The_Work_Is_Checked()
+    {
+        var (svc, ctx, _, currentUser, _) = CreateService(UserRoles.Student);
+        var student = MakeUser(UserRoles.Student); ctx.GetDbSet<UserModel>().Add(student); ctx.SaveChanges();
+        currentUser.SetupGet(c => c.UserId).Returns(student.Id);
+        var aw = SeedAssignedWork(ctx, student.Id, Ulid.NewUlid(), solveStatus: AssignedWorkSolveStatus.SolvedInDeadline);
+        var mentorComment = new AssignedWorkCommentModel { Content = RichTextFactory.Create("draft") };
+        ctx.GetDbSet<AssignedWorkCommentModel>().Add(mentorComment);
+        aw.MainMentorCommentId = mentorComment.Id;
+        ctx.SaveChanges();
+
+        var hidden = await svc.GetAsync(aw.Id);
+        Assert.Null(hidden!.MainMentorComment);
+        Assert.Null(hidden.MainMentorCommentId);
+
+        aw.CheckStatus = AssignedWorkCheckStatus.CheckedInDeadline;
+        ctx.SaveChanges();
+
+        var shown = await svc.GetAsync(aw.Id);
+        Assert.Equal(mentorComment.Id, shown!.MainMentorCommentId);
+        Assert.Equal("draft", shown.MainMentorComment!.Content!.ToString());
     }
 
     [Fact]

@@ -18,7 +18,7 @@ public class AssignedWorkMapperProfile : Profile
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
 
         CreateMap<UpsertAssignedWorkCommentDTO, AssignedWorkCommentModel>()
-            .ForMember(dest => dest.Id, opt => opt.MapFrom(_ => Ulid.NewUlid()))
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.AssignedWorkAsHelperMentor, opt => opt.Ignore())
             .ForMember(dest => dest.AssignedWorkAsMainMentor, opt => opt.Ignore())
             .ForMember(dest => dest.AssignedWorkAsStudent, opt => opt.Ignore())
@@ -26,6 +26,8 @@ public class AssignedWorkMapperProfile : Profile
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
 
         CreateMap<AssignedWorkModel, AssignedWorkDTO>();
+
+        CreateMap<AssignedWorkCommentModel, AssignedWorkCommentDTO>();
 
         CreateMap<AssignedWorkAnswerModel, AssignedWorkAnswerDTO>();
 

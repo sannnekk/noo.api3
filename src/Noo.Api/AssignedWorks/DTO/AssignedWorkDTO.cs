@@ -83,6 +83,15 @@ public record AssignedWorkDTO : IHasPresignedMedia
     [JsonPropertyName("helperMentorCommentId")]
     public Ulid? HelperMentorCommentId { get; init; }
 
+    [JsonPropertyName("studentComment")]
+    public AssignedWorkCommentDTO? StudentComment { get; init; }
+
+    [JsonPropertyName("mainMentorComment")]
+    public AssignedWorkCommentDTO? MainMentorComment { get; init; }
+
+    [JsonPropertyName("helperMentorComment")]
+    public AssignedWorkCommentDTO? HelperMentorComment { get; init; }
+
     [Required]
     [JsonPropertyName("studentId")]
     public Ulid StudentId { get; init; }

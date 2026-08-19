@@ -33,6 +33,12 @@ public interface IAssignedWorkRepository : IRepository<AssignedWorkModel>
     public Task<AssignedWorkModel?> GetWholeAsync(Ulid assignedWorkId);
 
     /// <summary>
+    /// Tracked load (for mutation) of the assigned work together with the three comments
+    /// written on it, restricted to works the given user participates in as student or mentor.
+    /// </summary>
+    public Task<AssignedWorkModel?> GetWithCommentsAsync(Ulid assignedWorkId, Ulid? userId);
+
+    /// <summary>
     /// Tracked load (for mutation) of the assigned work together with its answers,
     /// restricted to works the given user participates in as student or mentor.
     /// </summary>

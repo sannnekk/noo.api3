@@ -241,10 +241,10 @@ public class AssignedWorkController : ApiController
     }
 
     /// <summary>
-    /// Saves a comment to an assigned work.
-    /// This is used by both students and mentors to comment on an assigned work.
-    /// If the comment already exists, it will be updated.
-    /// If the comment does not exist, it will be created.
+    /// Saves the caller's comment on an assigned work as a whole.
+    /// A work carries one comment per participant — the student's, the main mentor's and the
+    /// helper mentor's — and the caller's seat on the work decides which one is written.
+    /// If that comment already exists, it will be updated, otherwise it will be created.
     /// </summary>
     /// <remarks>
     /// It will also update the status of the assigned work to "In Progress" if it was not already.
@@ -260,12 +260,12 @@ public class AssignedWorkController : ApiController
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public IActionResult CommentAssignedWork(
+    public async Task<IActionResult> CommentAssignedWorkAsync(
         [FromRoute] Ulid assignedWorkId,
         [FromBody] UpsertAssignedWorkCommentDTO comment
     )
     {
-        var id = _assignedWorkService.SaveComment(assignedWorkId, comment);
+        var id = await _assignedWorkService.SaveCommentAsync(assignedWorkId, comment);
 
         return SendResponse(id);
     }

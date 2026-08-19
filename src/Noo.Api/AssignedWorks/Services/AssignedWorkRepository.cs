@@ -86,8 +86,34 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
             .Include(aw => aw.HelperMentor)
             .Include(aw => aw.Work)
                 .ThenInclude(w => w!.Tasks)
+            .Include(aw => aw.StudentComment)
+            .Include(aw => aw.MainMentorComment)
+            .Include(aw => aw.HelperMentorComment)
             .AsSplitQuery() //! To avoid Cartesian product issues, DO NOT REMOVE
             .AsNoTracking()
+            .FirstOrDefaultAsync();
+    }
+
+    public Task<AssignedWorkModel?> GetWithCommentsAsync(Ulid assignedWorkId, Ulid? userId)
+    {
+        if (userId == null)
+        {
+            return Task.FromResult<AssignedWorkModel?>(null);
+        }
+
+        return Context
+            .Set<AssignedWorkModel>()
+            .Where(aw =>
+                aw.Id == assignedWorkId
+                && (
+                    aw.StudentId == userId
+                    || aw.MainMentorId == userId
+                    || aw.HelperMentorId == userId
+                )
+            )
+            .Include(aw => aw.StudentComment)
+            .Include(aw => aw.MainMentorComment)
+            .Include(aw => aw.HelperMentorComment)
             .FirstOrDefaultAsync();
     }
 
