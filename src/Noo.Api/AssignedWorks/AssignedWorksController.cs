@@ -20,17 +20,29 @@ public class AssignedWorkController : ApiController
 {
     private readonly IAssignedWorkService _assignedWorkService;
 
+    private readonly IAssignedWorkLifecycleService _lifecycleService;
+
+    private readonly IAssignedWorkEditingService _editingService;
+
+    private readonly IAssignedWorkMentorService _mentorService;
+
     private readonly IAssignedWorkHistoryService _assignedWorkHistoryService;
 
     public AssignedWorkController(
         IAssignedWorkService assignedWorkService,
+        IAssignedWorkLifecycleService lifecycleService,
+        IAssignedWorkEditingService editingService,
+        IAssignedWorkMentorService mentorService,
         IAssignedWorkHistoryService historyService,
         IMapper mapper
     )
         : base(mapper)
     {
-        _assignedWorkHistoryService = historyService;
         _assignedWorkService = assignedWorkService;
+        _lifecycleService = lifecycleService;
+        _editingService = editingService;
+        _mentorService = mentorService;
+        _assignedWorkHistoryService = historyService;
     }
 
     /// <summary>
@@ -98,7 +110,7 @@ public class AssignedWorkController : ApiController
     [Authorize(Policy = AssignedWorkPolicies.CanCreateAssignedWork)]
     [Produces(
         typeof(ApiResponseDTO<IdResponseDTO>),
-        StatusCodes.Status200OK,
+        StatusCodes.Status201Created,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -193,7 +205,7 @@ public class AssignedWorkController : ApiController
     [Authorize(Policy = AssignedWorkPolicies.CanRemakeAssignedWork)]
     [Produces(
         typeof(ApiResponseDTO<IdResponseDTO>),
-        StatusCodes.Status200OK,
+        StatusCodes.Status201Created,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -224,7 +236,7 @@ public class AssignedWorkController : ApiController
     [Authorize(Policy = AssignedWorkPolicies.CanEditAssignedWork)]
     [Produces(
         typeof(ApiResponseDTO<IdResponseDTO>),
-        StatusCodes.Status200OK,
+        StatusCodes.Status201Created,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -235,7 +247,7 @@ public class AssignedWorkController : ApiController
         [FromBody] UpsertAssignedWorkAnswerDTO answer
     )
     {
-        var id = await _assignedWorkService.SaveAnswerAsync(assignedWorkId, answer);
+        var id = await _editingService.SaveAnswerAsync(assignedWorkId, answer);
 
         return SendResponse(id);
     }
@@ -254,7 +266,7 @@ public class AssignedWorkController : ApiController
     [Authorize(Policy = AssignedWorkPolicies.CanCommentAssignedWork)]
     [Produces(
         typeof(ApiResponseDTO<IdResponseDTO>),
-        StatusCodes.Status200OK,
+        StatusCodes.Status201Created,
         StatusCodes.Status400BadRequest,
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden,
@@ -265,7 +277,7 @@ public class AssignedWorkController : ApiController
         [FromBody] UpsertAssignedWorkCommentDTO comment
     )
     {
-        var id = await _assignedWorkService.SaveCommentAsync(assignedWorkId, comment);
+        var id = await _editingService.SaveCommentAsync(assignedWorkId, comment);
 
         return SendResponse(id);
     }
@@ -286,7 +298,7 @@ public class AssignedWorkController : ApiController
     )]
     public async Task<IActionResult> MarkAssignedWorkAsSolvedAsync([FromRoute] Ulid assignedWorkId)
     {
-        await _assignedWorkService.MarkAsSolvedAsync(assignedWorkId);
+        await _lifecycleService.MarkAsSolvedAsync(assignedWorkId);
 
         return SendResponse();
     }
@@ -307,7 +319,7 @@ public class AssignedWorkController : ApiController
     )]
     public async Task<IActionResult> MarkAssignedWorkAsCheckedAsync([FromRoute] Ulid assignedWorkId)
     {
-        await _assignedWorkService.MarkAsCheckedAsync(assignedWorkId);
+        await _lifecycleService.MarkAsCheckedAsync(assignedWorkId);
 
         return SendResponse();
     }
@@ -381,7 +393,7 @@ public class AssignedWorkController : ApiController
         [FromBody] AddHelperMentorOptionsDTO options
     )
     {
-        await _assignedWorkService.AddHelperMentorAsync(assignedWorkId, options);
+        await _mentorService.AddHelperMentorAsync(assignedWorkId, options);
 
         return SendResponse();
     }
@@ -405,7 +417,7 @@ public class AssignedWorkController : ApiController
         [FromBody] ReplaceMainMentorOptionsDTO options
     )
     {
-        await _assignedWorkService.ReplaceMainMentorAsync(assignedWorkId, options);
+        await _mentorService.ReplaceMainMentorAsync(assignedWorkId, options);
 
         return SendResponse();
     }
@@ -429,7 +441,7 @@ public class AssignedWorkController : ApiController
         [FromBody] ShiftAssignedWorkDeadlineOptionsDTO options
     )
     {
-        await _assignedWorkService.ShiftDeadlineAsync(assignedWorkId, options);
+        await _lifecycleService.ShiftDeadlineAsync(assignedWorkId, options);
 
         return SendResponse();
     }
@@ -451,7 +463,7 @@ public class AssignedWorkController : ApiController
     )]
     public async Task<IActionResult> ReturnAssignedWorkToSolveAsync([FromRoute] Ulid assignedWorkId)
     {
-        await _assignedWorkService.ReturnToSolveAsync(assignedWorkId);
+        await _lifecycleService.ReturnToSolveAsync(assignedWorkId);
 
         return SendResponse();
     }
@@ -473,7 +485,7 @@ public class AssignedWorkController : ApiController
     )]
     public async Task<IActionResult> ReturnAssignedWorkToCheckAsync([FromRoute] Ulid assignedWorkId)
     {
-        await _assignedWorkService.ReturnToCheckAsync(assignedWorkId);
+        await _lifecycleService.ReturnToCheckAsync(assignedWorkId);
 
         return SendResponse();
     }

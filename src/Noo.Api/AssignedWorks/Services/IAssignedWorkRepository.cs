@@ -1,7 +1,6 @@
 using System.Linq.Expressions;
 using Noo.Api.AssignedWorks.DTO;
 using Noo.Api.AssignedWorks.Models;
-using Noo.Api.AssignedWorks.Types;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Users.Models;
 using Noo.Api.Works.Types;
@@ -18,18 +17,12 @@ public interface IAssignedWorkRepository : IRepository<AssignedWorkModel>
         Ulid userId
     );
     public Task<int> GetCurrentAttemptAsync(Ulid workAssignmentId, Ulid userId);
-    public Task<AssignedWorkModel?> GetAsync(Ulid assignedWorkId);
+
+    /// <summary>
+    /// Tracked load (for mutation) of the assigned work, restricted to works the given user
+    /// participates in as student or mentor.
+    /// </summary>
     public Task<AssignedWorkModel?> GetAsync(Ulid assignedWorkId, Ulid? userId);
-    public Task<bool> IsMentorOwnWorkAsync(Ulid assignedWorkId, Ulid userId);
-    public Task<bool> IsStudentOwnWorkAsync(Ulid assignedWorkId, Ulid userId);
-    public Task<bool> IsWorkCheckStatusAsync(
-        Ulid assignedWorkId,
-        IReadOnlyCollection<AssignedWorkCheckStatus> statuses
-    );
-    public Task<bool> IsWorkSolveStatusAsync(
-        Ulid assignedWorkId,
-        IReadOnlyCollection<AssignedWorkSolveStatus> statuses
-    );
     public Task<AssignedWorkModel?> GetWholeAsync(Ulid assignedWorkId);
 
     /// <summary>
@@ -49,7 +42,6 @@ public interface IAssignedWorkRepository : IRepository<AssignedWorkModel>
     /// and the work's tasks. Used by the solve flow to run the automatic check.
     /// </summary>
     public Task<AssignedWorkModel?> GetWithAnswersAndTasksAsync(Ulid assignedWorkId);
-    public Task<AssignedWorkModel?> GetWithStudentAsync(Ulid assignedWorkId);
     public Task<int> GetCountAsync(
         Expression<Func<AssignedWorkModel, bool>> predicate,
         DateTime from,

@@ -1,4 +1,3 @@
-using AutoMapper;
 using Noo.Api.AssignedWorks.DTO;
 using Noo.Api.AssignedWorks.Events;
 using Noo.Api.AssignedWorks.Exceptions;
@@ -12,12 +11,10 @@ using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.System.Events;
-using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Courses.Services;
 using Noo.Api.Users.Models;
 using Noo.Api.Users.Services;
-using Noo.Api.Works.Models;
 
 namespace Noo.Api.AssignedWorks.Services;
 
@@ -28,42 +25,30 @@ public class AssignedWorkService : IAssignedWorkService
 
     private readonly IAssignedWorkRepository _assignedWorkRepository;
     private readonly IAssignedWorkAnswerRepository _assignedWorkAnswerRepository;
-    private readonly IAssignedWorkCommentRepository _assignedWorkCommentRepository;
     private readonly ICourseWorkAssignmentRepository _workAssignmentRepository;
     private readonly IMentorAssignmentRepository _mentorAssignmentRepository;
-    private readonly IUserRepository _userRepository;
     private readonly IAssignedWorkAccessService _access;
-    private readonly ITaskCheckService _taskCheckService;
     private readonly ICurrentUser _currentUser;
-    private readonly IMapper _mapper;
     private readonly IEventPublisher _events;
     private readonly ICacheRepository _cache;
 
     public AssignedWorkService(
         IAssignedWorkRepository assignedWorkRepository,
         IAssignedWorkAnswerRepository assignedWorkAnswerRepository,
-        IAssignedWorkCommentRepository assignedWorkCommentRepository,
         ICourseWorkAssignmentRepository workAssignmentRepository,
         IMentorAssignmentRepository mentorAssignmentRepository,
-        IUserRepository userRepository,
         IAssignedWorkAccessService access,
-        ITaskCheckService taskCheckService,
         ICurrentUser currentUser,
-        IMapper mapper,
         IEventPublisher events,
         ICacheRepository cache
     )
     {
         _assignedWorkRepository = assignedWorkRepository;
         _assignedWorkAnswerRepository = assignedWorkAnswerRepository;
-        _assignedWorkCommentRepository = assignedWorkCommentRepository;
         _workAssignmentRepository = workAssignmentRepository;
         _mentorAssignmentRepository = mentorAssignmentRepository;
-        _userRepository = userRepository;
         _access = access;
-        _taskCheckService = taskCheckService;
         _currentUser = currentUser;
-        _mapper = mapper;
         _events = events;
         _cache = cache;
     }
@@ -112,58 +97,6 @@ public class AssignedWorkService : IAssignedWorkService
         return newAssignedWork.Id;
     }
 
-    public async Task AddHelperMentorAsync(Ulid assignedWorkId, AddHelperMentorOptionsDTO options)
-    {
-        var assignedWork = await _assignedWorkRepository.GetByIdAsync(assignedWorkId);
-
-        assignedWork.ThrowNotFoundIfNull();
-
-        if (!_access.CanAssignHelperMentor(assignedWork))
-        {
-            throw new ForbiddenException();
-        }
-
-        if (
-            assignedWork.MainMentorId == options.MentorId
-            || assignedWork.HelperMentorId == options.MentorId
-        )
-        {
-            return;
-        }
-
-        if (!await _userRepository.MentorExistsAsync(options.MentorId))
-        {
-            throw new NotFoundException();
-        }
-
-        assignedWork.HelperMentorId = options.MentorId;
-
-        await _events.PublishAsync(
-            new HelperMentorAddedEvent(
-                assignedWork.Id,
-                options.MentorId,
-                _currentUser.RequireUserId()
-            )
-        );
-    }
-
-    public async Task DeleteAsync(Ulid assignedWorkId)
-    {
-        var assignedWork = await _assignedWorkRepository.GetByIdAsync(assignedWorkId);
-
-        if (assignedWork == null)
-        {
-            return;
-        }
-
-        if (!_access.CanDelete(assignedWork))
-        {
-            throw new AssignedWorkAlreadySolvedException();
-        }
-
-        _assignedWorkRepository.DeleteById(assignedWorkId);
-    }
-
     public async Task<AssignedWorkModel?> GetAsync(Ulid assignedWorkId)
     {
         var assignedWork = await _assignedWorkRepository.GetWholeAsync(assignedWorkId);
@@ -208,17 +141,6 @@ public class AssignedWorkService : IAssignedWorkService
         return assignedWork;
     }
 
-    public async Task<AssignedWorksMetadataDTO> GetMetadataAsync(Ulid userId)
-    {
-        var counts = await _cache.GetOrSetAsync(
-            MetadataCacheKey(userId),
-            () => _assignedWorkRepository.GetCountsForUserAsync(userId),
-            _metadataCacheTtl
-        );
-
-        return new AssignedWorksMetadataDTO { Counts = counts ?? new AssignedWorksCounts() };
-    }
-
     public Task<List<AssignedWorkModel>> GetByWorkAssignmentAsync(Ulid workAssignmentId)
     {
         var userId = _currentUser.RequireUserId();
@@ -234,88 +156,15 @@ public class AssignedWorkService : IAssignedWorkService
         return _assignedWorkRepository.SearchAsync(filter, [specification]);
     }
 
-    public async Task MarkAsCheckedAsync(Ulid assignedWorkId)
+    public async Task<AssignedWorksMetadataDTO> GetMetadataAsync(Ulid userId)
     {
-        var userId = _currentUser.RequireUserId();
-
-        var assignedWork = await _assignedWorkRepository.GetWithAnswersAsync(
-            assignedWorkId,
-            userId
+        var counts = await _cache.GetOrSetAsync(
+            MetadataCacheKey(userId),
+            () => _assignedWorkRepository.GetCountsForUserAsync(userId),
+            _metadataCacheTtl
         );
 
-        assignedWork.ThrowNotFoundIfNull();
-
-        if (!assignedWork.IsSolved)
-        {
-            throw new AssignedWorkNotSolvedException();
-        }
-
-        if (assignedWork.IsChecked)
-        {
-            throw new AssignedWorkAlreadyCheckedException();
-        }
-
-        var checkedAt = Clock.Now;
-
-        MarkAnswersAsChecked(assignedWork);
-
-        assignedWork.CheckedAt = checkedAt;
-        assignedWork.CheckStatus = AssignedWorkStatuses.CheckedAt(
-            checkedAt,
-            assignedWork.CheckDeadlineAt
-        );
-
-        await _events.PublishAsync(new CheckedEvent(assignedWork.Id, userId));
-    }
-
-    public async Task MarkAsSolvedAsync(Ulid assignedWorkId)
-    {
-        var assignedWork = await _assignedWorkRepository.GetWithAnswersAndTasksAsync(
-            assignedWorkId
-        );
-
-        assignedWork.ThrowNotFoundIfNull();
-
-        if (_currentUser.UserId != assignedWork.StudentId)
-        {
-            throw new NotFoundException();
-        }
-
-        if (assignedWork.IsSolved)
-        {
-            throw new AssignedWorkAlreadySolvedException();
-        }
-
-        foreach (var answer in assignedWork.Answers)
-        {
-            answer.Status = AssignedWorkAnswerStatus.Submitted;
-        }
-
-        var check = _taskCheckService.CheckTasks(
-            assignedWork.Answers,
-            AssignedTasksOf(assignedWork)
-        );
-
-        var solvedAt = Clock.Now;
-
-        assignedWork.Score = check.Score;
-        assignedWork.SolvedAt = solvedAt;
-        assignedWork.SolveStatus = AssignedWorkStatuses.SolvedAt(
-            solvedAt,
-            assignedWork.SolveDeadlineAt
-        );
-
-        await _events.PublishAsync(new SolvedEvent(assignedWork.Id, assignedWork.StudentId));
-
-        if (check.IsComplete)
-        {
-            MarkAnswersAsChecked(assignedWork);
-
-            assignedWork.CheckedAt = solvedAt;
-            assignedWork.CheckStatus = AssignedWorkCheckStatus.CheckedAutomatically;
-
-            await _events.PublishAsync(new CheckedEvent(assignedWork.Id, null));
-        }
+        return new AssignedWorksMetadataDTO { Counts = counts ?? new AssignedWorksCounts() };
     }
 
     public async Task<Ulid> RemakeAsync(Ulid assignedWorkId, RemakeAssignedWorkOptionsDTO options)
@@ -337,7 +186,9 @@ public class AssignedWorkService : IAssignedWorkService
         if (options.IncludeOnlyWrongTasks)
         {
             newAssignedWork.ExcludedTaskIds =
-                await _assignedWorkAnswerRepository.GetCorrectAnswerIdsAsync(assignedWorkId);
+                await _assignedWorkAnswerRepository.GetCorrectlyAnsweredTaskIdsAsync(
+                    assignedWorkId
+                );
         }
 
         _assignedWorkRepository.Add(newAssignedWork);
@@ -345,231 +196,26 @@ public class AssignedWorkService : IAssignedWorkService
         return newAssignedWork.Id;
     }
 
-    public async Task ReplaceMainMentorAsync(
-        Ulid assignedWorkId,
-        ReplaceMainMentorOptionsDTO options
-    )
-    {
-        // Loaded whole rather than as one of the caller's own works: this is staff's call to
-        // make, and they are on nobody's work.
-        var assignedWork = await _assignedWorkRepository.GetByIdAsync(assignedWorkId);
-
-        assignedWork.ThrowNotFoundIfNull();
-
-        if (!_access.CanAssignMainMentor(assignedWork))
-        {
-            throw new ForbiddenException();
-        }
-
-        if (
-            assignedWork.MainMentorId == options.MentorId
-            || assignedWork.HelperMentorId == options.MentorId
-        )
-        {
-            return; // Mentor is already assigned to this work, nothing to replace
-        }
-
-        if (!await _userRepository.MentorExistsAsync(options.MentorId))
-        {
-            throw new NotFoundException();
-        }
-
-        var previousMainMentorId = assignedWork.MainMentorId;
-        assignedWork.MainMentorId = options.MentorId;
-
-        await _events.PublishAsync(
-            new MainMentorChangedEvent(
-                assignedWork.Id,
-                options.MentorId,
-                previousMainMentorId,
-                _currentUser.RequireUserId()
-            )
-        );
-    }
-
-    public async Task ReturnToCheckAsync(Ulid assignedWorkId)
-    {
-        var assignedWork = await _assignedWorkRepository.GetAsync(
-            assignedWorkId,
-            _currentUser.UserId
-        );
-
-        assignedWork.ThrowNotFoundIfNull();
-
-        if (!assignedWork.IsChecked)
-        {
-            throw new AssignedWorkNotCheckedException();
-        }
-
-        assignedWork.CheckedAt = null;
-        assignedWork.CheckStatus = AssignedWorkCheckStatus.NotChecked;
-
-        await _events.PublishAsync(
-            new SentOnRecheckEvent(assignedWork.Id, _currentUser.RequireUserId())
-        );
-    }
-
-    public async Task ReturnToSolveAsync(Ulid assignedWorkId)
-    {
-        var assignedWork = await _assignedWorkRepository.GetAsync(
-            assignedWorkId,
-            _currentUser.UserId
-        );
-
-        assignedWork.ThrowNotFoundIfNull();
-
-        if (!assignedWork.IsSolved)
-        {
-            throw new AssignedWorkNotSolvedException();
-        }
-
-        assignedWork.CheckedAt = null;
-        assignedWork.CheckStatus = AssignedWorkCheckStatus.NotChecked;
-        assignedWork.Score = null;
-
-        assignedWork.SolvedAt = null;
-        assignedWork.SolveStatus = AssignedWorkSolveStatus.InProgress;
-
-        await _events.PublishAsync(
-            new SentOnResolveEvent(assignedWork.Id, _currentUser.RequireUserId())
-        );
-    }
-
-    public async Task<Ulid> SaveAnswerAsync(Ulid assignedWorkId, UpsertAssignedWorkAnswerDTO dto)
-    {
-        Ulid answerId;
-
-        // It's an update to an existing answer (e.g. a student editing or a mentor commenting).
-        if (dto.Id.HasValue)
-        {
-            var existing = await _assignedWorkAnswerRepository.GetByIdAsync(dto.Id.Value);
-
-            existing.ThrowNotFoundIfNull();
-
-            if (existing.AssignedWorkId != assignedWorkId)
-            {
-                throw new NotFoundException();
-            }
-
-            _mapper.Map(dto, existing);
-            answerId = existing.Id;
-        }
-        else
-        {
-            var answer = _mapper.Map<AssignedWorkAnswerModel>(dto);
-
-            answer.AssignedWorkId = assignedWorkId;
-            _assignedWorkAnswerRepository.Add(answer);
-            answerId = answer.Id;
-        }
-
-        var assignedWork = await _assignedWorkRepository.GetAsync(
-            assignedWorkId,
-            _currentUser.UserId
-        );
-
-        assignedWork.ThrowNotFoundIfNull();
-
-        await MarkAsStartedAsync(assignedWork);
-
-        return answerId;
-    }
-
-    public async Task<Ulid> SaveCommentAsync(Ulid assignedWorkId, UpsertAssignedWorkCommentDTO dto)
-    {
-        var userId = _currentUser.RequireUserId();
-
-        var assignedWork = await _assignedWorkRepository.GetWithCommentsAsync(
-            assignedWorkId,
-            userId
-        );
-
-        assignedWork.ThrowNotFoundIfNull();
-
-        // Everyone writing on a work has exactly one comment on it, and which one is decided
-        // by the seat they hold on that work — never by the id the client sent.
-        var seat = SeatOf(assignedWork, userId);
-
-        var comment = seat switch
-        {
-            CommentSeat.Student => assignedWork.StudentComment,
-            CommentSeat.MainMentor => assignedWork.MainMentorComment,
-            CommentSeat.HelperMentor => assignedWork.HelperMentorComment,
-            _ => throw new ForbiddenException(),
-        };
-
-        if (comment == null)
-        {
-            comment = _mapper.Map<AssignedWorkCommentModel>(dto);
-
-            _assignedWorkCommentRepository.Add(comment);
-
-            switch (seat)
-            {
-                case CommentSeat.Student:
-                    assignedWork.StudentComment = comment;
-                    break;
-                case CommentSeat.MainMentor:
-                    assignedWork.MainMentorComment = comment;
-                    break;
-                case CommentSeat.HelperMentor:
-                    assignedWork.HelperMentorComment = comment;
-                    break;
-            }
-        }
-        else
-        {
-            comment.Content = dto.Content;
-        }
-
-        await MarkAsStartedAsync(assignedWork);
-
-        return comment.Id;
-    }
-
-    public async Task ShiftDeadlineAsync(
-        Ulid assignedWorkId,
-        ShiftAssignedWorkDeadlineOptionsDTO options
-    )
-    {
-        var userId = _currentUser.RequireUserId();
-
-        var assignedWork = await _assignedWorkRepository.GetAsync(assignedWorkId, userId);
-
-        assignedWork.ThrowNotFoundIfNull();
-
-        switch (_currentUser.UserRole)
-        {
-            case UserRoles.Student:
-                AssertCorrectStudentDeadlineShift(assignedWork, options.NewDeadline);
-                assignedWork.SolveDeadlineAt = options.NewDeadline;
-                assignedWork.IsSolveDeadlineShifted = true;
-                break;
-            case UserRoles.Mentor:
-                AssertCorrectMentorDeadlineShift(assignedWork, options.NewDeadline);
-                assignedWork.CheckDeadlineAt = options.NewDeadline;
-                assignedWork.IsCheckDeadlineShifted = true;
-                break;
-            default:
-                throw new ForbiddenException();
-        }
-
-        await _events.PublishAsync(
-            new DeadlineShiftedEvent(
-                assignedWork.Id,
-                new ShiftDeadlinePayload
-                {
-                    NewDeadlineAt = options.NewDeadline,
-                    ShiftedByRole = _currentUser.RequireUserRole(),
-                    ShiftedById = userId,
-                }
-            )
-        );
-    }
-
     public Task ArchiveAsync(Ulid assignedWorkId) => SetArchivedAsync(assignedWorkId, true);
 
     public Task UnarchiveAsync(Ulid assignedWorkId) => SetArchivedAsync(assignedWorkId, false);
+
+    public async Task DeleteAsync(Ulid assignedWorkId)
+    {
+        var assignedWork = await _assignedWorkRepository.GetByIdAsync(assignedWorkId);
+
+        if (assignedWork == null)
+        {
+            return;
+        }
+
+        if (!_access.CanDelete(assignedWork))
+        {
+            throw new AssignedWorkAlreadySolvedException();
+        }
+
+        _assignedWorkRepository.DeleteById(assignedWorkId);
+    }
 
     /// <summary>
     /// Each side of a work archives it out of their own list only: a mentor tidying theirs
@@ -601,119 +247,6 @@ public class AssignedWorkService : IAssignedWorkService
                 break;
             default:
                 throw new ForbiddenException();
-        }
-    }
-
-    /// <summary>
-    /// Which of the three comments on a work belongs to the given user.
-    /// </summary>
-    private enum CommentSeat
-    {
-        Student,
-        MainMentor,
-        HelperMentor,
-    }
-
-    private static CommentSeat SeatOf(AssignedWorkModel assignedWork, Ulid userId)
-    {
-        if (assignedWork.StudentId == userId)
-        {
-            return CommentSeat.Student;
-        }
-
-        if (assignedWork.MainMentorId == userId)
-        {
-            return CommentSeat.MainMentor;
-        }
-
-        if (assignedWork.HelperMentorId == userId)
-        {
-            return CommentSeat.HelperMentor;
-        }
-
-        throw new ForbiddenException();
-    }
-
-    /// <summary>
-    /// Writing on a work is the implicit "started" signal: a student saving an answer or a
-    /// comment starts solving, a mentor saving one starts checking. The event fires only on
-    /// the first transition out of the not-started state.
-    /// </summary>
-    private async Task MarkAsStartedAsync(AssignedWorkModel assignedWork)
-    {
-        switch (_currentUser.UserRole)
-        {
-            case UserRoles.Student:
-                if (assignedWork.SolveStatus == AssignedWorkSolveStatus.NotSolved)
-                {
-                    assignedWork.SolveStatus = AssignedWorkSolveStatus.InProgress;
-                    await _events.PublishAsync(
-                        new StartedSolvingEvent(assignedWork.Id, assignedWork.StudentId)
-                    );
-                }
-                break;
-            case UserRoles.Mentor:
-                if (assignedWork.CheckStatus == AssignedWorkCheckStatus.NotChecked)
-                {
-                    assignedWork.CheckStatus = AssignedWorkCheckStatus.InProgress;
-                    await _events.PublishAsync(
-                        new StartedCheckingEvent(assignedWork.Id, _currentUser.RequireUserId())
-                    );
-                }
-                break;
-        }
-    }
-
-    private static void MarkAnswersAsChecked(AssignedWorkModel assignedWork)
-    {
-        foreach (var answer in assignedWork.Answers)
-        {
-            answer.Status = AssignedWorkAnswerStatus.Checked;
-        }
-    }
-
-    /// <summary>
-    /// The tasks the student actually got: a remake may leave out the ones already answered
-    /// correctly, and those must not count towards the work being fully auto-checkable.
-    /// </summary>
-    private static IEnumerable<WorkTaskModel> AssignedTasksOf(AssignedWorkModel assignedWork)
-    {
-        var tasks = assignedWork.Work?.Tasks ?? [];
-
-        return assignedWork.ExcludedTaskIds is { Length: > 0 } excluded
-            ? tasks.Where(task => !excluded.Contains(task.Id))
-            : tasks;
-    }
-
-    private void AssertCorrectStudentDeadlineShift(
-        AssignedWorkModel assignedWork,
-        DateTime newDeadline
-    )
-    {
-        if (newDeadline - assignedWork.SolveDeadlineAt > AssignedWorkConfig.MaxSolveDeadlineShift)
-        {
-            throw new IncorrectDeadlineShiftException();
-        }
-
-        if (assignedWork.IsSolved)
-        {
-            throw new AssignedWorkAlreadySolvedException();
-        }
-    }
-
-    private void AssertCorrectMentorDeadlineShift(
-        AssignedWorkModel assignedWork,
-        DateTime newDeadline
-    )
-    {
-        if (newDeadline - assignedWork.CheckDeadlineAt > AssignedWorkConfig.MaxCheckDeadlineShift)
-        {
-            throw new IncorrectDeadlineShiftException();
-        }
-
-        if (assignedWork.IsChecked)
-        {
-            throw new AssignedWorkAlreadyCheckedException();
         }
     }
 }

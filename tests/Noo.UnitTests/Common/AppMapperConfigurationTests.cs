@@ -20,7 +20,7 @@ public class AppMapperConfigurationTests
 
         var profiles = AppDomain
             .CurrentDomain.GetAssemblies()
-            .SelectMany(assembly => assembly.GetTypes())
+            .SelectMany(TypesOf)
             .Where(type =>
                 type.IsClass
                 && !type.IsAbstract
@@ -45,4 +45,22 @@ public class AppMapperConfigurationTests
 
         config.AssertConfigurationIsValid();
     }
+
+    /// <summary>
+    /// Whatever the assembly will admit to. Mocking libraries emit proxy assemblies whose
+    /// types cannot always be loaded, and whether one is in the domain by the time this runs
+    /// depends on which tests ran first — none of which has any bearing on the mapper.
+    /// </summary>
+    private static IEnumerable<Type> TypesOf(System.Reflection.Assembly assembly)
+    {
+        try
+        {
+            return assembly.GetTypes();
+        }
+        catch (System.Reflection.ReflectionTypeLoadException exception)
+        {
+            return exception.Types.OfType<Type>();
+        }
+    }
+
 }

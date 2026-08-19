@@ -82,7 +82,7 @@ public sealed class CheckedNotificationHandler : IEventHandler<CheckedEvent>
                 Type = "assigned_work.checked",
                 Title = "Работа проверена",
                 Message =
-                    $"Работа \"{assignedWork.Title}\" проверена, балл: {assignedWork.Score}/{assignedWork.MaxScore} ({assignedWork.PercentegeScore}).",
+                    $"Работа \"{assignedWork.Title}\" проверена, балл: {assignedWork.Score}/{assignedWork.MaxScore} ({assignedWork.PercentageScore}%).",
                 Link = _linkGenerator.GenerateViewLink(assignedWork.Id),
                 LinkText = "Перейти к работе",
             }

@@ -33,39 +33,4 @@ public class AssignedWorkRepositoryTests
         Assert.NotNull(works);
         Assert.Equal(aw.Attempt, works.Single().Attempt);
     }
-
-    [Fact]
-    public async Task GetAsync_Hides_NotSubmitted_Answer_Fields()
-    {
-        using var ctx = TestHelpers.CreateInMemoryDb();
-        var uow = TestHelpers.CreateUowMock(ctx).Object;
-        var repo = new AssignedWorkRepository(ctx);
-        var aw = new AssignedWorkModel
-        {
-            Title = "Test",
-            Type = Noo.Api.Works.Types.WorkType.Test,
-            Attempt = 1,
-            StudentId = Ulid.NewUlid(),
-            MainMentorId = Ulid.NewUlid(),
-            MaxScore = 10
-        };
-        var answer = new AssignedWorkAnswerModel
-        {
-            AssignedWorkId = aw.Id,
-            TaskId = Ulid.NewUlid(),
-            Status = AssignedWorkAnswerStatus.NotSubmitted,
-            Score = 5,
-            MaxScore = 10,
-            DetailedScore = new Dictionary<string, int> { { "a", 1 } }
-        };
-        // Link the answer via navigation to ensure relationship is established for Include()
-        aw.Answers.Add(answer);
-        ctx.GetDbSet<AssignedWorkModel>().Add(aw);
-        await ctx.SaveChangesAsync();
-        var fetched = await repo.GetAsync(aw.Id);
-        Assert.NotNull(fetched);
-        var ans = Assert.Single(fetched!.Answers);
-        Assert.Null(ans.Score);
-        Assert.Null(ans.DetailedScore);
-    }
 }

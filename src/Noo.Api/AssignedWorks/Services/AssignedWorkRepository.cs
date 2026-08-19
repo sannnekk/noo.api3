@@ -17,6 +17,23 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
     public AssignedWorkRepository(NooDbContext dbContext)
         : base(dbContext) { }
 
+    /// <summary>
+    /// Nothing at all: an anonymous caller takes part in no work.
+    /// </summary>
+    private static Task<AssignedWorkModel?> NoWork => Task.FromResult<AssignedWorkModel?>(null);
+
+    /// <summary>
+    /// The works the user takes part in, or <c>null</c> when there is no user to ask about.
+    /// </summary>
+    private IQueryable<AssignedWorkModel>? ParticipatedBy(Ulid? userId)
+    {
+        return userId == null
+            ? null
+            : Context
+                .Set<AssignedWorkModel>()
+                .Where(AssignedWorkCriteria.ParticipatedBy(userId.Value));
+    }
+
     public Task<List<AssignedWorkModel>> GetByWorkAssignmentAsync(
         Ulid workAssignmentId,
         Ulid userId
@@ -28,51 +45,11 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
             .ToListAsync();
     }
 
-    public async Task<AssignedWorkModel?> GetAsync(Ulid assignedWorkId)
-    {
-        var assignedWork = await Context
-            .Set<AssignedWorkModel>()
-            .Where(aw => aw.Id == assignedWorkId)
-            .Include(aw => aw.Answers)
-            .AsNoTracking()
-            .FirstOrDefaultAsync();
-
-        if (assignedWork?.Answers != null)
-        {
-            foreach (
-                var answer in assignedWork.Answers.Where(a =>
-                    a.Status == AssignedWorkAnswerStatus.NotSubmitted
-                )
-            )
-            {
-                // Hide mentor-only fields for not submitted answers
-                answer.MentorComment = null;
-                answer.Score = null;
-                answer.DetailedScore = null;
-            }
-        }
-
-        return assignedWork;
-    }
-
     public Task<AssignedWorkModel?> GetAsync(Ulid assignedWorkId, Ulid? userId)
     {
-        if (userId == null)
-        {
-            return Task.FromResult<AssignedWorkModel?>(null);
-        }
-
-        return Context
-            .Set<AssignedWorkModel>()
-            .Where(aw =>
-                aw.Id == assignedWorkId
-                && (
-                    aw.StudentId == userId
-                    || aw.MainMentorId == userId
-                    || aw.HelperMentorId == userId
-                )
-            )
-            .FirstOrDefaultAsync();
+        return ParticipatedBy(userId)
+            ?.Where(aw => aw.Id == assignedWorkId)
+            .FirstOrDefaultAsync() ?? NoWork;
     }
 
     public Task<AssignedWorkModel?> GetWholeAsync(Ulid assignedWorkId)
@@ -96,46 +73,20 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
 
     public Task<AssignedWorkModel?> GetWithCommentsAsync(Ulid assignedWorkId, Ulid? userId)
     {
-        if (userId == null)
-        {
-            return Task.FromResult<AssignedWorkModel?>(null);
-        }
-
-        return Context
-            .Set<AssignedWorkModel>()
-            .Where(aw =>
-                aw.Id == assignedWorkId
-                && (
-                    aw.StudentId == userId
-                    || aw.MainMentorId == userId
-                    || aw.HelperMentorId == userId
-                )
-            )
+        return ParticipatedBy(userId)
+            ?.Where(aw => aw.Id == assignedWorkId)
             .Include(aw => aw.StudentComment)
             .Include(aw => aw.MainMentorComment)
             .Include(aw => aw.HelperMentorComment)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync() ?? NoWork;
     }
 
     public Task<AssignedWorkModel?> GetWithAnswersAsync(Ulid assignedWorkId, Ulid? userId)
     {
-        if (userId == null)
-        {
-            return Task.FromResult<AssignedWorkModel?>(null);
-        }
-
-        return Context
-            .Set<AssignedWorkModel>()
-            .Where(aw =>
-                aw.Id == assignedWorkId
-                && (
-                    aw.StudentId == userId
-                    || aw.MainMentorId == userId
-                    || aw.HelperMentorId == userId
-                )
-            )
+        return ParticipatedBy(userId)
+            ?.Where(aw => aw.Id == assignedWorkId)
             .Include(aw => aw.Answers)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync() ?? NoWork;
     }
 
     public Task<AssignedWorkModel?> GetWithAnswersAndTasksAsync(Ulid assignedWorkId)
@@ -147,62 +98,6 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
             .Include(aw => aw.Work)
                 .ThenInclude(w => w!.Tasks)
             .AsSplitQuery() //! To avoid Cartesian product issues, DO NOT REMOVE
-            .FirstOrDefaultAsync();
-    }
-
-    public async Task<bool> IsMentorOwnWorkAsync(Ulid assignedWorkId, Ulid userId)
-    {
-        var assignedWork = await Context
-            .Set<AssignedWorkModel>()
-            .Where(aw => aw.Id == assignedWorkId)
-            .FirstOrDefaultAsync();
-
-        return assignedWork != null
-            && (assignedWork.MainMentorId == userId || assignedWork.HelperMentorId == userId);
-    }
-
-    public async Task<bool> IsStudentOwnWorkAsync(Ulid assignedWorkId, Ulid userId)
-    {
-        var assignedWork = await Context
-            .Set<AssignedWorkModel>()
-            .Where(aw => aw.Id == assignedWorkId)
-            .FirstOrDefaultAsync();
-
-        return assignedWork != null && assignedWork.StudentId == userId;
-    }
-
-    public async Task<bool> IsWorkCheckStatusAsync(
-        Ulid assignedWorkId,
-        IReadOnlyCollection<AssignedWorkCheckStatus> statuses
-    )
-    {
-        var assignedWork = await Context
-            .Set<AssignedWorkModel>()
-            .Where(aw => aw.Id == assignedWorkId)
-            .FirstOrDefaultAsync();
-
-        return assignedWork != null && statuses.Contains(assignedWork.CheckStatus);
-    }
-
-    public async Task<bool> IsWorkSolveStatusAsync(
-        Ulid assignedWorkId,
-        IReadOnlyCollection<AssignedWorkSolveStatus> statuses
-    )
-    {
-        var assignedWork = await Context
-            .Set<AssignedWorkModel>()
-            .Where(aw => aw.Id == assignedWorkId)
-            .FirstOrDefaultAsync();
-
-        return assignedWork != null && statuses.Contains(assignedWork.SolveStatus);
-    }
-
-    public Task<AssignedWorkModel?> GetWithStudentAsync(Ulid assignedWorkId)
-    {
-        return Context
-            .Set<AssignedWorkModel>()
-            .Where(aw => aw.Id == assignedWorkId)
-            .Include(aw => aw.Student)
             .FirstOrDefaultAsync();
     }
 
@@ -278,11 +173,7 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
         // status indexes).
         var userWorks = Context
             .Set<AssignedWorkModel>()
-            .Where(aw =>
-                aw.StudentId == userId
-                || aw.MainMentorId == userId
-                || aw.HelperMentorId == userId
-            );
+            .Where(AssignedWorkCriteria.ParticipatedBy(userId));
 
         return new AssignedWorksCounts
         {

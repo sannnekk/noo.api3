@@ -150,7 +150,8 @@ public class AssignedWorkModel : BaseModel
 
     /// <summary>
     /// Whether the user takes part in this work, as its student or as either of its mentors.
-    /// Everyone else is a bystander, however privileged.
+    /// Everyone else is a bystander, however privileged. See
+    /// <c>AssignedWorkCriteria.ParticipatedBy</c> for the same rule as a query.
     /// </summary>
     public bool IsParticipant(Ulid userId) =>
         StudentId == userId || MainMentorId == userId || HelperMentorId == userId;
@@ -161,7 +162,7 @@ public class AssignedWorkModel : BaseModel
 
     public bool CanBeDeleted => !IsSolved;
 
-    public int PercentegeScore =>
+    public int PercentageScore =>
         MaxScore > 0 && Score.HasValue ? (int)Math.Round((double)Score.Value / MaxScore * 100) : 0;
 
     public static AssignedWorkModel CreateNew(

@@ -12,7 +12,7 @@ public class AssignedWorkAnswerRepository : Repository<AssignedWorkAnswerModel>,
     {
     }
 
-    public Task<Ulid[]> GetCorrectAnswerIdsAsync(Ulid assignedWorkId)
+    public Task<Ulid[]> GetCorrectlyAnsweredTaskIdsAsync(Ulid assignedWorkId)
     {
         return Context.Set<AssignedWorkAnswerModel>()
             .Where(a => a.AssignedWorkId == assignedWorkId)

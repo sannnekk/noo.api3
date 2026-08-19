@@ -5,5 +5,5 @@ namespace Noo.Api.AssignedWorks.Services;
 
 public interface IAssignedWorkAnswerRepository : IRepository<AssignedWorkAnswerModel>
 {
-    public Task<Ulid[]> GetCorrectAnswerIdsAsync(Ulid assignedWorkId);
+    public Task<Ulid[]> GetCorrectlyAnsweredTaskIdsAsync(Ulid assignedWorkId);
 }
