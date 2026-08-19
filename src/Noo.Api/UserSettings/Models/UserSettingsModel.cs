@@ -6,7 +6,6 @@ using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.DataAbstraction.Model.Attributes;
 using Noo.Api.Media.Models;
 using Noo.Api.Users.Models;
-using Noo.Api.UserSettings.Types;
 
 namespace Noo.Api.UserSettings.Models;
 
@@ -17,9 +16,6 @@ public class UserSettingsModel : BaseModel
     [ForeignKey(nameof(User))]
     [Required]
     public Ulid UserId { get; set; }
-
-    [Column("theme", TypeName = UserSettingsEnumDbTypes.UserTheme)]
-    public UserTheme? Theme { get; set; }
 
     [Column("font_size", TypeName = UserSettingsEnumDbTypes.FontSize)]
     public string? FontSize { get; set; }

@@ -28,7 +28,6 @@ public class UserSettingsMapperProfileTests
         {
             Id = Ulid.NewUlid(),
             UserId = Ulid.NewUlid(),
-            Theme = UserTheme.Dark,
             FontSize = "Large",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -36,7 +35,6 @@ public class UserSettingsMapperProfileTests
 
         var dto = _mapper.Map<UserSettingsDTO>(model);
 
-        Assert.Equal(UserTheme.Dark, dto.Theme);
         Assert.Equal(FontSize.Large, dto.FontSize);
     }
 
@@ -52,7 +50,6 @@ public class UserSettingsMapperProfileTests
         {
             Id = originalId,
             UserId = originalUserId,
-            Theme = UserTheme.Light,
             FontSize = "Small",
             CreatedAt = originalCreated,
             UpdatedAt = originalUpdated
@@ -60,13 +57,11 @@ public class UserSettingsMapperProfileTests
 
         var update = new UserSettingsUpdateDTO
         {
-            Theme = UserTheme.Dark,
             FontSize = FontSize.Large
         };
 
         var mapped = _mapper.Map(update, model);
 
-        Assert.Equal(UserTheme.Dark, mapped.Theme);
         Assert.Equal("Large", mapped.FontSize);
         Assert.Equal(originalId, mapped.Id);
         Assert.Equal(originalUserId, mapped.UserId);

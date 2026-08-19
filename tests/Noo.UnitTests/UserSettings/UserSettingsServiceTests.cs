@@ -36,7 +36,6 @@ public class UserSettingsServiceTests
 
         Assert.NotNull(settings);
         Assert.Equal(userId, settings.UserId);
-        Assert.Null(settings.Theme);
         Assert.Null(settings.FontSize);
     }
 
@@ -58,7 +57,6 @@ public class UserSettingsServiceTests
 
         await service.UpdateUserSettingsAsync(userId, new UserSettingsUpdateDTO
         {
-            Theme = UserTheme.Dark,
             FontSize = FontSize.Large
         });
         await uow.Object.CommitAsync();
@@ -67,7 +65,6 @@ public class UserSettingsServiceTests
         using var verifyCtx = TestHelpers.CreateInMemoryDb(dbName);
         var saved = await verifyCtx.GetDbSet<UserSettingsModel>().FirstOrDefaultAsync(s => s.UserId == userId);
 
-        Assert.Equal(UserTheme.Dark, saved!.Theme);
         Assert.Equal("Large", saved.FontSize);
     }
 
@@ -81,19 +78,19 @@ public class UserSettingsServiceTests
         var service = new UserSettingsService(mapper, userSettingsRepo);
 
         var userId = Ulid.NewUlid();
-        var entity = new UserSettingsModel { Id = Ulid.NewUlid(), UserId = userId, Theme = UserTheme.Light, FontSize = "Small" };
+        var entity = new UserSettingsModel { Id = Ulid.NewUlid(), UserId = userId, FontSize = "Small" };
         context.GetDbSet<UserSettingsModel>().Add(entity);
         await context.SaveChangesAsync();
 
         var before = entity.Id;
         var createdAt = entity.CreatedAt;
 
-        await service.UpdateUserSettingsAsync(userId, new UserSettingsUpdateDTO { Theme = UserTheme.Dark });
+        // An update that names nothing must leave what is there alone.
+        await service.UpdateUserSettingsAsync(userId, new UserSettingsUpdateDTO());
 
         var after = await service.GetUserSettingsAsync(userId);
         Assert.Equal(before, after.Id);
         Assert.Equal(createdAt, after.CreatedAt);
-        Assert.Equal(UserTheme.Dark, after.Theme);
         // Mapper preserves unspecified fields due to conditional mapping
         Assert.Equal("Small", after.FontSize);
     }

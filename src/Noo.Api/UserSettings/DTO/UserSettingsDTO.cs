@@ -6,9 +6,6 @@ namespace Noo.Api.UserSettings.DTO;
 
 public record UserSettingsDTO : IHasPresignedMedia
 {
-    [JsonPropertyName("theme")]
-    public UserTheme? Theme { get; init; }
-
     [JsonPropertyName("fontSize")]
     public FontSize? FontSize { get; init; }
 
