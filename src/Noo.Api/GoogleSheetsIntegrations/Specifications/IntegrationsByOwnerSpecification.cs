@@ -4,8 +4,8 @@ using Noo.Api.GoogleSheetsIntegrations.Models;
 namespace Noo.Api.GoogleSheetsIntegrations.Specifications;
 
 /// <summary>
-/// Narrows a listing to the integrations a single user created. Used for mentors, who may only
-/// ever see their own exports.
+/// Narrows a listing to the integrations a single user created — which is all anyone ever
+/// sees of them, whatever their role.
 /// </summary>
 public class IntegrationsByOwnerSpecification : Specification<GoogleSheetsIntegrationModel>
 {

@@ -46,7 +46,7 @@ public class GoogleSheetsIntegrationController : ApiController
     }
 
     /// <summary>
-    /// Retrieves Google Sheets integrations. Mentors only ever see their own.
+    /// Retrieves the caller's own Google Sheets integrations. Nobody sees anyone else's.
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpGet]

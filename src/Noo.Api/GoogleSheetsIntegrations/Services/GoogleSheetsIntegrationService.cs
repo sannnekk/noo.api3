@@ -68,13 +68,11 @@ public class GoogleSheetsIntegrationService : IGoogleSheetsIntegrationService
         GoogleSheetsIntegrationFilter filter
     )
     {
-        // Admins and teachers manage the platform's integrations as a whole; a mentor only ever
-        // sees the ones they created.
-        var specifications = _currentUser.IsInRole(UserRoles.Mentor)
-            ? new[] { new IntegrationsByOwnerSpecification(_currentUser.RequireUserId()) }
-            : null;
+        // An integration is its owner's: it holds their Google grant and writes to their
+        // spreadsheet, so nobody else has business listing it, whatever their role.
+        var specification = new IntegrationsByOwnerSpecification(_currentUser.RequireUserId());
 
-        return _integrationRepository.SearchAsync(filter, specifications);
+        return _integrationRepository.SearchAsync(filter, [specification]);
     }
 
     public async Task<Ulid> CreateIntegrationAsync(
@@ -184,16 +182,18 @@ public class GoogleSheetsIntegrationService : IGoogleSheetsIntegrationService
         _integrationRepository.DeleteById(integrationId);
     }
 
+    /// <summary>
+    /// The integration, if it is the caller's own. Running one spends its owner's Google
+    /// grant and rewrites their spreadsheet, and editing or deleting one takes it away from
+    /// them — none of which is anyone else's to do, however senior.
+    /// </summary>
     private async Task<GoogleSheetsIntegrationModel> RequireAccessAsync(Ulid integrationId)
     {
         var integration =
             await _integrationRepository.GetByIdAsync(integrationId)
             ?? throw new NotFoundException();
 
-        if (
-            _currentUser.IsInRole(UserRoles.Mentor)
-            && integration.OwnerId != _currentUser.RequireUserId()
-        )
+        if (integration.OwnerId != _currentUser.RequireUserId())
         {
             throw new ForbiddenException();
         }
