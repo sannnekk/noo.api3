@@ -371,8 +371,9 @@ public class WorkServiceTests
         await uow.CommitAsync();
 
         var work = await service.GetWorkAsync(workId);
-        var task1 = work!.Tasks!.Single(t => t.Order == 0);
-        var task2 = work.Tasks!.Single(t => t.Order == 1);
+        // Saved tasks are numbered by position from 1, whatever order they came in with.
+        var task1 = work!.Tasks!.Single(t => t.Order == 1);
+        var task2 = work.Tasks!.Single(t => t.Order == 2);
 
         // Two solved (scored 8 and 5), one in progress, one not solved.
         var solvedHigh = AddAssignedWork(context, workId, AssignedWorkSolveStatus.SolvedInDeadline, 8);

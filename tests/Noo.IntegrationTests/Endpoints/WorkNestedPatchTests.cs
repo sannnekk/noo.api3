@@ -166,7 +166,9 @@ public class WorkNestedPatchTests : IClassFixture<ApiFactory>
 
         var data = await GetWorkDataAsync(client, workId);
         var task = data.GetProperty("tasks").EnumerateArray().Single();
-        task.GetProperty("order").GetInt32().Should().Be(4);
+        // The order a client asks for is a preference about sequence, not a number to
+        // store: the only task of a work is the first one whatever the patch said.
+        task.GetProperty("order").GetInt32().Should().Be(1);
         task.GetProperty("maxScore").GetInt32().Should().Be(8);
         data.GetProperty("maxScore").GetInt32().Should().Be(8);
     }
@@ -263,7 +265,43 @@ public class WorkNestedPatchTests : IClassFixture<ApiFactory>
         var data = await GetWorkDataAsync(client, workId);
         var task = data.GetProperty("tasks").EnumerateArray().Single();
         task.GetProperty("id").GetString().Should().Be(taskId);
-        task.GetProperty("order").GetInt32().Should().Be(9);
+        task.GetProperty("order").GetInt32().Should().Be(1);
         task.GetProperty("maxScore").GetInt32().Should().Be(11);
+    }
+
+    [Fact(DisplayName = "PATCH /work removing a task closes the gap it left in the numbering")]
+    public async Task Patch_Work_Remove_Task_Closes_The_Gap_In_The_Numbering()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+        var workId = await CreateWorkWithTaskAsync(client, subjectId, maxScore: 4);
+        var firstId = await GetSingleTaskIdAsync(client, workId);
+
+        var secondId = Ulid.NewUlid().ToString();
+        var thirdId = Ulid.NewUlid().ToString();
+
+        (await PatchAsync(client.AsTeacher(), $"/work/{workId}", $$"""
+            [ { "op": "add", "path": "/tasks/{{secondId}}", "value": {
+                  "id": "{{secondId}}", "type": "word", "order": 2, "maxScore": 5,
+                  "content": {"$type":"tiptap","type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"second"}]}]} } },
+              { "op": "add", "path": "/tasks/{{thirdId}}", "value": {
+                  "id": "{{thirdId}}", "type": "word", "order": 3, "maxScore": 6,
+                  "content": {"$type":"tiptap","type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"third"}]}]} } } ]
+            """)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Take the middle one out; the third must become the second, not stay third.
+        (await PatchAsync(client.AsTeacher(), $"/work/{workId}",
+            $$"""[ { "op": "remove", "path": "/tasks/{{secondId}}" } ]"""))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var data = await GetWorkDataAsync(client, workId);
+        var tasks = data.GetProperty("tasks")
+            .EnumerateArray()
+            .OrderBy(task => task.GetProperty("order").GetInt32())
+            .ToList();
+
+        tasks.Select(task => task.GetProperty("order").GetInt32()).Should().Equal(1, 2);
+        tasks.Select(task => task.GetProperty("id").GetString())
+            .Should().Equal(firstId, thirdId);
     }
 }

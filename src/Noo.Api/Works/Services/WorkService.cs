@@ -1,6 +1,7 @@
 using AutoMapper;
 using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.DataAbstraction.Model;
 using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Utils;
@@ -44,6 +45,7 @@ public class WorkService : IWorkService
     {
         var model = _mapper.Map<WorkModel>(work);
 
+        model.Tasks.Renumber();
         model.MaxScore = model.Tasks?.Sum(t => t.MaxScore) ?? 0;
         _workRepository.Add(model);
 
@@ -68,6 +70,9 @@ public class WorkService : IWorkService
 
         _patchUpdateService.ApplyPatch(workModel, updateWorkDto);
 
+        // A patch that removed a task leaves a hole where it was, so the numbering is
+        // settled here rather than trusted from the client.
+        workModel.Tasks.Renumber();
         workModel.MaxScore = workModel.Tasks?.Sum(t => t.MaxScore) ?? 0;
     }
 
