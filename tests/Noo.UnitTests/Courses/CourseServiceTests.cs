@@ -1,4 +1,3 @@
-using Noo.Api.Core.Utils.Richtext;
 using AutoMapper;
 using Moq;
 using Noo.Api.Core.DataAbstraction.Db;
