@@ -1,8 +1,10 @@
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Storage;
+using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Media.Access;
+using Noo.Api.Media.Events;
 using Noo.Api.Media.Models;
 using Noo.Api.Media.Types;
 using Noo.Api.Users.Services;
@@ -17,13 +19,15 @@ public class MediaService : IMediaService
     private readonly IUserRepository _users;
     private readonly IMediaAccessEvaluator _access;
     private readonly ICurrentUser _currentUser;
+    private readonly IEventPublisher _events;
 
     public MediaService(
         IS3Storage s3,
         IMediaRepository media,
         IUserRepository users,
         IMediaAccessEvaluator access,
-        ICurrentUser currentUser
+        ICurrentUser currentUser,
+        IEventPublisher events
     )
     {
         _s3 = s3;
@@ -31,6 +35,7 @@ public class MediaService : IMediaService
         _users = users;
         _access = access;
         _currentUser = currentUser;
+        _events = events;
     }
 
     public async Task<UploadTicket> RequestUploadAsync(
@@ -131,6 +136,14 @@ public class MediaService : IMediaService
             await _media.GetByIdAsync(mediaId) ?? throw new NotFoundException("Media not found");
 
         await _access.EnsureCanAccessAsync(media, cancellationToken);
+
+        if (_currentUser.UserId is { } userId)
+        {
+            await _events.PublishAsync(
+                new MediaDownloadedEvent(media.Id, userId, media.Category),
+                cancellationToken
+            );
+        }
 
         return await _s3.CreatePresignedDownloadAsync(
             media.Path,

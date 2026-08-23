@@ -22,9 +22,15 @@ public class CourseAttachmentAccessRule : IMediaAccessRule
 
     private readonly ICourseMembershipService _memberships;
 
-    public CourseAttachmentAccessRule(ICourseMembershipService memberships)
+    private readonly ICourseContentRepository _contents;
+
+    public CourseAttachmentAccessRule(
+        ICourseMembershipService memberships,
+        ICourseContentRepository contents
+    )
     {
         _memberships = memberships;
+        _contents = contents;
     }
 
     public IReadOnlySet<MediaCategory> Categories { get; } =
@@ -45,10 +51,14 @@ public class CourseAttachmentAccessRule : IMediaAccessRule
             return MediaAccessDecision.Deny("Not authenticated");
         }
 
-        if (context.Media.EntityId is not { } courseId)
+        if (context.Media.EntityId is not { } entityId)
         {
             return MediaAccessDecision.Deny("Course attachment is not linked to a course");
         }
+
+        // The uploader tags an attachment with the material content it belongs to, so the course
+        // has to be resolved through that. Older rows carry the course id itself, hence the fallback.
+        var courseId = await _contents.GetCourseIdByContentIdAsync(entityId) ?? entityId;
 
         var hasAccess = await _memberships.HasAccessAsync(courseId, userId);
 

@@ -23,4 +23,5 @@ public interface IUserRepository : IRepository<UserModel>
     );
     public Task<List<UserModel>> GetUsersByRoleAsync(UserRoles role);
     public Task<UserModel?> GetWithAvatarAsync(Ulid id);
+    public Task<List<UserModel>> GetManyWithAvatarAsync(IReadOnlyCollection<Ulid> ids);
 }

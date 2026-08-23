@@ -82,6 +82,7 @@
 
   <ItemGroup>
 	<InternalsVisibleTo Include="Noo.Api.IntegrationTests" />
+	<InternalsVisibleTo Include="Noo.UnitTests" />
   </ItemGroup>
 
 </Project>

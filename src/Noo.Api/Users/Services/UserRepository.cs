@@ -22,6 +22,20 @@ public class UserRepository : Repository<UserModel>, IUserRepository
             .FirstOrDefaultAsync(x => x.Id == id);
     }
 
+    public Task<List<UserModel>> GetManyWithAvatarAsync(IReadOnlyCollection<Ulid> ids)
+    {
+        if (ids.Count == 0)
+        {
+            return Task.FromResult(new List<UserModel>());
+        }
+
+        return Context.GetDbSet<UserModel>()
+            .Include(x => x.Avatar)
+                .ThenInclude(a => a!.Media)
+            .Where(x => ids.Contains(x.Id))
+            .ToListAsync();
+    }
+
     public Task<UserModel?> GetByUsernameOrEmailAsync(string usernameOrEmail)
     {
         var repository = Context.GetDbSet<UserModel>();
