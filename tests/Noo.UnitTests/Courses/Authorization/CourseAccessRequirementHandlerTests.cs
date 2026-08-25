@@ -34,7 +34,7 @@ public class CourseAccessRequirementHandlerTests
     [InlineData(UserRoles.Mentor)]
     public async Task AlwaysAllowedRoles_Succeed(UserRoles role)
     {
-        var membership = new Mock<ICourseMembershipService>(MockBehavior.Strict);
+        var membership = new Mock<ICourseAccessService>(MockBehavior.Strict);
         var handler = new CourseAccessRequirementHandler(membership.Object);
 
         var ctx = MakeContext(role, Ulid.NewUlid(), Ulid.NewUlid());
@@ -49,7 +49,7 @@ public class CourseAccessRequirementHandlerTests
     {
         var studentId = Ulid.NewUlid();
         var courseId = Ulid.NewUlid();
-        var membership = new Mock<ICourseMembershipService>();
+        var membership = new Mock<ICourseAccessService>();
         membership.Setup(m => m.HasAccessAsync(courseId, studentId)).ReturnsAsync(true);
         var handler = new CourseAccessRequirementHandler(membership.Object);
         var ctx = MakeContext(UserRoles.Student, studentId, courseId);
@@ -58,7 +58,7 @@ public class CourseAccessRequirementHandlerTests
         Assert.True(ctx.HasSucceeded);
 
         // Now fail
-        var membershipFail = new Mock<ICourseMembershipService>();
+        var membershipFail = new Mock<ICourseAccessService>();
         membershipFail.Setup(m => m.HasAccessAsync(courseId, studentId)).ReturnsAsync(false);
         var handlerFail = new CourseAccessRequirementHandler(membershipFail.Object);
         var ctxFail = MakeContext(UserRoles.Student, studentId, courseId);
@@ -69,7 +69,7 @@ public class CourseAccessRequirementHandlerTests
     [Fact]
     public async Task Invalid_CourseId_Fails()
     {
-        var membership = new Mock<ICourseMembershipService>(MockBehavior.Strict);
+        var membership = new Mock<ICourseAccessService>(MockBehavior.Strict);
         var handler = new CourseAccessRequirementHandler(membership.Object);
 
         var claims = new List<Claim>

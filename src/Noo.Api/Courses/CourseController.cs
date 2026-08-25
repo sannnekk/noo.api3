@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
+using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.Versioning;
 using Noo.Api.Courses.DTO;
 using Noo.Api.Courses.Filters;
@@ -23,15 +24,23 @@ public class CourseController : ApiController
 
     private readonly ICourseMembershipService _courseMembershipService;
 
+    private readonly ICourseStudentStateService _courseStudentStateService;
+
+    private readonly ICurrentUser _currentUser;
+
     public CourseController(
         ICourseService courseService,
         ICourseMembershipService courseMembershipService,
+        ICourseStudentStateService courseStudentStateService,
+        ICurrentUser currentUser,
         IMapper mapper
     )
         : base(mapper)
     {
         _courseService = courseService;
         _courseMembershipService = courseMembershipService;
+        _courseStudentStateService = courseStudentStateService;
+        _currentUser = currentUser;
     }
 
     /// <summary>
@@ -94,6 +103,54 @@ public class CourseController : ApiController
         var result = await _courseService.SearchAsync(filter);
 
         return SendResponse<CourseModel, CourseDTO>(result);
+    }
+
+    /// <summary>
+    /// Retrieves the current student's courses, both assigned and publicly open ones.
+    /// </summary>
+    [HttpGet("my")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = CoursePolicies.CanSearchOwnCourses)]
+    [Produces(
+        typeof(ApiResponseDTO<IEnumerable<StudentCourseDTO>>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden
+    )]
+    public async Task<IActionResult> GetOwnCoursesAsync([FromQuery] StudentCourseFilter filter)
+    {
+        var result = await _courseService.SearchOwnAsync(filter);
+
+        return SendResponse<CourseModel, StudentCourseDTO>(result);
+    }
+
+    /// <summary>
+    /// Updates how the current student sees a course (pinned, archived).
+    /// </summary>
+    [HttpPatch("{courseId:ulid}/my-state")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = CoursePolicies.CanManageOwnCourseState)]
+    [Produces(
+        null,
+        StatusCodes.Status204NoContent,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> UpdateOwnCourseStateAsync(
+        [FromRoute] Ulid courseId,
+        [FromBody] JsonPatchDocument<UpdateCourseStudentStateDTO> stateUpdateDto
+    )
+    {
+        await _courseStudentStateService.PatchStateAsync(
+            courseId,
+            _currentUser.RequireUserId(),
+            stateUpdateDto
+        );
+
+        return SendResponse();
     }
 
     /// <summary>
@@ -314,90 +371,6 @@ public class CourseController : ApiController
         var id = await _courseMembershipService.CreateMembershipAsync(dto);
 
         return SendResponse(id);
-    }
-
-    /// <summary>
-    /// Archives a course membership for the current student.
-    /// </summary>
-    [HttpPatch("membership/{membershipId:ulid}/archive")]
-    [MapToApiVersion(NooApiVersions.Current)]
-    [Authorize(Policy = CoursePolicies.CanManageOwnCourseMembership)]
-    [Produces(
-        null,
-        StatusCodes.Status204NoContent,
-        StatusCodes.Status400BadRequest,
-        StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden,
-        StatusCodes.Status404NotFound
-    )]
-    public async Task<IActionResult> ArchiveCourseMembershipAsync([FromRoute] Ulid membershipId)
-    {
-        await _courseMembershipService.SetArchivedByStudentAsync(membershipId, true);
-
-        return SendResponse();
-    }
-
-    /// <summary>
-    /// Restores a course membership from the archive for the current student.
-    /// </summary>
-    [HttpPatch("membership/{membershipId:ulid}/unarchive")]
-    [MapToApiVersion(NooApiVersions.Current)]
-    [Authorize(Policy = CoursePolicies.CanManageOwnCourseMembership)]
-    [Produces(
-        null,
-        StatusCodes.Status204NoContent,
-        StatusCodes.Status400BadRequest,
-        StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden,
-        StatusCodes.Status404NotFound
-    )]
-    public async Task<IActionResult> UnarchiveCourseMembershipAsync([FromRoute] Ulid membershipId)
-    {
-        await _courseMembershipService.SetArchivedByStudentAsync(membershipId, false);
-
-        return SendResponse();
-    }
-
-    /// <summary>
-    /// Pins a course membership for the current student.
-    /// </summary>
-    [HttpPatch("membership/{membershipId:ulid}/pin")]
-    [MapToApiVersion(NooApiVersions.Current)]
-    [Authorize(Policy = CoursePolicies.CanManageOwnCourseMembership)]
-    [Produces(
-        null,
-        StatusCodes.Status204NoContent,
-        StatusCodes.Status400BadRequest,
-        StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden,
-        StatusCodes.Status404NotFound
-    )]
-    public async Task<IActionResult> PinCourseMembershipAsync([FromRoute] Ulid membershipId)
-    {
-        await _courseMembershipService.SetPinnedByStudentAsync(membershipId, true);
-
-        return SendResponse();
-    }
-
-    /// <summary>
-    /// Unpins a course membership for the current student.
-    /// </summary>
-    [HttpPatch("membership/{membershipId:ulid}/unpin")]
-    [MapToApiVersion(NooApiVersions.Current)]
-    [Authorize(Policy = CoursePolicies.CanManageOwnCourseMembership)]
-    [Produces(
-        null,
-        StatusCodes.Status204NoContent,
-        StatusCodes.Status400BadRequest,
-        StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden,
-        StatusCodes.Status404NotFound
-    )]
-    public async Task<IActionResult> UnpinCourseMembershipAsync([FromRoute] Ulid membershipId)
-    {
-        await _courseMembershipService.SetPinnedByStudentAsync(membershipId, false);
-
-        return SendResponse();
     }
 
     /// <summary>

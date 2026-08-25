@@ -37,16 +37,9 @@ public class CourseMembershipSpecification : Specification<CourseMembershipModel
                     );
                 break;
 
-            case UserRoles.Student:
-                // Students can see their own memberships, pinned ones first
-                Query
-                    .Where(membership => membership.StudentId == userId)
-                    .OrderByDescending(membership => membership.IsPinnedByStudent)
-                    .ThenByDescending(membership => membership.Id);
-                break;
-
             default:
-                // For any other roles, no memberships are visible
+                // Memberships are a staff-side roster. A student's own course list comes from
+                // GET /course/my, which also covers courses reached without a membership.
                 Query.Where(_ => false);
                 break;
         }

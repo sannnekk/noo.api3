@@ -62,6 +62,12 @@ public class CourseModel : BaseModel, ISoftDeletableModel
     [InverseProperty(nameof(CourseMembershipModel.Course))]
     public ICollection<CourseMembershipModel> Memberships { get; set; } = [];
 
+    [InverseProperty(nameof(CourseAudienceModel.Course))]
+    public ICollection<CourseAudienceModel> Audiences { get; set; } = [];
+
+    [InverseProperty(nameof(CourseStudentStateModel.Course))]
+    public ICollection<CourseStudentStateModel> StudentStates { get; set; } = [];
+
     [InverseProperty(nameof(SubjectModel.Courses))]
     [DeleteBehavior(DeleteBehavior.SetNull)]
     public SubjectModel? Subject { get; set; }

@@ -25,12 +25,12 @@ public class CourseAttachmentAccessRuleTests
 
     private static CourseAttachmentAccessRule MakeRule(NooDbContext ctx, bool hasMembership)
     {
-        var memberships = new Mock<ICourseMembershipService>();
-        memberships
+        var access = new Mock<ICourseAccessService>();
+        access
             .Setup(m => m.HasAccessAsync(It.IsAny<Ulid>(), It.IsAny<Ulid>()))
             .ReturnsAsync(hasMembership);
 
-        return new CourseAttachmentAccessRule(memberships.Object, new CourseContentRepository(ctx));
+        return new CourseAttachmentAccessRule(access.Object, new CourseContentRepository(ctx));
     }
 
     private record Seed(Ulid CourseId, Ulid ContentId);
@@ -122,13 +122,13 @@ public class CourseAttachmentAccessRuleTests
         using var ctx = TestHelpers.CreateInMemoryDb();
         var seed = await SeedMaterialAsync(ctx);
 
-        var memberships = new Mock<ICourseMembershipService>();
-        memberships
+        var access = new Mock<ICourseAccessService>();
+        access
             .Setup(m => m.HasAccessAsync(It.IsAny<Ulid>(), It.IsAny<Ulid>()))
             .ReturnsAsync(true);
 
         var rule = new CourseAttachmentAccessRule(
-            memberships.Object,
+            access.Object,
             new CourseContentRepository(ctx)
         );
 
@@ -140,9 +140,9 @@ public class CourseAttachmentAccessRuleTests
             )
         );
 
-        // The content id must never reach the membership check — that was the original bug.
-        memberships.Verify(m => m.HasAccessAsync(seed.CourseId, studentId), Times.Once);
-        memberships.Verify(m => m.HasAccessAsync(seed.ContentId, studentId), Times.Never);
+        // The content id must never reach the access check — that was the original bug.
+        access.Verify(m => m.HasAccessAsync(seed.CourseId, studentId), Times.Once);
+        access.Verify(m => m.HasAccessAsync(seed.ContentId, studentId), Times.Never);
     }
 
     [Fact]
@@ -151,13 +151,13 @@ public class CourseAttachmentAccessRuleTests
         using var ctx = TestHelpers.CreateInMemoryDb();
         var seed = await SeedMaterialAsync(ctx);
 
-        var memberships = new Mock<ICourseMembershipService>();
-        memberships
+        var access = new Mock<ICourseAccessService>();
+        access
             .Setup(m => m.HasAccessAsync(It.IsAny<Ulid>(), It.IsAny<Ulid>()))
             .ReturnsAsync(true);
 
         var rule = new CourseAttachmentAccessRule(
-            memberships.Object,
+            access.Object,
             new CourseContentRepository(ctx)
         );
 
@@ -169,7 +169,7 @@ public class CourseAttachmentAccessRuleTests
             )
         );
 
-        memberships.Verify(m => m.HasAccessAsync(seed.CourseId, studentId), Times.Once);
+        access.Verify(m => m.HasAccessAsync(seed.CourseId, studentId), Times.Once);
     }
 
     [Theory]

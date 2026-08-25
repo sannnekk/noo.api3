@@ -14,6 +14,11 @@ public interface ICourseService
     public Task<CourseModel?> GetByIdAsync(Ulid id, bool includeInactive);
     public Task<CourseMaterialContentModel?> GetContentByIdAsync(Ulid contentId);
     public Task<SearchResult<CourseModel>> SearchAsync(CourseFilter filter);
+
+    /// <summary>
+    /// The current student's own course list, covering both assigned and publicly open courses.
+    /// </summary>
+    public Task<SearchResult<CourseModel>> SearchOwnAsync(StudentCourseFilter filter);
     public Task SetArchivedAsync(Ulid courseId, bool isArchived);
     public Task SoftDeleteAsync(Ulid courseId);
     public Task ToggleMaterialReactionAsync(Ulid courseId, Ulid materialId, CourseMaterialReactionTypes reaction);

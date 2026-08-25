@@ -7,7 +7,6 @@ namespace Noo.Api.Courses.Services;
 
 public interface ICourseMembershipService
 {
-    public Task<bool> HasAccessAsync(Ulid courseId, Ulid userId);
     public Task<CourseMembershipModel?> GetMembershipAsync(Ulid courseId, Ulid userId);
     public Task<CourseMembershipModel?> GetMembershipByIdAsync(Ulid membershipId);
     public Task<SearchResult<CourseMembershipModel>> GetMembershipsAsync(
@@ -16,6 +15,4 @@ public interface ICourseMembershipService
     );
     public Task<Ulid> CreateMembershipAsync(CreateCourseMembershipDTO dto);
     public Task SoftDeleteMembershipAsync(Ulid membershipId);
-    public Task SetArchivedByStudentAsync(Ulid membershipId, bool isArchived);
-    public Task SetPinnedByStudentAsync(Ulid membershipId, bool isPinned);
 }

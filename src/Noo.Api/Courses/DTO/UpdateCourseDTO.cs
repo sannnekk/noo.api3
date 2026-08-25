@@ -28,6 +28,9 @@ public record UpdateCourseDTO
     [JsonPropertyName("isArchived")]
     public bool? IsArchived { get; init; }
 
+    [JsonPropertyName("isPublic")]
+    public bool? IsPublic { get; init; }
+
     [JsonPropertyName("authorIds")]
     public IEnumerable<Ulid>? AuthorIds { get; init; }
 

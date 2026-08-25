@@ -93,6 +93,12 @@ public class UserModel : BaseModel
     [InverseProperty(nameof(CourseMembershipModel.Assigner))]
     public ICollection<CourseMembershipModel> CoursesAsAssigner { get; set; } = [];
 
+    [InverseProperty(nameof(CourseStudentStateModel.Student))]
+    public ICollection<CourseStudentStateModel> CourseStates { get; set; } = [];
+
+    [InverseProperty(nameof(CourseAudienceModel.GrantedBy))]
+    public ICollection<CourseAudienceModel> CourseAudiencesAsGranter { get; set; } = [];
+
     public ICollection<CourseMaterialReactionModel> CourseMaterialReactions { get; set; } = [];
 
     public ICollection<SessionModel> Sessions { get; set; } = [];

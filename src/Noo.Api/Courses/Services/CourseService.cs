@@ -106,6 +106,16 @@ public class CourseService : ICourseService
         return result;
     }
 
+    public Task<SearchResult<CourseModel>> SearchOwnAsync(StudentCourseFilter filter)
+    {
+        var studentId = _currentUser.RequireUserId();
+
+        return _courseRepository.SearchAsync(
+            filter,
+            [new StudentCourseSpecification(studentId, filter.IsArchived)]
+        );
+    }
+
     public async Task SetArchivedAsync(Ulid courseId, bool isArchived)
     {
         var course = await _courseRepository.GetByIdAsync(courseId);
@@ -173,6 +183,39 @@ public class CourseService : ICourseService
         if (patched.AuthorIds != null)
         {
             model.Authors = _entityReferences.References<UserModel>(patched.AuthorIds);
+        }
+
+        if (patched.IsPublic.HasValue)
+        {
+            SetPublic(model, patched.IsPublic.Value);
+        }
+    }
+
+    /// <summary>
+    /// Opening a course to everyone is a single audience row, so the flip costs the same whether
+    /// there are ten students or a hundred thousand. Per-student state rows are untouched: they
+    /// carry no access, so the ones left behind by a course going private are simply not joined.
+    /// </summary>
+    private void SetPublic(CourseModel course, bool isPublic)
+    {
+        var existing = course.Audiences.FirstOrDefault(a =>
+            a.Kind == CourseAudienceKind.Everyone
+        );
+
+        if (isPublic && existing == null)
+        {
+            course.Audiences.Add(
+                new CourseAudienceModel
+                {
+                    CourseId = course.Id,
+                    Kind = CourseAudienceKind.Everyone,
+                    GrantedById = _currentUser.UserId,
+                }
+            );
+        }
+        else if (!isPublic && existing != null)
+        {
+            course.Audiences.Remove(existing);
         }
     }
 

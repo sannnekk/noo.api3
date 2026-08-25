@@ -49,6 +49,13 @@ public record CourseDTO : IHasPresignedMedia
     [JsonPropertyName("isArchived")]
     public bool IsArchived { get; init; }
 
+    /// <summary>
+    /// Whether every student can reach this course without being assigned to it.
+    /// </summary>
+    [Required]
+    [JsonPropertyName("isPublic")]
+    public bool IsPublic { get; init; }
+
     [Required]
     [JsonPropertyName("subjectId")]
     public Ulid SubjectId { get; init; }

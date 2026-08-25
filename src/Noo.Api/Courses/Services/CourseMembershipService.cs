@@ -1,6 +1,5 @@
 using AutoMapper;
 using Noo.Api.Core.DataAbstraction.Db;
-using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.System.Events;
 using Noo.Api.Core.Utils.DI;
@@ -109,13 +108,6 @@ public class CourseMembershipService : ICourseMembershipService
         );
     }
 
-    public async Task<bool> HasAccessAsync(Ulid courseId, Ulid userId)
-    {
-        var membership = await _courseMembershipRepository.GetMembershipAsync(courseId, userId);
-
-        return membership != null && membership.IsActive;
-    }
-
     public async Task SoftDeleteMembershipAsync(Ulid membershipId)
     {
         var membership = await _courseMembershipRepository.GetByIdAsync(membershipId);
@@ -135,29 +127,4 @@ public class CourseMembershipService : ICourseMembershipService
         );
     }
 
-    public async Task SetArchivedByStudentAsync(Ulid membershipId, bool isArchived)
-    {
-        var membership = await GetOwnMembershipAsync(membershipId);
-
-        membership.IsArchivedByStudent = isArchived;
-    }
-
-    public async Task SetPinnedByStudentAsync(Ulid membershipId, bool isPinned)
-    {
-        var membership = await GetOwnMembershipAsync(membershipId);
-
-        membership.IsPinnedByStudent = isPinned;
-    }
-
-    private async Task<CourseMembershipModel> GetOwnMembershipAsync(Ulid membershipId)
-    {
-        var membership = await _courseMembershipRepository.GetByIdAsync(membershipId);
-
-        if (membership == null || membership.StudentId != _currentUser.UserId)
-        {
-            throw new NotFoundException();
-        }
-
-        return membership;
-    }
 }

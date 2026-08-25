@@ -22,6 +22,8 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
             .ForMember(dest => dest.IsArchived, opt => opt.Ignore())
             .ForMember(dest => dest.Memberships, opt => opt.Ignore())
+            .ForMember(dest => dest.Audiences, opt => opt.Ignore())
+            .ForMember(dest => dest.StudentStates, opt => opt.Ignore())
             .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
             .ForMember(dest => dest.Subject, opt => opt.Ignore())
             .AfterMap((_, dest) => ApplyCourseHierarchy(dest));
@@ -31,6 +33,7 @@ public class CourseMapperProfile : Profile
                 dest => dest.AuthorIds,
                 opt => opt.MapFrom(src => src.Authors.Select(author => author.Id))
             )
+            .ForMember(dest => dest.IsPublic, opt => opt.MapFrom(src => IsPublic(src)))
             .ForMember(
                 dest => dest.Chapters,
                 opt =>
@@ -65,6 +68,9 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Authors, opt => opt.Ignore())
             .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
             .ForMember(dest => dest.Memberships, opt => opt.Ignore())
+            // IsPublic is applied in CourseService, which can create/remove the audience row
+            .ForMember(dest => dest.Audiences, opt => opt.Ignore())
+            .ForMember(dest => dest.StudentStates, opt => opt.Ignore())
             .ForMember(dest => dest.Thumbnail, opt => opt.Ignore())
             .ForMember(dest => dest.Subject, opt => opt.Ignore())
             .ForMember(dest => dest.Chapters, opt => opt.Ignore())
@@ -79,7 +85,57 @@ public class CourseMapperProfile : Profile
             //.ForMember(dest => dest.MemberCount, opt => opt.MapFrom<CourseMemberCountValueResolver>())
             // TODO: remove
             .ForMember(dest => dest.MemberCount, opt => opt.Ignore())
+            .ForMember(dest => dest.IsPublic, opt => opt.MapFrom(src => IsPublic(src)))
             .MaxDepth(CourseConfig.MaxChapterTreeDepth);
+
+        // A student's course card. The state and membership collections arrive filtered to this
+        // student by StudentCourseSpecification, so taking the first of each is what picks theirs.
+        CreateMap<CourseModel, StudentCourseDTO>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.Course, opt => opt.MapFrom(src => src))
+            .ForMember(
+                dest => dest.IsPinned,
+                opt =>
+                    opt.MapFrom(src =>
+                        src.StudentStates.Select(s => s.IsPinned).FirstOrDefault()
+                    )
+            )
+            .ForMember(
+                dest => dest.IsArchived,
+                opt =>
+                    opt.MapFrom(src =>
+                        src.StudentStates.Select(s => s.IsArchived).FirstOrDefault()
+                    )
+            )
+            .ForMember(
+                dest => dest.AccessSource,
+                opt =>
+                    opt.MapFrom(src =>
+                        src.Memberships.Any()
+                            ? CourseAccessSource.Assignment
+                            : CourseAccessSource.Public
+                    )
+            )
+            .ForMember(
+                dest => dest.MembershipType,
+                opt =>
+                    opt.MapFrom(src =>
+                        src.Memberships
+                            .Select(m => (CourseMembershipType?)m.Type)
+                            .FirstOrDefault()
+                    )
+            )
+            .ForMember(
+                dest => dest.AssignedAt,
+                opt =>
+                    opt.MapFrom(src =>
+                        src.Memberships.Select(m => (DateTime?)m.CreatedAt).FirstOrDefault()
+                    )
+            )
+            .ForMember(
+                dest => dest.Assigner,
+                opt => opt.MapFrom(src => src.Memberships.Select(m => m.Assigner).FirstOrDefault())
+            );
 
         // Chapter
         CreateMap<CreateCourseChapterDTO, CourseChapterModel>()
@@ -230,13 +286,23 @@ public class CourseMapperProfile : Profile
             .ForMember(dest => dest.Student, opt => opt.Ignore())
             .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
             .ForMember(dest => dest.IsArchived, opt => opt.MapFrom(_ => false))
-            .ForMember(dest => dest.IsArchivedByStudent, opt => opt.MapFrom(_ => false))
-            .ForMember(dest => dest.IsPinnedByStudent, opt => opt.MapFrom(_ => false))
             .ForMember(
                 dest => dest.Type,
                 opt => opt.MapFrom(_ => CourseMembershipType.ManualAssigned)
             )
             .ForMember(dest => dest.AssignerId, opt => opt.Ignore());
+
+        // Course student state
+        CreateMap<CourseStudentStateModel, UpdateCourseStudentStateDTO>();
+
+        CreateMap<UpdateCourseStudentStateDTO, CourseStudentStateModel>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.CourseId, opt => opt.Ignore())
+            .ForMember(dest => dest.StudentId, opt => opt.Ignore())
+            .ForMember(dest => dest.Course, opt => opt.Ignore())
+            .ForMember(dest => dest.Student, opt => opt.Ignore());
 
         // Course work assignment
         CreateMap<CreateCourseWorkAssignmentDTO, CourseWorkAssignmentModel>()
@@ -304,6 +370,11 @@ public class CourseMapperProfile : Profile
                 material.ChapterId = chapter.Id;
             }
         }
+    }
+
+    private static bool IsPublic(CourseModel course)
+    {
+        return course.Audiences.Any(a => a.Kind == CourseAudienceKind.Everyone);
     }
 
     private static void ApplyCourseHierarchy(CourseModel course)

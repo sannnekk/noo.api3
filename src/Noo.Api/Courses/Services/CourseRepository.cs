@@ -43,6 +43,7 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
             .Include(c => c.Authors)
             .Include(c => c.Subject)
             .Include(c => c.Thumbnail)
+            .Include(c => c.Audiences)
             .FirstOrDefaultAsync();
 
         if (course is null)
@@ -65,6 +66,8 @@ public class CourseRepository : Repository<CourseModel>, ICourseRepository
         var course = await Context
             .GetDbSet<CourseModel>()
             .Include(c => c.Authors)
+            // Tracked so the IsPublic patch can add or remove the Everyone row
+            .Include(c => c.Audiences)
             .FirstOrDefaultAsync(c => c.Id == courseId);
 
         if (course is null)

@@ -7,7 +7,7 @@ namespace Noo.Api.Media.Access.Rules;
 
 /// <summary>
 /// Restricts <see cref="MediaCategory.CourseAttachment"/> downloads
-/// to course members; staff roles bypass the membership check.
+/// to students who can reach the course; staff roles bypass the check.
 /// </summary>
 [RegisterScoped(typeof(IMediaAccessRule))]
 public class CourseAttachmentAccessRule : IMediaAccessRule
@@ -20,16 +20,16 @@ public class CourseAttachmentAccessRule : IMediaAccessRule
         UserRoles.Assistant,
     };
 
-    private readonly ICourseMembershipService _memberships;
+    private readonly ICourseAccessService _access;
 
     private readonly ICourseContentRepository _contents;
 
     public CourseAttachmentAccessRule(
-        ICourseMembershipService memberships,
+        ICourseAccessService access,
         ICourseContentRepository contents
     )
     {
-        _memberships = memberships;
+        _access = access;
         _contents = contents;
     }
 
@@ -60,10 +60,10 @@ public class CourseAttachmentAccessRule : IMediaAccessRule
         // has to be resolved through that. Older rows carry the course id itself, hence the fallback.
         var courseId = await _contents.GetCourseIdByContentIdAsync(entityId) ?? entityId;
 
-        var hasAccess = await _memberships.HasAccessAsync(courseId, userId);
+        var hasAccess = await _access.HasAccessAsync(courseId, userId);
 
         return hasAccess
             ? MediaAccessDecision.Allow()
-            : MediaAccessDecision.Deny("User is not a member of the course");
+            : MediaAccessDecision.Deny("User has no access to the course");
     }
 }

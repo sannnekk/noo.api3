@@ -13,7 +13,8 @@ namespace Noo.Api.Courses.Models;
 /// <summary>
 /// One student's place on one course. A student holds at most one of these per course —
 /// leaving and coming back reuses the same row rather than adding another — which the
-/// unique index below is what actually guarantees.
+/// unique index below is what actually guarantees. It answers only "may this student enter";
+/// how they want the course displayed lives in <see cref="CourseStudentStateModel"/>.
 /// </summary>
 [Model("course_membership")]
 [Index(nameof(CourseId), nameof(StudentId), IsUnique = true)]
@@ -25,12 +26,6 @@ public class CourseMembershipModel : BaseModel
 
     [Column("is_archived", TypeName = DbDataTypes.Boolean)]
     public bool IsArchived { get; set; }
-
-    [Column("is_archived_by_student", TypeName = DbDataTypes.Boolean)]
-    public bool IsArchivedByStudent { get; set; }
-
-    [Column("is_pinned_by_student", TypeName = DbDataTypes.Boolean)]
-    public bool IsPinnedByStudent { get; set; }
 
     [Column("course_id", TypeName = DbDataTypes.Ulid)]
     [ForeignKey(nameof(Course))]

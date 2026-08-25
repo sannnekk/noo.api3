@@ -8,11 +8,11 @@ namespace Noo.Api.Courses.AuthorizationRequirements;
 [RegisterScoped(typeof(IAuthorizationHandler))]
 public class CourseAccessRequirementHandler : AuthorizationHandler<CourseAccessRequirement>
 {
-    private readonly ICourseMembershipService _membershipService;
+    private readonly ICourseAccessService _accessService;
 
-    public CourseAccessRequirementHandler(ICourseMembershipService membershipService)
+    public CourseAccessRequirementHandler(ICourseAccessService accessService)
     {
-        _membershipService = membershipService;
+        _accessService = accessService;
     }
 
     protected override async Task HandleRequirementAsync(
@@ -43,7 +43,7 @@ public class CourseAccessRequirementHandler : AuthorizationHandler<CourseAccessR
 
         if (userRole == UserRoles.Student)
         {
-            bool hasAccess = await _membershipService.HasAccessAsync(courseId, userId);
+            bool hasAccess = await _accessService.HasAccessAsync(courseId, userId);
 
             if (hasAccess)
             {

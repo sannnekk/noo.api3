@@ -84,7 +84,7 @@ public class CourseMembershipServiceTests
         // which is what the unique index would refuse anyway.
         Assert.Equal(originalId, revivedId);
         Assert.Single(ctx.GetDbSet<CourseMembershipModel>());
-        Assert.True(await svc.HasAccessAsync(dto.CourseId, dto.StudentId));
+        Assert.True((await svc.GetMembershipAsync(dto.CourseId, dto.StudentId))!.IsActive);
     }
 
     [Fact]
@@ -121,7 +121,7 @@ public class CourseMembershipServiceTests
         var search = await service.GetMembershipsAsync(new CourseMembershipFilter { Page = 1, PerPage = 10 });
         Assert.Equal(1, search.Total);
 
-        Assert.True(await service.HasAccessAsync(courseId, studentId));
+        Assert.True((await service.GetMembershipAsync(courseId, studentId))!.IsActive);
 
         await service.SoftDeleteMembershipAsync(id);
         await uow.CommitAsync();
