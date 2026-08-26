@@ -165,6 +165,13 @@ public class AssignedWorkModel : BaseModel
     public int PercentageScore =>
         MaxScore > 0 && Score.HasValue ? (int)Math.Round((double)Score.Value / MaxScore * 100) : 0;
 
+    /// <summary>
+    /// What the work's answers add up to. An answer nobody scored is worth
+    /// nothing rather than unknown: a mentor who leaves a task alone has given
+    /// it no marks. Requires <see cref="Answers"/> to be loaded.
+    /// </summary>
+    public int ScoreOfAnswers => Answers.Sum(answer => answer.Score ?? 0);
+
     public static AssignedWorkModel CreateNew(
         CourseWorkAssignmentModel workAssignment,
         Ulid studentId,

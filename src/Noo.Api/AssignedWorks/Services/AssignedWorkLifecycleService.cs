@@ -113,6 +113,12 @@ public class AssignedWorkLifecycleService : IAssignedWorkLifecycleService
 
         MarkAnswersAsChecked(assignedWork);
 
+        // The score the work carried until now is only what could be worked out
+        // automatically when it was handed in — nothing at all for a work whose
+        // tasks are all checked by hand. What the mentor gave the answers is the
+        // score from here on.
+        assignedWork.Score = assignedWork.ScoreOfAnswers;
+
         assignedWork.CheckedAt = checkedAt;
         assignedWork.CheckStatus = AssignedWorkStatuses.CheckedAt(
             checkedAt,
