@@ -60,7 +60,14 @@ public static class TestDataHelpers
         return db.GetDbSet<UserModel>().FirstOrDefault(u => u.Username == username);
     }
 
-    public static async Task<Ulid> CreateSessionAsync(ApiFactory factory, Ulid userId, string? deviceId = null, string? userAgent = null)
+    public static async Task<Ulid> CreateSessionAsync(
+        ApiFactory factory,
+        Ulid userId,
+        string? deviceId = null,
+        string? userAgent = null,
+        BrowserKind browser = BrowserKind.Chrome,
+        DeviceType deviceType = DeviceType.Desktop,
+        DateTime? lastRequestAt = null)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NooDbContext>();
@@ -71,10 +78,10 @@ public static class TestDataHelpers
             UserId = userId,
             DeviceId = deviceId,
             UserAgent = userAgent ?? "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-            Browser = "Chrome",
+            Browser = browser.ToString(),
             Os = "Linux",
-            DeviceType = DeviceType.Desktop,
-            LastRequestAt = DateTime.UtcNow,
+            DeviceType = deviceType,
+            LastRequestAt = lastRequestAt ?? DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

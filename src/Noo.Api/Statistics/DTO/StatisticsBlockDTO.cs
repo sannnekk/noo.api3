@@ -18,4 +18,8 @@ public record StatisticsBlockDTO
     [Required]
     [JsonPropertyName("numberBlocks")]
     public IEnumerable<StatisticsNumberBlockDTO> NumberBlocks { get; init; } = [];
+
+    [Required]
+    [JsonPropertyName("distributions")]
+    public IEnumerable<StatisticsDistributionDTO> Distributions { get; init; } = [];
 }

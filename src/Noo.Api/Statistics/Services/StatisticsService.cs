@@ -18,10 +18,13 @@ public class StatisticsService : IStatisticsService
 
     private readonly IAssignedWorkStatisticsCollector _assignedWorkStatisticsCollector;
 
-    public StatisticsService(IUserStatisticsCollector userStatisticsCollector, IAssignedWorkStatisticsCollector assignedWorkStatisticsCollector, IUserRepository userRepository)
+    private readonly ISessionStatisticsCollector _sessionStatisticsCollector;
+
+    public StatisticsService(IUserStatisticsCollector userStatisticsCollector, IAssignedWorkStatisticsCollector assignedWorkStatisticsCollector, ISessionStatisticsCollector sessionStatisticsCollector, IUserRepository userRepository)
     {
         _userStatisticsCollector = userStatisticsCollector;
         _assignedWorkStatisticsCollector = assignedWorkStatisticsCollector;
+        _sessionStatisticsCollector = sessionStatisticsCollector;
         _userRepository = userRepository;
     }
 
@@ -47,7 +50,8 @@ public class StatisticsService : IStatisticsService
         {
             Blocks = [
                 await _userStatisticsCollector.GetUserStatisticsAsync(fromDate, toDate),
-                await _assignedWorkStatisticsCollector.GetAssignedWorkStatisticsAsync(workType, fromDate, toDate)
+                await _assignedWorkStatisticsCollector.GetAssignedWorkStatisticsAsync(workType, fromDate, toDate),
+                await _sessionStatisticsCollector.GetDeviceStatisticsAsync(fromDate, toDate)
             ]
         };
     }

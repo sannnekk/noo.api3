@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Noo.Api.AssignedWorks.Services;
 using Noo.Api.Core.Utils;
+using Noo.Api.Sessions.Services;
 using Noo.Api.Users.Services;
 using Noo.UnitTests.Common;
 
@@ -63,5 +64,31 @@ public class StatisticsQueryTranslationTests
         var sql = repository.MonthAverageScoresQuery(Ulid.NewUlid(), null).ToQueryString();
 
         AssertAggregatesInSql(sql, "AVG(");
+    }
+
+    [Fact]
+    public void User_Count_By_Browser_Counts_Distinct_Users_In_The_Database()
+    {
+        using var ctx = TestHelpers.CreateMySqlDb();
+        var repository = new SessionRepository(ctx);
+
+        var sql = repository
+            .UserCountByBrowserQuery(Clock.Today.AddDays(-30), Clock.Today)
+            .ToQueryString();
+
+        AssertAggregatesInSql(sql, "COUNT(DISTINCT");
+    }
+
+    [Fact]
+    public void User_Count_By_Device_Type_Counts_Distinct_Users_In_The_Database()
+    {
+        using var ctx = TestHelpers.CreateMySqlDb();
+        var repository = new SessionRepository(ctx);
+
+        var sql = repository
+            .UserCountByDeviceTypeQuery(Clock.Today.AddDays(-30), Clock.Today)
+            .ToQueryString();
+
+        AssertAggregatesInSql(sql, "COUNT(DISTINCT");
     }
 }

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Sessions.Models;
+using Noo.Api.Sessions.Types;
 
 namespace Noo.Api.Sessions.Services;
 
@@ -63,5 +64,53 @@ public class SessionRepository : Repository<SessionModel>, ISessionRepository
         return await set.Where(s => s.UserId == userId)
             .OrderByDescending(s => s.LastRequestAt ?? s.UpdatedAt ?? s.CreatedAt)
             .ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<BrowserUserCount>> GetUserCountByBrowserAsync(
+        DateTime from,
+        DateTime to
+    )
+    {
+        return await UserCountByBrowserQuery(from, to).ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<DeviceTypeUserCount>> GetUserCountByDeviceTypeAsync(
+        DateTime from,
+        DateTime to
+    )
+    {
+        return await UserCountByDeviceTypeQuery(from, to).ToListAsync();
+    }
+
+    // The aggregate queries are shaped separately from their materialization so a test can compile
+    // them to SQL without a database — the InMemory provider the other tests run on evaluates
+    // anything on the client and so cannot tell a translatable grouping from an untranslatable one.
+
+    internal IQueryable<BrowserUserCount> UserCountByBrowserQuery(DateTime from, DateTime to)
+    {
+        return ActiveInPeriod(from, to)
+            .GroupBy(s => s.Browser)
+            .Select(g => new BrowserUserCount
+            {
+                Browser = g.Key,
+                UserCount = g.Select(s => s.UserId).Distinct().Count(),
+            });
+    }
+
+    internal IQueryable<DeviceTypeUserCount> UserCountByDeviceTypeQuery(DateTime from, DateTime to)
+    {
+        return ActiveInPeriod(from, to)
+            .GroupBy(s => s.DeviceType)
+            .Select(g => new DeviceTypeUserCount
+            {
+                DeviceType = g.Key,
+                UserCount = g.Select(s => s.UserId).Distinct().Count(),
+            });
+    }
+
+    private IQueryable<SessionModel> ActiveInPeriod(DateTime from, DateTime to)
+    {
+        return Context.GetDbSet<SessionModel>()
+            .Where(s => s.LastRequestAt != null && s.LastRequestAt >= from && s.LastRequestAt <= to);
     }
 }
