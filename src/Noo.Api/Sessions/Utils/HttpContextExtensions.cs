@@ -6,6 +6,8 @@ namespace Noo.Api.Sessions.Utils;
 
 public static class HttpContextExtensions
 {
+    private const int _userAgentMaxLength = 255;
+
     public static SessionModel AsSessionModel(this HttpContext context, Ulid userId)
     {
         if (context is null || context.User is null)
@@ -14,12 +16,17 @@ public static class HttpContextExtensions
         }
 
         var deviceId = context.Request.Headers["X-Device-Id"].ToString();
-        var userAgent = context.Request.Headers.UserAgent.ToString();
         var ip = context.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
 
-        var info = string.IsNullOrWhiteSpace(userAgent)
-            ? new UserAgentInfo { Browser = "Unknown", Os = "Unknown", Device = "Unknown", DeviceType = DeviceType.Unknown }
-            : UserAgentParser.Parse(userAgent);
+        // Overlong user agents do exist and the column only holds 255 characters; truncating here
+        // keeps both the insert and the lookup by user agent working on the same value.
+        var userAgent = context.Request.Headers.UserAgent.ToString();
+        if (userAgent.Length > _userAgentMaxLength)
+        {
+            userAgent = userAgent[.._userAgentMaxLength];
+        }
+
+        var info = UserAgentParser.Parse(userAgent);
 
         return new SessionModel
         {
@@ -27,7 +34,7 @@ public static class HttpContextExtensions
             UserAgent = userAgent,
             DeviceId = string.IsNullOrWhiteSpace(deviceId) ? null : deviceId,
             Os = info.Os,
-            Browser = info.Browser,
+            Browser = info.Browser.ToString(),
             Device = info.Device,
             DeviceType = info.DeviceType,
             IpAddress = ip,

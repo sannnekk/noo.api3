@@ -119,17 +119,11 @@ public class UserRepository : Repository<UserModel>, IUserRepository
         return repository.Where(x => x.Id == mentorId && x.Role == UserRoles.Mentor).AnyAsync();
     }
 
-    public Task<Dictionary<UserRoles, int>> GetTotalUsersByRolesAsync(
-        DateTime fromDate,
-        DateTime toDate
-    )
+    public Task<Dictionary<UserRoles, int>> GetTotalUsersByRolesAsync()
     {
         var repository = Context.GetDbSet<UserModel>();
 
-        return repository
-            .Where(x => x.CreatedAt >= fromDate && x.CreatedAt <= toDate)
-            .GroupBy(x => x.Role)
-            .ToDictionaryAsync(g => g.Key, g => g.Count());
+        return repository.GroupBy(x => x.Role).ToDictionaryAsync(g => g.Key, g => g.Count());
     }
 
     public Task<Dictionary<DateTime, int>> GetRegistrationsByDateRangeAsync(

@@ -93,6 +93,8 @@ public class StatisticsService : IStatisticsService
             fromDate = toDate.AddDays(-StatisticsConfig.MaxStatisticsDaysRange);
         }
 
-        return (fromDate, toDate);
+        // Every query downstream compares with `<= to`, so the bound has to reach the end of the
+        // selected day — at midnight it would drop that whole day.
+        return (fromDate, toDate.AddDays(1).AddTicks(-1));
     }
 }

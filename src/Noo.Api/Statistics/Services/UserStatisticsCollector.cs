@@ -36,7 +36,7 @@ public class UserStatisticsCollector : IUserStatisticsCollector
         var onlinePerRole = await _onlineService.GetOnlineCountByRolesAsync();
         var activePerRole = await _activeUserService.GetActiveCountByRolesAsync();
         var registrations = await _userRepository.GetRegistrationsByDateRangeAsync(from, to);
-        var totalPerRole = await _userRepository.GetTotalUsersByRolesAsync(from, to);
+        var totalPerRole = await _userRepository.GetTotalUsersByRolesAsync();
 
         return new StatisticsBlockDTO
         {
