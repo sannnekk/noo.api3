@@ -130,27 +130,54 @@ public class AssignedWorkRepository : Repository<AssignedWorkModel>, IAssignedWo
         DateTime to
     )
     {
+        return ByDateRangeQuery(predicate, from, to).ToDictionaryAsync(x => x.Day, x => x.Count);
+    }
+
+    public async Task<Dictionary<DateTime, double?>> GetMonthAverageScoresAsync(
+        Ulid studentId,
+        WorkType? workType
+    )
+    {
+        var months = await MonthAverageScoresQuery(studentId, workType).ToListAsync();
+
+        return months.ToDictionary(x => new DateTime(x.Year, x.Month, 1), x => x.AverageScore);
+    }
+
+    // The aggregates below keep their count and average inside the projection: a grouping handed
+    // straight to ToDictionary makes the database ship every matching row so the arithmetic can be
+    // done here instead.
+
+    internal IQueryable<AssignedWorkDayCount> ByDateRangeQuery(
+        Expression<Func<AssignedWorkModel, bool>> predicate,
+        DateTime from,
+        DateTime to
+    )
+    {
         return Context
             .Set<AssignedWorkModel>()
+            .IgnoreAutoIncludes()
             .Where(predicate)
             .Where(aw => aw.CreatedAt >= from && aw.CreatedAt <= to)
             .GroupBy(aw => aw.CreatedAt.Date)
-            .ToDictionaryAsync(g => g.Key, g => g.Count());
+            .Select(g => new AssignedWorkDayCount { Day = g.Key, Count = g.Count() });
     }
 
-    public Task<Dictionary<DateTime, double?>> GetMonthAverageScoresAsync(
+    internal IQueryable<AssignedWorkMonthAverage> MonthAverageScoresQuery(
         Ulid studentId,
         WorkType? workType
     )
     {
         return Context
             .Set<AssignedWorkModel>()
+            .IgnoreAutoIncludes()
             .Where(aw => aw.StudentId == studentId && (workType == null || aw.Type == workType))
             .GroupBy(aw => new { aw.CreatedAt.Year, aw.CreatedAt.Month })
-            .ToDictionaryAsync(
-                g => new DateTime(g.Key.Year, g.Key.Month, 1),
-                g => g.Average(aw => aw.Score)
-            );
+            .Select(g => new AssignedWorkMonthAverage
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                AverageScore = g.Average(aw => (double?)aw.Score),
+            });
     }
 
     public async Task<int> GetCurrentAttemptAsync(Ulid workAssignmentId, Ulid userId)

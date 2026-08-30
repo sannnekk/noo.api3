@@ -3,6 +3,7 @@ using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Users.Models;
+using Noo.Api.Users.Types;
 
 namespace Noo.Api.Users.Services;
 
@@ -119,11 +120,12 @@ public class UserRepository : Repository<UserModel>, IUserRepository
         return repository.Where(x => x.Id == mentorId && x.Role == UserRoles.Mentor).AnyAsync();
     }
 
+    // Both aggregates count rows and never materialize a user, so the count belongs in the
+    // projection — a grouping handed straight to ToDictionary makes the database ship every row
+    // and every auto-included avatar so the count can be done here instead.
     public Task<Dictionary<UserRoles, int>> GetTotalUsersByRolesAsync()
     {
-        var repository = Context.GetDbSet<UserModel>();
-
-        return repository.GroupBy(x => x.Role).ToDictionaryAsync(g => g.Key, g => g.Count());
+        return TotalUsersByRolesQuery().ToDictionaryAsync(x => x.Role, x => x.Count);
     }
 
     public Task<Dictionary<DateTime, int>> GetRegistrationsByDateRangeAsync(
@@ -131,12 +133,28 @@ public class UserRepository : Repository<UserModel>, IUserRepository
         DateTime toDate
     )
     {
-        var repository = Context.GetDbSet<UserModel>();
+        return RegistrationsByDateRangeQuery(fromDate, toDate)
+            .ToDictionaryAsync(x => x.Day, x => x.Count);
+    }
 
-        return repository
+    internal IQueryable<UserRoleCount> TotalUsersByRolesQuery()
+    {
+        return Context.GetDbSet<UserModel>()
+            .IgnoreAutoIncludes()
+            .GroupBy(x => x.Role)
+            .Select(g => new UserRoleCount { Role = g.Key, Count = g.Count() });
+    }
+
+    internal IQueryable<UserRegistrationCount> RegistrationsByDateRangeQuery(
+        DateTime fromDate,
+        DateTime toDate
+    )
+    {
+        return Context.GetDbSet<UserModel>()
+            .IgnoreAutoIncludes()
             .Where(x => x.CreatedAt >= fromDate && x.CreatedAt <= toDate)
             .GroupBy(x => x.CreatedAt.Date)
-            .ToDictionaryAsync(g => g.Key, g => g.Count());
+            .Select(g => new UserRegistrationCount { Day = g.Key, Count = g.Count() });
     }
 
     public Task<List<UserModel>> GetUsersByRoleAsync(UserRoles role)
