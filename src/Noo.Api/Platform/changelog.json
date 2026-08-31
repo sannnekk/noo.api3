@@ -1,7 +1,43 @@
 [
   {
+    "version": "1.5.0-alpha",
+    "date": "2026-08-31T10:02:48+02:00",
+    "changes": [
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "statistics: Added a platform breakdown of users by browser and device type"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "courses: Added public courses via an audience grant and split per-student state off memberships"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "media-downloads: Added per-file download statistics for course materials & fixed student access to attachments"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "statistics: Moved the statistics aggregates into the database instead of counting whole tables in memory"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "statistics: Fixed browser/device detection, the missing last day of the range and the mislabelled user total"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "assigned-works: Total up the scores the mentor gave when a work is marked checked"
+      }
+    ]
+  },
+  {
     "version": "1.4.0-alpha",
-    "date": "2026-08-19T21:22:44+02:00",
+    "date": "2026-08-19T22:24:31+02:00",
     "changes": [
       {
         "type": "feature",
