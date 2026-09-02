@@ -1,12 +1,15 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Noo.Api.Core.DataAbstraction.Db;
+using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Core.Utils.Json;
 using Noo.Api.Core.Utils.Versioning;
 using Noo.Api.Platform.DTO;
+using Noo.Api.Platform.Models;
 using Noo.Api.Platform.Types;
+using SystemTextJsonPatch;
 
 namespace Noo.Api.Platform.Services;
 
@@ -14,6 +17,18 @@ namespace Noo.Api.Platform.Services;
 public class PlatformService : IPlatformService
 {
     private const string _changelogResourceName = "Noo.Api.Platform.changelog.json";
+
+    private readonly IPlatformSettingsRepository _settingsRepository;
+    private readonly IJsonPatchUpdateService _jsonPatchUpdateService;
+
+    public PlatformService(
+        IPlatformSettingsRepository settingsRepository,
+        IJsonPatchUpdateService jsonPatchUpdateService
+    )
+    {
+        _settingsRepository = settingsRepository;
+        _jsonPatchUpdateService = jsonPatchUpdateService;
+    }
 
     private static readonly JsonSerializerOptions _serializerOptions = new(JsonSerializerDefaults.Web)
     {
@@ -43,6 +58,22 @@ public class PlatformService : IPlatformService
         var changelog = _changelog.Value;
 
         return new SearchResult<ChangeLogDTO>(changelog, changelog.Count);
+    }
+
+    /// <summary>
+    /// A transient default instance stands in until an admin saves for the first
+    /// time, so that the anonymous read never writes a row of its own.
+    /// </summary>
+    public async Task<PlatformSettingsModel> GetSettingsAsync()
+    {
+        return await _settingsRepository.GetSingletonAsync() ?? new PlatformSettingsModel();
+    }
+
+    public async Task UpdateSettingsAsync(JsonPatchDocument<UpdatePlatformSettingsDTO> dto)
+    {
+        var settings = await _settingsRepository.GetOrCreateSingletonAsync();
+
+        _jsonPatchUpdateService.ApplyPatch(settings, dto);
     }
 
     private static IReadOnlyList<ChangeLogDTO> LoadChangelog()

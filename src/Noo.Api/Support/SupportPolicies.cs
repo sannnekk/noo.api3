@@ -11,6 +11,10 @@ public class SupportPolicies : IPolicyRegistrar
     public const string CanCreateCategory = nameof(CanCreateCategory);
     public const string CanUpdateCategory = nameof(CanUpdateCategory);
     public const string CanDeleteCategory = nameof(CanDeleteCategory);
+    public const string CanCreateFaqItem = nameof(CanCreateFaqItem);
+    public const string CanUpdateFaqItem = nameof(CanUpdateFaqItem);
+    public const string CanDeleteFaqItem = nameof(CanDeleteFaqItem);
+
     public void RegisterPolicies(AuthorizationOptions options)
     {
         options.AddPolicy(CanCreateArticle, policy =>
@@ -53,6 +57,30 @@ public class SupportPolicies : IPolicyRegistrar
             ).RequireNotBlocked();
         });
         options.AddPolicy(CanDeleteCategory, policy =>
+        {
+            policy.RequireRole(
+                nameof(UserRoles.Admin),
+                nameof(UserRoles.Teacher)
+            ).RequireNotBlocked();
+        });
+
+        options.AddPolicy(CanCreateFaqItem, policy =>
+        {
+            policy.RequireRole(
+                nameof(UserRoles.Admin),
+                nameof(UserRoles.Teacher)
+            ).RequireNotBlocked();
+        });
+
+        options.AddPolicy(CanUpdateFaqItem, policy =>
+        {
+            policy.RequireRole(
+                nameof(UserRoles.Admin),
+                nameof(UserRoles.Teacher)
+            ).RequireNotBlocked();
+        });
+
+        options.AddPolicy(CanDeleteFaqItem, policy =>
         {
             policy.RequireRole(
                 nameof(UserRoles.Admin),

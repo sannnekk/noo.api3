@@ -19,11 +19,17 @@ namespace Noo.Api.Support;
 public class SupportController : ApiController
 {
     private readonly ISupportService _supportService;
+    private readonly ISupportFaqService _supportFaqService;
 
-    public SupportController(ISupportService supportService, IMapper mapper)
+    public SupportController(
+        ISupportService supportService,
+        ISupportFaqService supportFaqService,
+        IMapper mapper
+    )
         : base(mapper)
     {
         _supportService = supportService;
+        _supportFaqService = supportFaqService;
     }
 
     /// <summary>
@@ -121,6 +127,87 @@ public class SupportController : ApiController
     public IActionResult DeleteArticle([FromRoute] Ulid articleId)
     {
         _supportService.DeleteArticle(articleId);
+
+        return SendResponse();
+    }
+
+    /// <summary>
+    /// Retrieves the frequently asked questions shown on the help home page.
+    /// </summary>
+    [HttpGet("faq")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [AllowAnonymous]
+    [Produces(
+        typeof(ApiResponseDTO<List<SupportFaqItemDTO>>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status400BadRequest
+    )]
+    public async Task<IActionResult> GetFaqItemsAsync([FromQuery] SupportFaqItemFilter filter)
+    {
+        var response = await _supportFaqService.GetItemsAsync(filter);
+
+        return SendResponse<SupportFaqItemModel, SupportFaqItemDTO>(response);
+    }
+
+    /// <summary>
+    /// Creates a new frequently asked question.
+    /// </summary>
+    [HttpPost("faq")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = SupportPolicies.CanCreateFaqItem)]
+    [Produces(
+        typeof(ApiResponseDTO<IdResponseDTO>),
+        StatusCodes.Status201Created,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden
+    )]
+    public IActionResult CreateFaqItem([FromBody] CreateSupportFaqItemDTO request)
+    {
+        var id = _supportFaqService.CreateItem(request);
+
+        return SendResponse(id);
+    }
+
+    /// <summary>
+    /// Updates a frequently asked question by its ID using a JSON Patch document.
+    /// </summary>
+    [HttpPatch("faq/{itemId}")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = SupportPolicies.CanUpdateFaqItem)]
+    [Produces(
+        null,
+        StatusCodes.Status204NoContent,
+        StatusCodes.Status400BadRequest,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> UpdateFaqItemAsync(
+        [FromRoute] Ulid itemId,
+        [FromBody] JsonPatchDocument<UpdateSupportFaqItemDTO> request
+    )
+    {
+        await _supportFaqService.UpdateItemAsync(itemId, request);
+
+        return SendResponse();
+    }
+
+    /// <summary>
+    /// Deletes a frequently asked question by its ID.
+    /// </summary>
+    [HttpDelete("faq/{itemId}")]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Authorize(Policy = SupportPolicies.CanDeleteFaqItem)]
+    [Produces(
+        null,
+        StatusCodes.Status204NoContent,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden
+    )]
+    public IActionResult DeleteFaqItem([FromRoute] Ulid itemId)
+    {
+        _supportFaqService.DeleteItem(itemId);
 
         return SendResponse();
     }
