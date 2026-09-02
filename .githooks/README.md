@@ -1,6 +1,6 @@
-Local Git hooks for build and tests
+Local Git hooks
 
-These hooks block commits and pushes when the project doesn't build or when unit/integration tests fail.
+These hooks block commits when the project is misformatted, doesn't build, or when unit or integration tests fail, and when a commit message does not follow the conventional-commit format the changelog is generated from.
 
 Enable once per clone:
 
@@ -8,10 +8,14 @@ Enable once per clone:
    git config core.hooksPath .githooks
 
 2. Make scripts executable (Linux/macOS/WSL/Git Bash)
-   chmod +x .githooks/pre-commit .githooks/pre-push
+   chmod +x .githooks/pre-commit .githooks/commit-msg
+
+The hooks
+
+- pre-commit: `dotnet format --verify-no-changes`, then the build, then the unit and integration tests. The counterpart of the frontend's `pnpm check` in .husky/pre-commit — keep the two in step. Takes a couple of minutes, most of it the format check, which loads the whole MSBuild workspace.
+- commit-msg: enforces the conventional-commit subject that scripts/generate-changelog.cs reads. Keep it in sync with the frontend's .husky/commit-msg.
 
 Notes
 
-- Hooks run locally only; users can bypass with --no-verify. Use CI + branch protection to enforce on the server.
-- pre-commit: builds and runs unit/integration tests quickly.
-- pre-push: restores, builds, and runs unit/integration tests again.
+- `NOO_SKIP_FORMAT=1 git commit …` skips the format check alone; `git commit --no-verify` skips the hook entirely.
+- Hooks run locally only and can be bypassed. Use CI + branch protection to enforce on the server.

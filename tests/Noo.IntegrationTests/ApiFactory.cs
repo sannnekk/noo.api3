@@ -31,7 +31,9 @@ public class ApiFactory : WebApplicationFactory<Program>
         builder.ConfigureAppConfiguration((_, config) =>
         {
             // Keep existing sources and append test settings last to override
-            config.AddJsonFile("appsettings.testing.json", optional: true, reloadOnChange: true);
+            // reloadOnChange stays off for the same reason the default host's
+            // does — see TestHostConfiguration.
+            config.AddJsonFile("appsettings.testing.json", optional: true, reloadOnChange: false);
             config.AddEnvironmentVariables();
             // Force sane JWT defaults for tests regardless of machine env
             config.AddInMemoryCollection(new Dictionary<string, string?>

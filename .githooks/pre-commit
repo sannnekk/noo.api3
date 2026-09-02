@@ -1,0 +1,48 @@
+#!/usr/bin/env sh
+# The gate the frontend's .husky/pre-commit provides with `pnpm check`:
+# formatting, then the build, then both test suites. Keep the two in step.
+#
+# Set NOO_SKIP_FORMAT=1 to skip the formatting step alone; `git commit
+# --no-verify` skips the hook entirely.
+
+set -e
+
+# Run from the repository root whatever directory the commit was made from.
+cd "$(git rev-parse --show-toplevel)"
+
+SOLUTION="noo.api.sln"
+UNIT_TESTS="tests/Noo.UnitTests"
+INTEGRATION_TESTS="tests/Noo.IntegrationTests"
+
+step() {
+	printf '\n\033[1;35m==== %s ====\033[0m\n\n' "$1"
+}
+
+fail() {
+	printf '\n\033[31m❌ %s\033[0m\n' "$1" >&2
+	printf 'Commit aborted. Fix the above, or re-run with --no-verify to bypass.\n' >&2
+	exit 1
+}
+
+if [ "$NOO_SKIP_FORMAT" = "1" ]; then
+	printf '\033[33m⚠️  Skipping the format check (NOO_SKIP_FORMAT=1)\033[0m\n'
+else
+	step "🎨 dotnet format --verify-no-changes"
+	# Whole-solution: `dotnet format` loads the MSBuild workspace either way, so
+	# narrowing it to the staged files saves nothing worth the added complexity.
+	dotnet format "$SOLUTION" --verify-no-changes --no-restore ||
+		fail "Formatting issues found. Run: dotnet format $SOLUTION"
+fi
+
+step "🔨 dotnet build"
+dotnet build "$SOLUTION" --nologo --no-restore || fail "The solution does not build."
+
+step "🧪 dotnet test (unit)"
+dotnet test "$UNIT_TESTS" --nologo --no-restore --no-build ||
+	fail "Unit tests failed."
+
+step "🧪 dotnet test (integration)"
+dotnet test "$INTEGRATION_TESTS" --nologo --no-restore --no-build ||
+	fail "Integration tests failed."
+
+printf '\n\033[32m✅ Pre-commit checks passed\033[0m\n'
