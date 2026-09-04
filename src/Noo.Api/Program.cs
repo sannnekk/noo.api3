@@ -36,6 +36,7 @@ builder.Services.AddCacheProvider(builder.Configuration);
 builder.Services.AddMetrics();
 builder.Services.AddDomainEvents();
 builder.Services.AddHostedServices();
+builder.Services.AddNooRealtime(builder.Configuration);
 
 builder.WebHost.AddWebServerConfiguration(builder.Configuration);
 
@@ -53,6 +54,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseSessionActivity();
 app.MapControllers();
+app.MapNooHubs();
 app.MapHealthAllChecks();
 
 using (var scope = app.Services.CreateScope())

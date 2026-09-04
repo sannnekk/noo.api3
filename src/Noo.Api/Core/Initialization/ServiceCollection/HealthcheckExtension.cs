@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.System.HealthChecks;
+using Noo.Api.Core.System.Realtime.Backplane;
 
 namespace Noo.Api.Core.Initialization.ServiceCollection;
 
@@ -10,7 +11,15 @@ public static class HealthcheckExtension
     {
         services.AddHealthChecks()
             .AddSystemChecks(tags: ["live"])
-            .AddDbContextCheck(tags: ["ready"]);
+            .AddDbContextCheck(tags: ["ready"])
+            .AddRealtimeBackplaneCheck(tags: ["ready"]);
+    }
+
+    private static IHealthChecksBuilder AddRealtimeBackplaneCheck(this IHealthChecksBuilder builder, string[] tags)
+    {
+        builder.AddCheck<RealtimeBackplaneHealthCheck>("realtime-backplane", tags: tags);
+
+        return builder;
     }
 
     private static IHealthChecksBuilder AddSystemChecks(this IHealthChecksBuilder builder, string[] tags)

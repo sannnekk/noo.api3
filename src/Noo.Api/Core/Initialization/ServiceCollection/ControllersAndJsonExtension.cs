@@ -25,14 +25,7 @@ public static class ControllersAndJsonExtension
                     new HyphenLowerCaseEnumModelBinderProvider()
                 );
             })
-            .AddJsonOptions(options =>
-            {
-                options.JsonSerializerOptions.Converters.Add(
-                    new HyphenLowerCaseStringEnumConverterFactory()
-                );
-                options.JsonSerializerOptions.Converters.Add(new MoscowDateTimeConverter());
-                options.JsonSerializerOptions.Converters.Add(new MoscowNullableDateTimeConverter());
-            })
+            .AddJsonOptions(options => options.JsonSerializerOptions.AddNooConverters())
             .ConfigureApiBehaviorOptions(options =>
                 options.InvalidModelStateResponseFactory = context =>
                 {

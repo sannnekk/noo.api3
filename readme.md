@@ -122,6 +122,20 @@ The configuration is done in the `appsettings.json` file. An example (all possib
     "DefaultCacheTime": 60,
     "Prefix": "noo:"
   },
+  "Realtime": {
+    "Enabled": true,
+    "BackplaneConnectionString": "localhost:6380",
+    "ChannelPrefix": "noo:rt:",
+    "KeepAliveSeconds": 30,
+    "ClientTimeoutSeconds": 60,
+    "HandshakeTimeoutSeconds": 15,
+    "MaximumReceiveMessageSize": 32768,
+    "ApplicationMaxBufferSize": 16384,
+    "TransportMaxBufferSize": 16384,
+    "InvocationsPerMinutePerConnection": 120,
+    "BroadcastChunkSize": 500,
+    "BroadcastChunkDelayMs": 50
+  },
   "Jwt": {
     "Secret": "...",
     "Issuer": "https://localhost:5001",
@@ -203,7 +217,8 @@ The configuration is done in the `appsettings.json` file. An example (all possib
 Those are optional requirements that are needed for some features to work. All of them can be disabled.
 
 - Docker
-- Redis
+- Redis (cache)
+- Redis (SignalR backplane) — a **second, non-clustered** instance. The backplane uses classic pub/sub, which ignores database numbering, so sharing the cache instance shares its memory and CPU too. Leave `Realtime:BackplaneConnectionString` empty to run a single instance without one.
 - RabbitMQ (or other message broker, not decided yet) [Not implemented yet]
 - SMTP Server [Not implemented yet]
 - Telegram Bot for notifications [Not implemented yet]
@@ -216,8 +231,8 @@ The API is wired with [OpenTelemetry](https://opentelemetry.io/) and exports tra
 
 **What is captured**
 
-- **Traces** — ASP.NET Core requests, outbound `HttpClient` calls, EF Core database commands, StackExchange.Redis operations. `/health` and `/healthz` are filtered out to keep the timeline clean.
-- **Metrics** — ASP.NET Core (request rate, latency, status codes), `HttpClient` (outbound), .NET runtime (GC, threadpool, exceptions).
+- **Traces** — ASP.NET Core requests, outbound `HttpClient` calls, EF Core database commands, StackExchange.Redis operations. `/health`, `/healthz` and `/hubs/*` are filtered out to keep the timeline clean — a hub connection lives for hours, so tracing it yields one span per session that never closes.
+- **Metrics** — ASP.NET Core (request rate, latency, status codes), `HttpClient` (outbound), .NET runtime (GC, threadpool, exceptions), and `Noo.Realtime` (`noo.realtime.connections`, `noo.realtime.messages_sent`). Scale hub pods on the connection gauge rather than CPU: idle sockets cost memory and file descriptors but almost no CPU.
 - **Logs** — every `ILogger` write is forwarded as an OTLP log record alongside the existing console / Telegram providers.
 
 All three signals share one `service.name` / `service.namespace` resource so they correlate in the dashboard. The OTLP exporter is configured from the `OpenTelemetry` section of `appsettings.json` (see [Configuration](#configuration)).

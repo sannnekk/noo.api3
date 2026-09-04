@@ -1,7 +1,9 @@
 using System.Reflection;
 using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.DataAbstraction.Cache;
+using Noo.Api.Core.Initialization.App;
 using Noo.Api.Core.Initialization.Configuration;
+using Noo.Api.Core.System.Realtime;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -46,9 +48,12 @@ public static class OpenTelemetryExtension
                 .AddAspNetCoreInstrumentation(o =>
                 {
                     o.RecordException = true;
+                    // Hub connections live for hours; tracing them produces one span per
+                    // connection that stays open for the whole session.
                     o.Filter = ctx =>
                         !ctx.Request.Path.StartsWithSegments("/healthz") &&
-                        !ctx.Request.Path.StartsWithSegments("/health");
+                        !ctx.Request.Path.StartsWithSegments("/health") &&
+                        !ctx.Request.Path.StartsWithSegments(RealtimeEndpointsExtension.HubPathPrefix);
                 })
                 .AddHttpClientInstrumentation(o => o.RecordException = true)
                 .AddEntityFrameworkCoreInstrumentation()
@@ -70,6 +75,7 @@ public static class OpenTelemetryExtension
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation()
+                .AddMeter(RealtimeMetrics.MeterName)
                 .AddOtlpExporter(o => ConfigureOtlp(o, cfg)));
         }
 

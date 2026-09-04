@@ -5,6 +5,7 @@ services.sh — start the local dev services for noo-api.
 Brings up everything the API expects on localhost:
   • MySQL          (verified, not started — should be a system service)
   • Redis          (cache, :6379)
+  • Redis          (SignalR backplane, :6380 — separate instance on purpose)
   • Mailpit        (SMTP :1025, web UI :8025)
   • MinIO          (S3-compatible, API :9000, console :9001)
   • Aspire Dash    (OpenTelemetry UI :18888, OTLP/gRPC :4317, OTLP/HTTP :4318)
@@ -55,6 +56,7 @@ MINIO_API_PORT = 9000
 MINIO_CONSOLE_PORT = 9001
 MYSQL_PORT = 3306
 REDIS_PORT = 6379  # overridden by appsettings Cache.ConnectionString
+BACKPLANE_PORT = 6380  # overridden by appsettings Realtime.BackplaneConnectionString
 
 ASPIRE_DASHBOARD_UI_PORT = 18888
 ASPIRE_OTLP_GRPC_PORT = 4317
@@ -157,19 +159,38 @@ def load_s3_config() -> dict:
         sys.exit(1)
     return s3
 
+def _port_from_connection_string(conn: str, fallback: int) -> int:
+    conn = (conn or "").split(",")[0].strip()
+    if ":" in conn:
+        try:
+            return int(conn.rsplit(":", 1)[1])
+        except ValueError:
+            pass
+    return fallback
+
 def load_redis_port() -> int:
     """Parse the Redis port from appsettings Cache.ConnectionString (host:port)."""
     if not APPSETTINGS.exists():
         return REDIS_PORT
     cleaned = _strip_jsonc_comments(APPSETTINGS.read_text(encoding="utf-8"))
     cache = json.loads(cleaned).get("Cache") or {}
-    conn = (cache.get("ConnectionString") or "").split(",")[0].strip()
-    if ":" in conn:
-        try:
-            return int(conn.rsplit(":", 1)[1])
-        except ValueError:
-            pass
-    return REDIS_PORT
+    return _port_from_connection_string(cache.get("ConnectionString"), REDIS_PORT)
+
+def load_backplane_port() -> int | None:
+    """
+    Parse the SignalR backplane Redis port from appsettings Realtime. It is a separate
+    instance on purpose: SignalR's backplane is classic pub/sub, which ignores database
+    numbering, so sharing the cache Redis would mean sharing its memory and CPU too.
+    Returns None when no backplane is configured (single-instance dev).
+    """
+    if not APPSETTINGS.exists():
+        return BACKPLANE_PORT
+    cleaned = _strip_jsonc_comments(APPSETTINGS.read_text(encoding="utf-8"))
+    realtime = json.loads(cleaned).get("Realtime") or {}
+    conn = realtime.get("BackplaneConnectionString")
+    if not conn:
+        return None
+    return _port_from_connection_string(conn, BACKPLANE_PORT)
 
 def port_open(host: str, port: int, timeout: float = 0.5) -> bool:
     try:
@@ -360,21 +381,22 @@ def ensure_aspire_cli() -> str:
 
 # ─── service starters ────────────────────────────────────────────────────────
 
-def start_redis(port: int) -> None:
-    banner("Redis")
+def start_redis(port: int, label: str = "Redis", name: str = "redis") -> None:
+    banner(label)
     if port_open("127.0.0.1", port):
         ok(f"already running on :{port}")
         return
     bin_path = ensure_redis()
-    REDIS_DATA.mkdir(parents=True, exist_ok=True)
+    data_dir = REDIS_DATA / name
+    data_dir.mkdir(parents=True, exist_ok=True)
     spawn(
-        "redis",
+        name,
         C.RED,
         [
             bin_path,
             "--port", str(port),
             "--bind", "127.0.0.1",
-            "--dir", str(REDIS_DATA),
+            "--dir", str(data_dir),
             # ephemeral dev cache: keep it light, no AOF, lazy RDB snapshots only
             "--appendonly", "no",
             "--save", "",
@@ -383,7 +405,7 @@ def start_redis(port: int) -> None:
     if wait_for_port("127.0.0.1", port, timeout=10):
         ok(f"ready on :{port}")
     else:
-        warn(f"redis didn't open :{port} within 10s — check the log above")
+        warn(f"{name} didn't open :{port} within 10s — check the log above")
 
 def start_mailpit() -> None:
     banner("Mailpit")
@@ -495,6 +517,7 @@ def main() -> int:
 
     s3 = load_s3_config()
     redis_port = load_redis_port()
+    backplane_port = load_backplane_port()
 
     banner("noo-api dev services")
     info(f"project root  : {ROOT}")
@@ -502,6 +525,7 @@ def main() -> int:
     info(f"logs          : {LOG_DIR}")
     info(f"S3 bucket     : {s3['BucketName']} (key: {s3['AccessKey']})")
     info(f"Redis port    : {redis_port}")
+    info(f"Backplane port: {backplane_port if backplane_port else 'not configured'}")
 
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
@@ -509,6 +533,8 @@ def main() -> int:
     check_mysql()
     if not args.no_redis:
         start_redis(redis_port)
+        if backplane_port and backplane_port != redis_port:
+            start_redis(backplane_port, label="Redis (SignalR backplane)", name="redis-backplane")
     if not args.no_mail:
         start_mailpit()
     if not args.no_minio:
