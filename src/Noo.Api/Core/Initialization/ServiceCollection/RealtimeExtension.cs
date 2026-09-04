@@ -59,4 +59,20 @@ public static class RealtimeExtension
 
         return services;
     }
+
+    /// <summary>
+    /// Makes <see cref="IRealtimePublisher{TClient}"/> resolvable for one hub. Call it once per
+    /// hub, next to where the hub is mapped, so the set of publishable contracts stays visible.
+    /// </summary>
+    public static IServiceCollection AddNooHub<THub, TClient>(this IServiceCollection services)
+        where THub : Hub<TClient>
+        where TClient : class
+    {
+        services.AddSingleton<
+            IRealtimePublisher<TClient>,
+            SignalRRealtimePublisher<THub, TClient>
+        >();
+
+        return services;
+    }
 }
