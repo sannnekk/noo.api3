@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using Noo.Api.Core.System.Realtime;
+using Noo.Api.Core.System.Realtime.Ping;
 
 namespace Noo.Api.Core.Initialization.App;
 
@@ -23,7 +24,7 @@ public static class RealtimeEndpointsExtension
             return app;
         }
 
-        // No hubs yet — the transport lands before the first feature that uses it.
+        app.MapNooHub<RealtimePingHub>("/ping");
 
         return app;
     }
@@ -39,7 +40,21 @@ public static class RealtimeEndpointsExtension
     )
         where THub : Hub
     {
-        var builder = app.MapHub<THub>($"{HubPathPrefix}{pattern}");
+        var config = app.Services.GetRequiredService<IOptions<RealtimeConfig>>().Value;
+
+        var builder = app.MapHub<THub>(
+            $"{HubPathPrefix}{pattern}",
+            options =>
+            {
+                options.ApplicationMaxBufferSize = config.ApplicationMaxBufferSize;
+                options.TransportMaxBufferSize = config.TransportMaxBufferSize;
+
+                // Without this a connection stays authenticated forever on a handshake that
+                // happened hours ago, so revoking a session would not close the sockets it
+                // opened. With it, revocation lags by at most the access token's lifetime.
+                options.CloseOnAuthenticationExpiration = true;
+            }
+        );
 
         builder.DisableRateLimiting();
 

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Noo.Api.Core.Config.Env;
+using Noo.Api.Core.Initialization.App;
 using Noo.Api.Core.Initialization.Configuration;
 using Noo.Api.Core.Security.Authentication;
 using Noo.Api.Core.Security.Authorization;
@@ -44,6 +45,9 @@ public static class AuthenticationExtension
                     options.TokenValidationParameters = GetTokenValidationParameters(jwtConfig);
                     options.Events = new JwtBearerEvents
                     {
+                        // Browsers cannot set headers on a WebSocket handshake, so the hub
+                        // transports pass the token in the query string instead.
+                        OnMessageReceived = ReadTokenFromHubQueryStringAsync,
                         // A token is only valid while its backing session still exists.
                         // Failing here yields 401 on auth-required routes; [AllowAnonymous]
                         // routes are unaffected since failed auth does not block them.
@@ -67,6 +71,21 @@ public static class AuthenticationExtension
                     };
                 }
             );
+    }
+
+    private static Task ReadTokenFromHubQueryStringAsync(MessageReceivedContext context)
+    {
+        if (context.Request.Path.StartsWithSegments(RealtimeEndpointsExtension.HubPathPrefix))
+        {
+            var token = context.Request.Query["access_token"];
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                context.Token = token;
+            }
+        }
+
+        return Task.CompletedTask;
     }
 
     private static Task ReadTokenFromMediaCookieAsync(MessageReceivedContext context)

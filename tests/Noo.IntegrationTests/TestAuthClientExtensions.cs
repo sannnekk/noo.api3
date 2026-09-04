@@ -50,6 +50,14 @@ public static class TestAuthClientExtensions
         return client;
     }
 
+    /// <summary>
+    /// A raw token for callers that cannot use an <see cref="HttpClient"/> header — the hub
+    /// transports carry it in the query string, because browsers cannot set headers on a
+    /// WebSocket handshake.
+    /// </summary>
+    public static string AccessTokenFor(UserRoles role, Ulid? userId = null)
+        => BuildAccessToken(role, userId);
+
     private static string BuildAccessToken(UserRoles role, Ulid? userId)
     {
         var jwtConfig = Jwt.Value;
