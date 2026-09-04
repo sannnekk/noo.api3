@@ -5,6 +5,8 @@ using Noo.Api.Core.Initialization.Configuration;
 using Noo.Api.Core.System.Realtime;
 using Noo.Api.Core.System.Realtime.Backplane;
 using Noo.Api.Core.System.Realtime.Filters;
+using Noo.Api.Core.System.Realtime.Ping;
+using Noo.Api.Notifications.Realtime;
 using Noo.Api.Core.Utils.Json;
 
 namespace Noo.Api.Core.Initialization.ServiceCollection;
@@ -28,6 +30,10 @@ public static class RealtimeExtension
         services.AddSingleton<IRealtimeBackplane, RealtimeBackplane>();
         services.AddSingleton<RealtimeMetrics>();
         services.AddSingleton<IUserIdProvider, NooUserIdProvider>();
+
+        // One line per hub, alongside where it is mapped in MapNooHubs.
+        services.AddNooHub<RealtimePingHub, IRealtimePingClient>();
+        services.AddNooHub<NotificationHub, INotificationHubClient>();
 
         services.AddSingleton<HubExceptionFilter>();
         services.AddSingleton<HubRateLimitFilter>();

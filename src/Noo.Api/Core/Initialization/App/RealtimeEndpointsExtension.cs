@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using Noo.Api.Core.System.Realtime;
 using Noo.Api.Core.System.Realtime.Ping;
+using Noo.Api.Notifications.Realtime;
 
 namespace Noo.Api.Core.Initialization.App;
 
@@ -25,6 +26,7 @@ public static class RealtimeEndpointsExtension
         }
 
         app.MapNooHub<RealtimePingHub>("/ping");
+        app.MapNooHub<NotificationHub>("/notifications");
 
         return app;
     }
