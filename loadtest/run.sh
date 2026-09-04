@@ -18,7 +18,7 @@ LOCAL_BIN="$HOME/.local/bin"
 K6_VERSION="${K6_VERSION:-v1.1.0}"
 
 usage() {
-	echo -e "${BOLD}Usage${RESET}: $0 ${CYAN}<student|mentor|teacher|assistant|admin>${RESET} ${YELLOW}[smoke|load|stress]${RESET}"
+	echo -e "${BOLD}Usage${RESET}: $0 ${CYAN}<student|mentor|teacher|assistant|admin|realtime>${RESET} ${YELLOW}[smoke|load|stress]${RESET}"
 	echo -e "  ${DIM}smoke  - 1 VU, 30s sanity run${RESET}"
 	echo -e "  ${DIM}load   - 10 VUs, 2m steady load (default)${RESET}"
 	echo -e "  ${DIM}stress - ramp 0 → 60 VUs over 3m${RESET}"
@@ -65,7 +65,7 @@ ROLE="${1:-}"
 PROFILE="${2:-load}"
 
 case "$ROLE" in
-	student|mentor|teacher|assistant|admin) ;;
+	student|mentor|teacher|assistant|admin|realtime) ;;
 	-h|--help) usage; exit 0 ;;
 	"") say_fail "Missing role"; usage; exit 1 ;;
 	*) say_fail "Unknown role: $ROLE"; usage; exit 1 ;;

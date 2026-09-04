@@ -11,7 +11,7 @@ NOO_USER=somestudent NOO_PASSWORD=... ./loadtest/run.sh student
 NOO_USER=somementor  NOO_PASSWORD=... ./loadtest/run.sh mentor stress
 ```
 
-`./loadtest/run.sh <role> [profile]` — the account in `NOO_USER` must actually have the chosen role, otherwise setup aborts.
+`./loadtest/run.sh <role> [profile]` — the account in `NOO_USER` must actually have the chosen role, otherwise setup aborts. `realtime` is the exception: it works with any account, since it measures connections rather than a role's traffic.
 
 | Profile | Shape |
 | --- | --- |
@@ -30,11 +30,13 @@ Environment variables: `NOO_USER` / `NOO_PASSWORD` (required), `BASE_URL` (defau
 | `teacher.js` | Course list/tree/content authoring views, work list and statistics, memberships, user list |
 | `assistant.js` | Assigned works and statistics |
 | `admin.js` | User management, courses, memberships, platform statistics |
+| `realtime.js` | SignalR hub connections against `/hubs/ping`, spoken as raw WebSocket frames. Measures what an **idle** connection costs rather than throughput |
 
 `lib.js` holds the shared plumbing: login with per-VU token refresh on 401, weighted action runner, id-pool discovery helpers, per-route thresholds, and 401/403/429 counters.
 
 ## Notes
 
+- **The realtime scenario measures memory, not throughput.** Its profiles hold connections open (`load` is 500 VUs for 3m, `stress` ramps to 5000) and the useful reading is taken from the API pod, not from k6: RSS and open file descriptors divided by the connection count give the per-connection cost that pod sizing depends on. `HOLD_SECONDS` and `PING_EVERY_SECONDS` tune how long a VU holds its socket and how often it pings. Past a few thousand VUs the k6 host runs out of descriptors first — raise its own `ulimit -n`, or run k6 distributed.
 - **The student scenario writes to the database**: it autosaves generated draft answers into the student's unsolved assigned works (mimicking the frontend autosave). Use a throwaway student account on a dev database.
 - **Rate limiting**: the API allows 300 requests/min per IP, which any real run will exceed. Start the API with the limit raised:
 
