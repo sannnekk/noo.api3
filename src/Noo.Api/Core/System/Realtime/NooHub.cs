@@ -12,10 +12,12 @@ public abstract class NooHub<TClient> : Hub<TClient>
     where TClient : class
 {
     private readonly RealtimeMetrics _metrics;
+    private readonly RealtimeConnectionRegistry _connections;
 
-    protected NooHub(RealtimeMetrics metrics)
+    protected NooHub(RealtimeMetrics metrics, RealtimeConnectionRegistry connections)
     {
         _metrics = metrics;
+        _connections = connections;
     }
 
     /// <summary>
@@ -31,12 +33,20 @@ public abstract class NooHub<TClient> : Hub<TClient>
     {
         _metrics.ConnectionOpened(HubName);
 
+        // Registering here is what keeps an idle open tab counted as online once the frontend
+        // stops polling — HTTP requests used to be the heartbeat, and a held socket makes none.
+        if (CallerRole is { } role)
+        {
+            _connections.Add(CallerId, role);
+        }
+
         return base.OnConnectedAsync();
     }
 
     public override Task OnDisconnectedAsync(Exception? exception)
     {
         _metrics.ConnectionClosed(HubName);
+        _connections.Remove(CallerId);
 
         return base.OnDisconnectedAsync(exception);
     }

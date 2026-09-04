@@ -14,8 +14,12 @@ public class RealtimePingHub : NooHub<IRealtimePingClient>
 {
     private readonly ICurrentUser _currentUser;
 
-    public RealtimePingHub(RealtimeMetrics metrics, ICurrentUser currentUser)
-        : base(metrics)
+    public RealtimePingHub(
+        RealtimeMetrics metrics,
+        RealtimeConnectionRegistry connections,
+        ICurrentUser currentUser
+    )
+        : base(metrics, connections)
     {
         _currentUser = currentUser;
     }

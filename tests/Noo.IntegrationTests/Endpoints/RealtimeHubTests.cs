@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 using Noo.Api.Core.Security.Authorization;
+using Noo.Api.Core.System.Realtime;
 using Noo.Api.Core.System.Realtime.Ping;
 
 namespace Noo.IntegrationTests.Endpoints;
@@ -73,6 +75,28 @@ public class RealtimeHubTests : IClassFixture<ApiFactory>
 
         Assert.Equal(userId.ToString(), pong.UserId);
         Assert.NotEmpty(pong.ConnectionId);
+    }
+
+    // Once the frontend stops polling, this registry is the only thing that knows an idle tab is
+    // still there — the presence heartbeat reads it to keep the user marked online.
+    [Fact]
+    public async Task RegistersAndDeregistersTheConnectedUserForPresence()
+    {
+        var userId = Ulid.NewUlid();
+        var token = TestAuthClientExtensions.AccessTokenFor(UserRoles.Student, userId);
+        var registry = _factory.Services.GetRequiredService<RealtimeConnectionRegistry>();
+
+        await using (var connection = BuildConnection(token))
+        {
+            await connection.StartAsync();
+            await connection.InvokeAsync<RealtimePong>(nameof(RealtimePingHub.PingAsync));
+
+            Assert.Contains(registry.Connected, user => user.UserId == userId);
+
+            await connection.StopAsync();
+        }
+
+        Assert.DoesNotContain(registry.Connected, user => user.UserId == userId);
     }
 
     [Fact]

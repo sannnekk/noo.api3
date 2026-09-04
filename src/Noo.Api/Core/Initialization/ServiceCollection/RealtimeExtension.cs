@@ -29,6 +29,7 @@ public static class RealtimeExtension
 
         services.AddSingleton<IRealtimeBackplane, RealtimeBackplane>();
         services.AddSingleton<RealtimeMetrics>();
+        services.AddSingleton<RealtimeConnectionRegistry>();
         services.AddSingleton<IUserIdProvider, NooUserIdProvider>();
 
         // One line per hub, alongside where it is mapped in MapNooHubs.

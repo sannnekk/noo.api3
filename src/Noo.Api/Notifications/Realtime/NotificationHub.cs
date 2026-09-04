@@ -14,8 +14,8 @@ namespace Noo.Api.Notifications.Realtime;
 [Authorize]
 public class NotificationHub : NooHub<INotificationHubClient>
 {
-    public NotificationHub(RealtimeMetrics metrics)
-        : base(metrics)
+    public NotificationHub(RealtimeMetrics metrics, RealtimeConnectionRegistry connections)
+        : base(metrics, connections)
     {
     }
 }
