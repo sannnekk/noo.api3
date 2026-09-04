@@ -285,7 +285,7 @@ public class AuthServiceTests
         var h = new Harness();
         h.Token.Setup(t => t.ValidateTokenAsync("tok")).ReturnsAsync(((Ulid?)user.Id, (TokenType?)TokenType.PasswordReset, (string?)null));
         h.Users.Setup(s => s.GetUserByIdAsync(user.Id)).ReturnsAsync(user);
-        h.Sessions.Setup(s => s.DeleteAllSessions(user.Id)).Verifiable();
+        h.Sessions.Setup(s => s.DeleteAllSessionsAsync(user.Id)).Returns(Task.CompletedTask).Verifiable();
         h.Users.Setup(s => s.UpdateUserPasswordAsync(user.Id, It.IsAny<string>())).Returns(Task.CompletedTask).Verifiable();
         var svc = h.Build();
 

@@ -118,7 +118,7 @@ public class AuthService : IAuthService
         {
             if (outcome.Token is not null)
             {
-                _sessionService.DeleteSessionById(outcome.Token.SessionId);
+                await _sessionService.DeleteSessionByIdAsync(outcome.Token.SessionId);
             }
 
             return RefreshResult.Failed;
@@ -135,7 +135,7 @@ public class AuthService : IAuthService
 
         if (user is null || user.IsBlocked)
         {
-            _sessionService.DeleteSessionById(sessionId);
+            await _sessionService.DeleteSessionByIdAsync(sessionId);
             return RefreshResult.Failed;
         }
 
@@ -229,7 +229,7 @@ public class AuthService : IAuthService
         }
 
         await _userService.UpdateUserPasswordAsync(user.Id, _hashService.Hash(newPassword));
-        _sessionService.DeleteAllSessions(user.Id);
+        await _sessionService.DeleteAllSessionsAsync(user.Id);
         _tokenService.DeleteTokens(user.Id, TokenType.PasswordReset);
 
         await _events.PublishAsync(new UserPasswordChangedEvent(user.Id, ViaReset: true));

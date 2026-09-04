@@ -1,4 +1,5 @@
 using AutoMapper;
+using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Sessions.Models;
@@ -22,20 +23,21 @@ public class SessionServiceTests
         return cfg.CreateMapper();
     }
 
-    private static (SessionService svc, NooDbContext ctx, IUnitOfWork uow) Create()
+    private static (SessionService svc, NooDbContext ctx, IUnitOfWork uow, ICacheRepository cache) Create()
     {
         var ctx = TestHelpers.CreateInMemoryDb();
         var uow = TestHelpers.CreateUowMock(ctx).Object;
         var mapper = CreateMapper();
         var repository = new SessionRepository(ctx);
-        var svc = new SessionService(repository, mapper);
-        return (svc, ctx, uow);
+        var cache = new MemoryCacheRepository();
+        var svc = new SessionService(repository, cache, mapper);
+        return (svc, ctx, uow, cache);
     }
 
     [Fact]
     public async Task CreateSessionIfNotExists_Creates_New_WhenNoneMatches()
     {
-        var (svc, ctx, uow) = Create();
+        var (svc, ctx, uow, _) = Create();
         var userId = Ulid.NewUlid();
         var http = new DefaultHttpContext
         {
@@ -55,7 +57,7 @@ public class SessionServiceTests
     [Fact]
     public async Task CreateSessionIfNotExists_Updates_WhenDeviceIdMatches()
     {
-        var (svc, ctx, uow) = Create();
+        var (svc, ctx, uow, _) = Create();
         var userId = Ulid.NewUlid();
         var http1 = new DefaultHttpContext
         {
@@ -88,7 +90,7 @@ public class SessionServiceTests
     [Fact]
     public async Task CreateSessionIfNotExists_UsesUserAgentWhenNoDeviceId()
     {
-        var (svc, ctx, uow) = Create();
+        var (svc, ctx, uow, _) = Create();
         var userId = Ulid.NewUlid();
         var http1 = new DefaultHttpContext
         {
@@ -115,7 +117,7 @@ public class SessionServiceTests
     [Fact]
     public async Task DeleteSessionAsync_RemovesExisting()
     {
-        var (svc, ctx, uow) = Create();
+        var (svc, ctx, uow, _) = Create();
         var userId = Ulid.NewUlid();
         var http = new DefaultHttpContext
         {
@@ -126,7 +128,7 @@ public class SessionServiceTests
         var sessionId = await svc.CreateSessionIfNotExistsAsync(http, userId);
         await uow.CommitAsync();
 
-        svc.DeleteSession(sessionId, userId);
+        await svc.DeleteSessionAsync(sessionId, userId);
         await uow.CommitAsync();
 
         Assert.Empty(ctx.Set<SessionModel>());
@@ -135,14 +137,95 @@ public class SessionServiceTests
     [Fact]
     public async Task DeleteSessionAsync_ThrowsNotFound_WhenNotOwnedOrMissing()
     {
-        var (svc, _, _) = Create();
-        Assert.Throws<NotFoundException>(() => svc.DeleteSession(Ulid.NewUlid(), Ulid.NewUlid()));
+        var (svc, _, _, _) = Create();
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => svc.DeleteSessionAsync(Ulid.NewUlid(), Ulid.NewUlid()));
+    }
+
+    [Fact]
+    public async Task SessionExistsAsync_CachesTheHit_AndStopsQueryingTheDatabase()
+    {
+        var (svc, ctx, uow, cache) = Create();
+        var (sessionId, userId) = await SeedSessionAsync(svc, uow);
+
+        Assert.True(await svc.SessionExistsAsync(sessionId, userId));
+        Assert.Equal(userId.ToString(), await cache.GetAsync<string>($"session:exists:{sessionId}"));
+
+        // Removed behind the service's back: still reported as existing until the key expires.
+        ctx.Set<SessionModel>().RemoveRange(ctx.Set<SessionModel>());
+        await uow.CommitAsync();
+
+        Assert.True(await svc.SessionExistsAsync(sessionId, userId));
+    }
+
+    [Fact]
+    public async Task SessionExistsAsync_DoesNotLetOneUserRideAnotherUsersCachedSession()
+    {
+        var (svc, _, uow, _) = Create();
+        var (sessionId, _) = await SeedSessionAsync(svc, uow);
+
+        Assert.False(await svc.SessionExistsAsync(sessionId, Ulid.NewUlid()));
+    }
+
+    [Fact]
+    public async Task DeleteSessionAsync_DropsTheCachedHit()
+    {
+        var (svc, _, uow, cache) = Create();
+        var (sessionId, userId) = await SeedSessionAsync(svc, uow);
+
+        Assert.True(await svc.SessionExistsAsync(sessionId, userId));
+
+        await svc.DeleteSessionAsync(sessionId, userId);
+        await uow.CommitAsync();
+
+        Assert.Null(await cache.GetAsync<string>($"session:exists:{sessionId}"));
+        Assert.False(await svc.SessionExistsAsync(sessionId, userId));
+    }
+
+    // Signing out everywhere backs a password reset, so a stale key here would keep another
+    // device authenticated for the lifetime of the cache entry.
+    [Fact]
+    public async Task DeleteAllSessionsAsync_DropsEveryCachedHitForTheUser()
+    {
+        var (svc, _, uow, cache) = Create();
+        var (firstId, userId) = await SeedSessionAsync(svc, uow, "AgentA");
+        var (secondId, _) = await SeedSessionAsync(svc, uow, "AgentB", userId);
+
+        Assert.True(await svc.SessionExistsAsync(firstId, userId));
+        Assert.True(await svc.SessionExistsAsync(secondId, userId));
+
+        await svc.DeleteAllSessionsAsync(userId);
+        await uow.CommitAsync();
+
+        Assert.Null(await cache.GetAsync<string>($"session:exists:{firstId}"));
+        Assert.Null(await cache.GetAsync<string>($"session:exists:{secondId}"));
+    }
+
+    private static async Task<(Ulid sessionId, Ulid userId)> SeedSessionAsync(
+        SessionService svc,
+        IUnitOfWork uow,
+        string userAgent = "A",
+        Ulid? existingUserId = null
+    )
+    {
+        var userId = existingUserId ?? Ulid.NewUlid();
+        var http = new DefaultHttpContext
+        {
+            Connection = { RemoteIpAddress = System.Net.IPAddress.Parse("127.0.0.1") }
+        };
+        http.Request.Headers.UserAgent = userAgent;
+        http.User = MakePrincipal(userId);
+
+        var sessionId = await svc.CreateSessionIfNotExistsAsync(http, userId);
+        await uow.CommitAsync();
+
+        return (sessionId, userId);
     }
 
     [Fact]
     public async Task GetSessionsAsync_ReturnsSessions()
     {
-        var (svc, ctx, uow) = Create();
+        var (svc, ctx, uow, _) = Create();
         var userId = Ulid.NewUlid();
         var http = new DefaultHttpContext
         {

@@ -1,6 +1,7 @@
 using AutoMapper;
 using Moq;
 using Noo.Api.Auth.Services;
+using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request.Patching;
 using Noo.Api.Core.Security;
@@ -71,7 +72,8 @@ public class UserServiceTests
         Mock<IHashService>? hashService = null,
         Mock<IEmailChangeService>? emailChangeService = null,
         Mock<IUserAvatarRepository>? userAvatarRepository = null,
-        Mock<IEventPublisher>? events = null
+        Mock<IEventPublisher>? events = null,
+        ICacheRepository? cache = null
     )
     {
         return new UserService(
@@ -82,7 +84,8 @@ public class UserServiceTests
             (currentUser ?? new Mock<ICurrentUser>()).Object,
             (hashService ?? new Mock<IHashService>()).Object,
             (emailChangeService ?? new Mock<IEmailChangeService>()).Object,
-            (events ?? new Mock<IEventPublisher>()).Object
+            (events ?? new Mock<IEventPublisher>()).Object,
+            cache ?? new MemoryCacheRepository()
         );
     }
 

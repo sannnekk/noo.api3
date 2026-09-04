@@ -91,13 +91,13 @@ public class SessionController : ApiController
         StatusCodes.Status401Unauthorized,
         StatusCodes.Status403Forbidden
     )]
-    public IActionResult DeleteSession()
+    public async Task<IActionResult> DeleteSessionAsync()
     {
         var userId = User.GetId();
         var sessionId = User.GetSessionId();
 
         // Deleting the session cascade-deletes its refresh tokens; also drop the cookie.
-        _sessionService.DeleteCurrentSession(sessionId, userId);
+        await _sessionService.DeleteCurrentSessionAsync(sessionId, userId);
         Response.ClearRefreshToken(!_environment.IsDevelopment());
 
         return SendResponse();
@@ -116,10 +116,10 @@ public class SessionController : ApiController
         StatusCodes.Status403Forbidden,
         StatusCodes.Status404NotFound
     )]
-    public IActionResult DeleteSession([FromRoute] Ulid sessionId)
+    public async Task<IActionResult> DeleteSessionAsync([FromRoute] Ulid sessionId)
     {
         var userId = User.GetId();
-        _sessionService.DeleteSession(sessionId, userId);
+        await _sessionService.DeleteSessionAsync(sessionId, userId);
 
         return SendResponse();
     }

@@ -1,4 +1,5 @@
 using AutoMapper;
+using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Utils;
 using Noo.Api.Core.Utils.DI;
@@ -10,14 +11,29 @@ namespace Noo.Api.Sessions.Services;
 [RegisterScoped(typeof(ISessionService))]
 public class SessionService : ISessionService
 {
+    /// <summary>
+    /// How long a known-good session is trusted without asking the database. Every deletion
+    /// path drops the key, so this is only the window in which a session that vanished by some
+    /// other means still authenticates.
+    /// </summary>
+    private static readonly TimeSpan _existsCacheTtl = TimeSpan.FromSeconds(60);
+
     private readonly ISessionRepository _sessionRepository;
+    private readonly ICacheRepository _cache;
     private readonly IMapper _mapper;
 
-    public SessionService(ISessionRepository sessionRepository, IMapper mapper)
+    public SessionService(
+        ISessionRepository sessionRepository,
+        ICacheRepository cache,
+        IMapper mapper
+    )
     {
         _mapper = mapper;
+        _cache = cache;
         _sessionRepository = sessionRepository;
     }
+
+    private static string ExistsKey(Ulid sessionId) => $"session:exists:{sessionId}";
 
     public async Task<Ulid> CreateSessionIfNotExistsAsync(HttpContext context, Ulid userId)
     {
@@ -60,32 +76,60 @@ public class SessionService : ISessionService
         return existing.Id;
     }
 
-    public Task<bool> SessionExistsAsync(Ulid sessionId, Ulid userId)
+    public async Task<bool> SessionExistsAsync(Ulid sessionId, Ulid userId)
     {
-        return _sessionRepository.ExistsAsync(sessionId, userId);
+        // Only hits are cached, and keyed by session alone so that a deletion knowing just the
+        // session id can still drop them. A miss costs exactly what the uncached call did.
+        var cachedOwner = await _cache.GetAsync<string>(ExistsKey(sessionId));
+
+        if (cachedOwner is not null)
+        {
+            return cachedOwner == userId.ToString();
+        }
+
+        var exists = await _sessionRepository.ExistsAsync(sessionId, userId);
+
+        if (exists)
+        {
+            await _cache.SetAsync(ExistsKey(sessionId), userId.ToString(), _existsCacheTtl);
+        }
+
+        return exists;
     }
 
-    public void DeleteAllSessions(Ulid userId)
+    public async Task DeleteAllSessionsAsync(Ulid userId)
     {
+        // Read the ids before removing them: this is the "sign out everywhere" path behind a
+        // password reset, so leaving stale keys behind would keep other devices authenticated.
+        var sessions = await _sessionRepository.GetManyOfUserAsync(userId);
+
         _sessionRepository.DeleteAllSessions(userId);
+
+        await Task.WhenAll(sessions.Select(session => _cache.RemoveAsync(ExistsKey(session.Id))));
     }
 
-    public void DeleteSession(Ulid sessionId, Ulid userId)
+    public async Task DeleteSessionAsync(Ulid sessionId, Ulid userId)
     {
         if (!_sessionRepository.DeleteSession(sessionId, userId))
         {
             throw new NotFoundException();
         }
+
+        await _cache.RemoveAsync(ExistsKey(sessionId));
     }
 
-    public void DeleteCurrentSession(Ulid sessionId, Ulid userId)
+    public async Task DeleteCurrentSessionAsync(Ulid sessionId, Ulid userId)
     {
         _sessionRepository.DeleteSession(sessionId, userId);
+
+        await _cache.RemoveAsync(ExistsKey(sessionId));
     }
 
-    public void DeleteSessionById(Ulid sessionId)
+    public async Task DeleteSessionByIdAsync(Ulid sessionId)
     {
         _sessionRepository.DeleteById(sessionId);
+
+        await _cache.RemoveAsync(ExistsKey(sessionId));
     }
 
     public Task<IEnumerable<SessionModel>> GetSessionsAsync(Ulid userId)

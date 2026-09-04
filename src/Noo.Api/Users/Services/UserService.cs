@@ -1,5 +1,6 @@
 using AutoMapper;
 using Noo.Api.Auth.Services;
+using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions;
 using Noo.Api.Core.Exceptions.Http;
@@ -21,6 +22,12 @@ namespace Noo.Api.Users.Services;
 [RegisterScoped(typeof(IUserService))]
 public class UserService : IUserService
 {
+    /// <summary>
+    /// How long a block decision is trusted without asking the database. Blocking and
+    /// unblocking both drop the key, so this only bounds a change made by some other means.
+    /// </summary>
+    private static readonly TimeSpan _blockedCacheTtl = TimeSpan.FromSeconds(60);
+
     private readonly IUserRepository _userRepository;
 
     private readonly IUserAvatarRepository _userAvatarRepository;
@@ -37,6 +44,8 @@ public class UserService : IUserService
 
     private readonly IEventPublisher _events;
 
+    private readonly ICacheRepository _cache;
+
     public UserService(
         IUserRepository userRepository,
         IUserAvatarRepository userAvatarRepository,
@@ -45,7 +54,8 @@ public class UserService : IUserService
         ICurrentUser currentUser,
         IHashService hashService,
         IEmailChangeService emailChangeService,
-        IEventPublisher events
+        IEventPublisher events,
+        ICacheRepository cache
     )
     {
         _userRepository = userRepository;
@@ -56,11 +66,15 @@ public class UserService : IUserService
         _hashService = hashService;
         _emailChangeService = emailChangeService;
         _events = events;
+        _cache = cache;
     }
+
+    private static string BlockedKey(Ulid userId) => $"user:blocked:{userId}";
 
     public async Task BlockUserAsync(Ulid id)
     {
         await _userRepository.BlockUserAsync(id);
+        await _cache.RemoveAsync(BlockedKey(id));
 
         await _events.PublishAsync(new UserBlockedEvent(id, _currentUser.UserId));
     }
@@ -149,14 +163,28 @@ public class UserService : IUserService
         return result;
     }
 
-    public Task<bool> IsBlockedAsync(Ulid id)
+    public async Task<bool> IsBlockedAsync(Ulid id)
     {
-        return _userRepository.IsBlockedAsync(id);
+        // Cached both ways: "not blocked" is the answer on essentially every authenticated
+        // request, so it is the one worth keeping out of the database.
+        var cached = await _cache.GetAsync<bool?>(BlockedKey(id));
+
+        if (cached.HasValue)
+        {
+            return cached.Value;
+        }
+
+        var isBlocked = await _userRepository.IsBlockedAsync(id);
+
+        await _cache.SetAsync(BlockedKey(id), isBlocked, _blockedCacheTtl);
+
+        return isBlocked;
     }
 
     public async Task UnblockUserAsync(Ulid id)
     {
         await _userRepository.UnblockUserAsync(id);
+        await _cache.RemoveAsync(BlockedKey(id));
 
         await _events.PublishAsync(new UserUnblockedEvent(id, _currentUser.UserId));
     }
