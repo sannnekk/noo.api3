@@ -5,19 +5,26 @@ namespace Noo.Api.Core.Security.Authorization;
 [RegisterScoped(typeof(ICurrentUser))]
 public class CurrentUser : ICurrentUser
 {
-    public Ulid? UserId { get; init; }
-    public UserRoles? UserRole { get; init; }
-    public bool IsAuthenticated { get; init; }
+    private readonly ClaimsPrincipalAccessor _principalAccessor;
 
-    public CurrentUser(IHttpContextAccessor httpContextAccessor)
+    public CurrentUser(ClaimsPrincipalAccessor principalAccessor)
     {
-        UserId = httpContextAccessor.HttpContext?.User.GetId();
-        UserRole = httpContextAccessor.HttpContext?.User.GetRole();
-        IsAuthenticated = httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated ?? false;
+        _principalAccessor = principalAccessor;
     }
+
+    // Resolved per read, not in the constructor: SignalR builds a hub and its dependencies
+    // before the filter that supplies the principal runs, so a value captured at construction
+    // time would report an anonymous user for every hub invocation.
+    public Ulid? UserId => _principalAccessor.Current?.GetId();
+
+    public UserRoles? UserRole => _principalAccessor.Current?.GetRole();
+
+    public bool IsAuthenticated => _principalAccessor.Current?.Identity?.IsAuthenticated ?? false;
 
     public bool IsInRole(params UserRoles[] roles)
     {
-        return roles.Any(role => UserRole == role);
+        var role = UserRole;
+
+        return roles.Any(r => role == r);
     }
 }
