@@ -260,6 +260,85 @@ Run the API in a separate shell (`./scripts.sh run dev`) and you should see trac
 
 In production (k8s) point `OpenTelemetry.Endpoint` at your cluster's OTLP collector (Aspire Dashboard, OpenTelemetry Collector, Grafana Tempo, Datadog, etc.). Use `Headers` to pass any auth tokens the backend requires. The same SDK config covers both environments — only the endpoint changes.
 
+## Realtime (SignalR)
+
+Hubs live under `/hubs/*`. The shared plumbing is in `Core/System/Realtime`; each hub itself
+belongs to the module that owns it (`Notifications/Realtime/NotificationHub.cs`).
+
+### Adding a hub
+
+1. **Client contract.** An interface of what the server pushes, in the module's `Realtime` folder:
+
+   ```csharp
+   public interface ICourseHubClient
+   {
+       public Task MaterialChangedAsync(CourseMaterialDTO material);
+   }
+   ```
+
+   Method names are the wire names. This codebase requires the `Async` suffix on `Task`-returning
+   methods, so it appears in the TypeScript contract verbatim — keep the two identical.
+
+2. **The hub**, deriving from `NooHub<TClient>` so it gets connection metrics and presence
+   registration:
+
+   ```csharp
+   [Authorize(Policy = CoursePolicies.CanGetCourse)]
+   public class CourseHub : NooHub<ICourseHubClient>
+   {
+       public CourseHub(RealtimeMetrics metrics, RealtimeConnectionRegistry connections)
+           : base(metrics, connections) { }
+   }
+   ```
+
+3. **Register and map it**, both in one place — `AddNooRealtime` and `MapNooHubs`:
+
+   ```csharp
+   services.AddNooHub<CourseHub, ICourseHubClient>();   // RealtimeExtension
+   app.MapNooHub<CourseHub>("/courses");                // RealtimeEndpointsExtension
+   ```
+
+4. **Push from application code** through `IRealtimePublisher<TClient>`, never `IHubContext`:
+
+   ```csharp
+   await _publisher.SendToUserAsync(userId, client => client.MaterialChangedAsync(dto));
+   ```
+
+### Rules worth knowing before you write hub code
+
+- **`ICurrentUser` works inside hubs**, and is how you ask who is calling — a hub filter supplies
+  the principal, since SignalR never flows an `HttpContext` into a hub invocation.
+- **MVC filters do not run for hub messages.** Most importantly `MediaPresigningResultFilter`: a
+  DTO implementing `IHasPresignedMedia` pushed over a hub ships **unsigned** URLs unless the code
+  calls `IMediaUrlPresigner` itself first.
+- **Middleware does not run either.** `NooException` is translated by `HubExceptionFilter`
+  instead; throw the same exceptions you would from a controller.
+- **Hub invocations bypass the HTTP rate limiter** and are bounded by
+  `Realtime:InvocationsPerMinutePerConnection` instead.
+- **One hub is one WebSocket.** `NotificationHub` is the only always-on one; every other hub must
+  be opened by the page that needs it and closed when it unmounts.
+- **`Realtime` config is read while services are being registered**, so it must come from
+  appsettings or environment variables — configuration added later (as `WebApplicationFactory`
+  does) is too late to switch the backplane on.
+
+### Load and deployment
+
+`./loadtest/run.sh realtime [smoke|load|stress]` holds hub connections open and measures what an
+idle one costs; read the result from the pod's RSS and descriptor count, not from k6.
+
+The k8s manifests live outside this repo. A hub deployment needs:
+
+- `nginx.ingress.kubernetes.io/affinity: cookie`, `affinity-mode: persistent`, and
+  `proxy-read-timeout` / `proxy-send-timeout` raised to `3600`.
+- A `preStop` sleep, so a terminating pod leaves the ingress endpoint list before Kestrel closes
+  its sockets.
+- `DOTNET_gcServer=0` (or an explicit `DOTNET_GCHeapCount`). Server GC takes one heap per
+  *visible* core, so a 1-CPU pod on an 8-core node quietly allocates eight — several times the
+  memory you sized for.
+- A `Maximum Pool Size` in the DB connection string. MySqlConnector defaults to 100 per pod,
+  against a server `max_connections` of 256.
+- Autoscaling on `noo.realtime.connections`, not CPU.
+
 ## Code practices
 
 The following practices MUST be followed in the code:
