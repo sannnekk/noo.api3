@@ -320,6 +320,12 @@ belongs to the module that owns it (`Notifications/Realtime/NotificationHub.cs`)
 - **`Realtime` config is read while services are being registered**, so it must come from
   appsettings or environment variables — configuration added later (as `WebApplicationFactory`
   does) is too late to switch the backplane on.
+- **`KeepAliveSeconds` is coupled to a client setting that SignalR does not negotiate.** The JS
+  client's `serverTimeoutInMilliseconds` must be at least **double** it, or the client gives up
+  exactly when the next ping is due and every connection re-negotiates on a timer. Changing
+  `Realtime:KeepAliveSeconds` means changing `RealtimeTiming` in front-2 to match. The symptom is
+  repeated `POST /hubs/*/negotiate` in the network tab, and
+  `Server timeout elapsed without receiving a message from the server` in the browser console.
 
 ### Load and deployment
 

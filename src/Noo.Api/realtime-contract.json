@@ -1,0 +1,26 @@
+{
+  "Hubs": [
+    {
+      "Client": "INotificationHubClient",
+      "Methods": [
+        {
+          "Name": "NotificationCreatedAsync",
+          "Parameters": [
+            "NotificationDTO"
+          ]
+        }
+      ]
+    },
+    {
+      "Client": "IRealtimePingClient",
+      "Methods": [
+        {
+          "Name": "PongAsync",
+          "Parameters": [
+            "RealtimePong"
+          ]
+        }
+      ]
+    }
+  ]
+}
