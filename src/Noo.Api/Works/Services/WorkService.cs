@@ -74,6 +74,10 @@ public class WorkService : IWorkService
         // settled here rather than trusted from the client.
         workModel.Tasks.Renumber();
         workModel.MaxScore = workModel.Tasks?.Sum(t => t.MaxScore) ?? 0;
+
+        // Every cached figure is a percentage of MaxScore or a per-task summary, so an edit that
+        // touched either leaves the cache reporting numbers that no longer describe this work.
+        await _cache.RemoveAsync(StatisticsCacheKey(id));
     }
 
     public void DeleteWork(Ulid id)

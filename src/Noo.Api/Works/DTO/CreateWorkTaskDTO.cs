@@ -17,8 +17,10 @@ public record CreateWorkTaskDTO
     [JsonPropertyName("order")]
     public int Order { get; set; }
 
+    // Bounded by the column, not by int: work_task.max_score is TINYINT UNSIGNED, so anything
+    // above 255 is a MySQL overflow at save time that the InMemory provider in tests never sees.
     [Required]
-    [Range(1, int.MaxValue)]
+    [Range(1, 255)]
     [JsonPropertyName("maxScore")]
     public int MaxScore { get; set; }
 

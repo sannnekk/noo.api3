@@ -25,9 +25,12 @@ public record UpdateWorkDTO
     [JsonPropertyName("subjectId")]
     public Ulid? SubjectId { get; set; }
 
+    // The cap has to be repeated here: POST validates the collection it receives, but a PATCH
+    // that adds tasks one operation at a time never presents a whole collection to validate.
+    // Each task's own rules are reached by the graph walk in JsonPatchDocumentExtensions, which
+    // is what gets past the dictionary; the count is the one thing it cannot see.
     [Required]
-    //[MaxLength(300)]
-    //[ValidateEnumeratedItems]
+    [MaxLength(300)]
     [JsonPropertyName("tasks")]
     public IDictionary<string, UpdateWorkTaskDTO>? Tasks { get; set; }
 }

@@ -415,6 +415,68 @@ public class WorkServiceTests
         Assert.Equal(2, statistics.Work.Tasks!.Count);
     }
 
+    // Every cached figure is relative to MaxScore, so a patch that changes it leaves the cache
+    // describing a work that no longer exists — for the fifteen minutes until the TTL lapses.
+    [Fact(DisplayName = "WorkService: a patch drops the cached statistics rather than outliving them")]
+    public async Task UpdateWork_InvalidatesCachedStatistics()
+    {
+        using var context = TestHelpers.CreateInMemoryDb();
+        var uow = TestHelpers.CreateUowMock(context).Object;
+        var mapper = CreateMapper();
+        var cache = new MemoryCacheRepository();
+        var service = new WorkService(
+            new WorkRepository(context),
+            mapper,
+            new JsonPatchUpdateService(mapper),
+            cache
+        );
+
+        var workId = service.CreateWork(
+            new CreateWorkDTO
+            {
+                Title = "Stat Work",
+                Type = WorkType.Test,
+                SubjectId = Ulid.NewUlid(),
+                Tasks =
+                [
+                    new CreateWorkTaskDTO
+                    {
+                        Type = WorkTaskType.Word,
+                        Order = 0,
+                        MaxScore = 10,
+                        Content = RichTextFactory.Create("t1"),
+                    },
+                ],
+            }
+        );
+        await uow.CommitAsync();
+
+        var solved = AddAssignedWork(context, workId, AssignedWorkSolveStatus.SolvedInDeadline, 5);
+        var task = (await service.GetWorkAsync(workId))!.Tasks!.Single();
+        AddAnswer(context, solved.Id, task.Id, 5);
+        await context.SaveChangesAsync();
+
+        // 5 of a max of 10.
+        var before = await service.GetWorkStatisticsAsync(workId);
+        Assert.Equal(50, before!.AverageWorkScore.Percentage);
+
+        var patch = new SystemTextJsonPatch.JsonPatchDocument<UpdateWorkDTO>();
+        patch.Operations.Add(
+            new SystemTextJsonPatch.Operations.Operation<UpdateWorkDTO>(
+                "replace",
+                $"/tasks/{task.Id}/maxScore",
+                from: null,
+                value: 20
+            )
+        );
+        await service.UpdateWorkAsync(workId, patch);
+        await uow.CommitAsync();
+
+        // 5 of a max of 20 now; a served-from-cache answer would still say 50.
+        var after = await service.GetWorkStatisticsAsync(workId);
+        Assert.Equal(25, after!.AverageWorkScore.Percentage);
+    }
+
     [Fact(
         DisplayName = "Regression: GetWorkRelations loads the full course chain and builds the material path"
     )]

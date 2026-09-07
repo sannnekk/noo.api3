@@ -335,4 +335,56 @@ public class WorkNestedPatchTests : IClassFixture<ApiFactory>
             .Should().Equal(secondId, firstId);
         tasks.Select(task => task.GetProperty("order").GetInt32()).Should().Equal(1, 2);
     }
+
+    // POST validates the collection it is handed; a PATCH adding tasks one operation at a time
+    // never presents one, so the cap has to be checked on the patched document instead.
+    [Fact(DisplayName = "PATCH /work refuses to take a work past the 300-task cap")]
+    public async Task Patch_Work_Rejects_Exceeding_The_Task_Cap()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+        var workId = await CreateWorkWithTaskAsync(client, subjectId);
+
+        var additions = Enumerable
+            .Range(0, 300)
+            .Select(order =>
+            {
+                var id = Ulid.NewUlid().ToString();
+                return $$"""
+                    { "op": "add", "path": "/tasks/{{id}}", "value": {
+                        "id": "{{id}}", "type": "word", "order": {{order + 1}}, "maxScore": 1,
+                        "content": {"$type":"tiptap","type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"q"}]}]} } }
+                    """;
+            });
+
+        var response = await PatchAsync(
+            client.AsTeacher(),
+            $"/work/{workId}",
+            $"[{string.Join(",", additions)}]"
+        );
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var data = await GetWorkDataAsync(client, workId);
+        data.GetProperty("tasks").EnumerateArray().Should().HaveCount(1);
+    }
+
+    // work_task.max_score is TINYINT UNSIGNED; anything above 255 is a MySQL overflow, and the
+    // InMemory provider the tests run on would accept it silently.
+    [Fact(DisplayName = "PATCH /work refuses a task score the column cannot hold")]
+    public async Task Patch_Work_Rejects_MaxScore_Above_The_Column_Bound()
+    {
+        using var client = _factory.CreateClient();
+        var subjectId = await CreateSubjectAsync(client);
+        var workId = await CreateWorkWithTaskAsync(client, subjectId);
+        var taskId = await GetSingleTaskIdAsync(client, workId);
+
+        (await PatchAsync(client.AsTeacher(), $"/work/{workId}", $$"""
+            [ { "op": "replace", "path": "/tasks/{{taskId}}/maxScore", "value": 256 } ]
+            """)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        (await PatchAsync(client.AsTeacher(), $"/work/{workId}", $$"""
+            [ { "op": "replace", "path": "/tasks/{{taskId}}/maxScore", "value": 255 } ]
+            """)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
 }

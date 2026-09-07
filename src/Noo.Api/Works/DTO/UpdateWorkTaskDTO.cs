@@ -18,7 +18,7 @@ public record UpdateWorkTaskDTO
     [JsonPropertyName("order")]
     public int? Order { get; set; }
 
-    [Range(1, int.MaxValue)]
+    [Range(1, 255)]
     [JsonPropertyName("maxScore")]
     public int? MaxScore { get; set; }
 
