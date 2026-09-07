@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.StackExchangeRedis;
 using Microsoft.Extensions.Options;
 using Noo.Api.Core.Initialization.Configuration;
+using Noo.Api.Core.System.Collaboration.Realtime;
 using Noo.Api.Core.System.Realtime;
 using Noo.Api.Core.System.Realtime.Backplane;
 using Noo.Api.Core.System.Realtime.Filters;
@@ -35,6 +36,7 @@ public static class RealtimeExtension
         // One line per hub, alongside where it is mapped in MapNooHubs.
         services.AddNooHub<RealtimePingHub, IRealtimePingClient>();
         services.AddNooHub<NotificationHub, INotificationHubClient>();
+        services.AddNooHub<CollaborationHub, ICollaborationHubClient>();
 
         services.AddSingleton<HubExceptionFilter>();
         services.AddSingleton<HubRateLimitFilter>();

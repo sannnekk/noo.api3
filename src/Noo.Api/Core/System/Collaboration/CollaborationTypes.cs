@@ -99,6 +99,26 @@ public record CollaborationRoomState
 }
 
 /// <summary>
+/// That the draft reached MySQL. Deliberately carries no entity — clients re-read it, which is
+/// also how they pick up what the server settled rather than accepted (task numbering, the total
+/// score) and how media URLs get signed by the filter that hubs bypass.
+/// </summary>
+public record CollaborationSaved
+{
+    [JsonPropertyName("version")]
+    public long Version { get; init; }
+
+    [JsonPropertyName("savedBy")]
+    public Ulid SavedBy { get; init; }
+
+    [JsonPropertyName("savedByName")]
+    public string SavedByName { get; init; } = string.Empty;
+
+    [JsonPropertyName("savedAt")]
+    public DateTime SavedAt { get; init; }
+}
+
+/// <summary>
 /// An opaque CRDT frame. The server never decodes <see cref="Payload"/> — it is base64 of a
 /// y-protocols sync or awareness message, and keeping it opaque is what lets rich-text editing
 /// work without a CRDT implementation on this side.

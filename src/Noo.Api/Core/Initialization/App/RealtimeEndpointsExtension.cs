@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
+using Noo.Api.Core.System.Collaboration.Realtime;
 using Noo.Api.Core.System.Realtime;
 using Noo.Api.Core.System.Realtime.Ping;
 using Noo.Api.Notifications.Realtime;
@@ -27,6 +28,7 @@ public static class RealtimeEndpointsExtension
 
         app.MapNooHub<RealtimePingHub>("/ping");
         app.MapNooHub<NotificationHub>("/notifications");
+        app.MapNooHub<CollaborationHub>("/collaboration");
 
         return app;
     }

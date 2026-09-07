@@ -1,6 +1,48 @@
 {
   "Hubs": [
     {
+      "Client": "ICollaborationHubClient",
+      "Methods": [
+        {
+          "Name": "DocumentSavedAsync",
+          "Parameters": [
+            "CollaborationSaved"
+          ]
+        },
+        {
+          "Name": "LeaseChangedAsync",
+          "Parameters": [
+            "CollaborationLease"
+          ]
+        },
+        {
+          "Name": "OpsAppliedAsync",
+          "Parameters": [
+            "Int64",
+            "CollaborationOp[]"
+          ]
+        },
+        {
+          "Name": "PresenceChangedAsync",
+          "Parameters": [
+            "CollaborationMember[]"
+          ]
+        },
+        {
+          "Name": "ResyncRequiredAsync",
+          "Parameters": [
+            "String"
+          ]
+        },
+        {
+          "Name": "YjsFrameAsync",
+          "Parameters": [
+            "CollaborationFrame"
+          ]
+        }
+      ]
+    },
+    {
       "Client": "INotificationHubClient",
       "Methods": [
         {

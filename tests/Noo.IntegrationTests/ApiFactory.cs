@@ -15,6 +15,8 @@ using Microsoft.Extensions.Options;
 using Noo.Api.Core.Config.Env;
 using Noo.Api.Core.System.Email;
 using Noo.Api.Core.Storage;
+using Noo.Api.Core.System.Collaboration;
+using Noo.Api.Core.System.Collaboration.Store;
 using Noo.Api.Core.ThirdPartyServices.Google;
 using Noo.Api.Auth.External.Providers;
 using Noo.Api.Auth.External.Types;
@@ -81,6 +83,12 @@ public class ApiFactory : WebApplicationFactory<Program>
             // Replace S3 with a deterministic fake so the presigning filter never touches AWS
             services.RemoveAll<IS3Storage>();
             services.AddSingleton<IS3Storage, FakeS3Storage>();
+
+            // Collaboration rooms go to process memory, so a run does not depend on whether a
+            // Redis happens to be listening — and does not leave rooms behind in one that is.
+            // The Redis store's own behaviour is covered by CollaborationStoreTests.
+            services.RemoveAll<ICollaborationStore>();
+            services.AddSingleton<ICollaborationStore, InMemoryCollaborationStore>();
 
             // Replace every outbound Google call so no test reaches Google. The OAuth state
             // signing and all authorization still run for real — only the network is faked.

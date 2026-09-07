@@ -34,4 +34,16 @@ public interface ICollaborationRoomHandler
         IReadOnlyList<CollaborationOp> ops,
         CancellationToken ct = default
     );
+
+    /// <summary>
+    /// Collapses a long draft into an equivalent shorter one — in practice a single operation
+    /// carrying the whole patched document. Needed because a session that runs all afternoon
+    /// would otherwise grow the room without bound, and only the handler knows the shape the
+    /// operations are being applied to.
+    /// </summary>
+    public Task<IReadOnlyList<CollaborationOp>> CompactAsync(
+        Ulid roomId,
+        IReadOnlyList<CollaborationOp> ops,
+        CancellationToken ct = default
+    );
 }
