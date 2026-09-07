@@ -68,8 +68,9 @@ public static class RealtimeExtension
     }
 
     /// <summary>
-    /// Makes <see cref="IRealtimePublisher{TClient}"/> resolvable for one hub. Call it once per
-    /// hub, next to where the hub is mapped, so the set of publishable contracts stays visible.
+    /// Makes <see cref="IRealtimePublisher{TClient}"/> resolvable for one hub, and applies that
+    /// hub's own <c>Realtime:HubLimits</c> entry. Call it once per hub, next to where the hub is
+    /// mapped, so the set of publishable contracts stays visible.
     /// </summary>
     public static IServiceCollection AddNooHub<THub, TClient>(this IServiceCollection services)
         where THub : Hub<TClient>
@@ -79,6 +80,21 @@ public static class RealtimeExtension
             IRealtimePublisher<TClient>,
             SignalRRealtimePublisher<THub, TClient>
         >();
+
+        // AddSignalR's options are the fleet-wide default; this is the per-hub override, and it
+        // is the only place a hub can be given a bigger receive limit without giving it to all.
+        // Registering the setup and then configuring against RealtimeConfig keeps the value
+        // resolved from the container rather than captured at registration time.
+        services.AddSignalR().AddHubOptions<THub>(_ => { });
+
+        services
+            .AddOptions<HubOptions<THub>>()
+            .Configure<IOptions<RealtimeConfig>>(
+                (options, realtime) =>
+                    options.MaximumReceiveMessageSize = realtime
+                        .Value.LimitsFor(typeof(THub).Name)
+                        .MaximumReceiveMessageSize
+            );
 
         return services;
     }

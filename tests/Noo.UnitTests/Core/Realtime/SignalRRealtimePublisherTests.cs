@@ -14,6 +14,7 @@ public class SignalRRealtimePublisherTests
         public List<string[]> UserBatches { get; } = [];
         public bool SentToAll { get; private set; }
         public List<string> GroupNames { get; } = [];
+        public List<(string Group, string[] Excluded)> GroupExcepts { get; } = [];
 
         private static IRealtimePingClient Proxy => new Mock<IRealtimePingClient>().Object;
 
@@ -47,7 +48,11 @@ public class SignalRRealtimePublisherTests
         public IRealtimePingClient AllExcept(IReadOnlyList<string> excludedConnectionIds) => Proxy;
         public IRealtimePingClient Client(string connectionId) => Proxy;
         public IRealtimePingClient Clients(IReadOnlyList<string> connectionIds) => Proxy;
-        public IRealtimePingClient GroupExcept(string groupName, IReadOnlyList<string> excludedConnectionIds) => Proxy;
+        public IRealtimePingClient GroupExcept(string groupName, IReadOnlyList<string> excludedConnectionIds)
+        {
+            GroupExcepts.Add((groupName, [.. excludedConnectionIds]));
+            return Proxy;
+        }
         public IRealtimePingClient Groups(IReadOnlyList<string> groupNames) => Proxy;
     }
 
@@ -142,6 +147,33 @@ public class SignalRRealtimePublisherTests
         await publisher.SendToGroupAsync("course:42", Noop);
 
         Assert.Equal("course:42", Assert.Single(clients.GroupNames));
+    }
+
+    [Fact]
+    public async Task SendsToAGroupSkippingTheNamedConnections()
+    {
+        var (publisher, clients) = Create();
+
+        await publisher.SendToGroupExceptAsync("work:42", ["connection-a"], Noop);
+
+        var (group, excluded) = Assert.Single(clients.GroupExcepts);
+
+        Assert.Equal("work:42", group);
+        Assert.Equal(["connection-a"], excluded);
+        Assert.Empty(clients.GroupNames);
+    }
+
+    // Excluding nobody is a plain group send; GroupExcept with an empty list would work too, but
+    // going through the same path keeps the metric label honest.
+    [Fact]
+    public async Task FallsBackToAPlainGroupSendWhenNothingIsExcluded()
+    {
+        var (publisher, clients) = Create();
+
+        await publisher.SendToGroupExceptAsync("work:42", [], Noop);
+
+        Assert.Equal("work:42", Assert.Single(clients.GroupNames));
+        Assert.Empty(clients.GroupExcepts);
     }
 
     private sealed class DummyMeterFactory : IMeterFactory

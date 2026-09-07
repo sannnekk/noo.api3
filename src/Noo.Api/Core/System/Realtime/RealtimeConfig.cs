@@ -54,6 +54,15 @@ public class RealtimeConfig : IConfig
     [Range(0, 10000)]
     public int BroadcastChunkDelayMs { get; set; } = 50;
 
+    /// <summary>
+    /// Per-hub overrides of the four limits above, keyed by hub type name (<c>"CollaborationHub"</c>).
+    /// The values above are sized for a hub that pushes and is never invoked; one carrying editor
+    /// traffic needs an order of magnitude more of both, and giving it to every hub would remove
+    /// the bound that makes a runaway client cheap.
+    /// </summary>
+    public IDictionary<string, HubLimitsConfig> HubLimits { get; set; } =
+        new Dictionary<string, HubLimitsConfig>(StringComparer.OrdinalIgnoreCase);
+
     public bool HasBackplane => !string.IsNullOrWhiteSpace(BackplaneConnectionString);
 
     public TimeSpan KeepAliveInterval => TimeSpan.FromSeconds(KeepAliveSeconds);
@@ -61,4 +70,38 @@ public class RealtimeConfig : IConfig
     public TimeSpan ClientTimeoutInterval => TimeSpan.FromSeconds(ClientTimeoutSeconds);
 
     public TimeSpan HandshakeTimeout => TimeSpan.FromSeconds(HandshakeTimeoutSeconds);
+
+    public ResolvedHubLimits LimitsFor(string hubName)
+    {
+        HubLimits.TryGetValue(hubName, out var overrides);
+
+        return new ResolvedHubLimits(
+            overrides?.InvocationsPerMinutePerConnection ?? InvocationsPerMinutePerConnection,
+            overrides?.MaximumReceiveMessageSize ?? MaximumReceiveMessageSize,
+            overrides?.ApplicationMaxBufferSize ?? ApplicationMaxBufferSize,
+            overrides?.TransportMaxBufferSize ?? TransportMaxBufferSize
+        );
+    }
 }
+
+public class HubLimitsConfig
+{
+    [Range(1, 100000)]
+    public int? InvocationsPerMinutePerConnection { get; set; }
+
+    [Range(1024, 1048576)]
+    public int? MaximumReceiveMessageSize { get; set; }
+
+    [Range(1024, 1048576)]
+    public int? ApplicationMaxBufferSize { get; set; }
+
+    [Range(1024, 1048576)]
+    public int? TransportMaxBufferSize { get; set; }
+}
+
+public record ResolvedHubLimits(
+    int InvocationsPerMinutePerConnection,
+    int MaximumReceiveMessageSize,
+    int ApplicationMaxBufferSize,
+    int TransportMaxBufferSize
+);

@@ -134,7 +134,13 @@ The configuration is done in the `appsettings.json` file. An example (all possib
     "TransportMaxBufferSize": 16384,
     "InvocationsPerMinutePerConnection": 120,
     "BroadcastChunkSize": 500,
-    "BroadcastChunkDelayMs": 50
+    "BroadcastChunkDelayMs": 50,
+    "HubLimits": {
+      "SomeBusyHub": {
+        "InvocationsPerMinutePerConnection": 900,
+        "MaximumReceiveMessageSize": 65536
+      }
+    }
   },
   "Jwt": {
     "Secret": "...",
@@ -314,7 +320,14 @@ belongs to the module that owns it (`Notifications/Realtime/NotificationHub.cs`)
 - **Middleware does not run either.** `NooException` is translated by `HubExceptionFilter`
   instead; throw the same exceptions you would from a controller.
 - **Hub invocations bypass the HTTP rate limiter** and are bounded by
-  `Realtime:InvocationsPerMinutePerConnection` instead.
+  `Realtime:InvocationsPerMinutePerConnection` instead. That default is sized for a hub that only
+  pushes; a hub clients actually invoke needs its own entry under `Realtime:HubLimits`, keyed by
+  the hub's type name. The same entry overrides `MaximumReceiveMessageSize`,
+  `ApplicationMaxBufferSize` and `TransportMaxBufferSize` — raising those globally would hand
+  every connection in the fleet a bigger buffer to be filled by a hostile client.
+- **A connection's invocations are handled one at a time.**
+  `MaximumParallelInvocationsPerClient` is left at its default of 1, which is what makes a
+  client's messages arrive in the order it sent them. Anything sequence-sensitive depends on it.
 - **One hub is one WebSocket.** `NotificationHub` is the only always-on one; every other hub must
   be opened by the page that needs it and closed when it unmounts.
 - **`Realtime` config is read while services are being registered**, so it must come from

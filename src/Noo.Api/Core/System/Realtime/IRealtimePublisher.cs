@@ -29,5 +29,17 @@ public interface IRealtimePublisher<TClient>
         CancellationToken ct = default
     );
 
+    /// <summary>
+    /// Fans out to a group while skipping named connections. What the sender already applied
+    /// locally must not come back at it — echoing an edit to its author is how a collaborative
+    /// editor loses a keystroke to a round trip.
+    /// </summary>
+    public Task SendToGroupExceptAsync(
+        string group,
+        IReadOnlyCollection<string> exceptConnectionIds,
+        Func<TClient, Task> send,
+        CancellationToken ct = default
+    );
+
     public Task BroadcastAsync(Func<TClient, Task> send, CancellationToken ct = default);
 }

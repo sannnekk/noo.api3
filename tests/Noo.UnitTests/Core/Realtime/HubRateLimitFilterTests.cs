@@ -8,10 +8,26 @@ namespace Noo.UnitTests.Core.Realtime;
 
 public class HubRateLimitFilterTests
 {
-    private static HubRateLimitFilter Create(int perMinute) =>
-        new(Options.Create(new RealtimeConfig { InvocationsPerMinutePerConnection = perMinute }));
+    private static HubRateLimitFilter Create(
+        int perMinute,
+        IDictionary<string, HubLimitsConfig>? hubLimits = null
+    ) =>
+        new(
+            Options.Create(
+                new RealtimeConfig
+                {
+                    InvocationsPerMinutePerConnection = perMinute,
+                    HubLimits =
+                        hubLimits ?? new Dictionary<string, HubLimitsConfig>(StringComparer.OrdinalIgnoreCase)
+                }
+            )
+        );
 
-    private static HubInvocationContext ContextFor(string connectionId)
+    private static HubInvocationContext ContextFor(string connectionId) =>
+        ContextFor<StubHub>(connectionId);
+
+    private static HubInvocationContext ContextFor<THub>(string connectionId)
+        where THub : Hub, new()
     {
         var caller = new Mock<HubCallerContext>();
         caller.SetupGet(c => c.ConnectionId).Returns(connectionId);
@@ -19,8 +35,8 @@ public class HubRateLimitFilterTests
         return new HubInvocationContext(
             caller.Object,
             new Mock<IServiceProvider>().Object,
-            new StubHub(),
-            typeof(StubHub).GetMethod(nameof(StubHub.NoopAsync))!,
+            new THub(),
+            typeof(THub).GetMethod("NoopAsync")!,
             []
         );
     }
@@ -65,7 +81,57 @@ public class HubRateLimitFilterTests
         Assert.Equal("ok", await filter.InvokeMethodAsync(ContextFor("connection-b"), Allowed));
     }
 
+    // A hub carrying editor traffic needs a budget the notification hub would never justify, so
+    // the limit is the hub's own rather than one number for the whole app.
+    [Fact]
+    public async Task PrefersTheBudgetConfiguredForTheHub()
+    {
+        var filter = Create(
+            perMinute: 1,
+            hubLimits: new Dictionary<string, HubLimitsConfig>(StringComparer.OrdinalIgnoreCase)
+            {
+                [nameof(BusyStubHub)] = new() { InvocationsPerMinutePerConnection = 3 }
+            }
+        );
+
+        var context = ContextFor<BusyStubHub>("connection-a");
+
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.Equal("ok", await filter.InvokeMethodAsync(context, Allowed));
+        }
+
+        await Assert.ThrowsAsync<HubException>(
+            async () => await filter.InvokeMethodAsync(context, Allowed)
+        );
+    }
+
+    [Fact]
+    public async Task FallsBackToTheAppWideBudgetForAHubWithoutAnEntry()
+    {
+        var filter = Create(
+            perMinute: 1,
+            hubLimits: new Dictionary<string, HubLimitsConfig>(StringComparer.OrdinalIgnoreCase)
+            {
+                [nameof(BusyStubHub)] = new() { InvocationsPerMinutePerConnection = 100 }
+            }
+        );
+
+        var context = ContextFor("connection-a");
+
+        await filter.InvokeMethodAsync(context, Allowed);
+
+        await Assert.ThrowsAsync<HubException>(
+            async () => await filter.InvokeMethodAsync(context, Allowed)
+        );
+    }
+
     private sealed class StubHub : Hub
+    {
+        public Task NoopAsync() => Task.CompletedTask;
+    }
+
+    private sealed class BusyStubHub : Hub
     {
         public Task NoopAsync() => Task.CompletedTask;
     }

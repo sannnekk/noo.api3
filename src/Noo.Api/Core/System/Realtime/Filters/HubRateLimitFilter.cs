@@ -26,11 +26,15 @@ public class HubRateLimitFilter : IHubFilter
         Func<HubInvocationContext, ValueTask<object?>> next
     )
     {
-        if (!TryTake(invocationContext.Context.ConnectionId))
+        // The budget is the hub's, not the app's: one connection only ever belongs to one hub,
+        // so the window itself still keys on the connection alone.
+        var budget = _config
+            .LimitsFor(invocationContext.Hub.GetType().Name)
+            .InvocationsPerMinutePerConnection;
+
+        if (!TryTake(invocationContext.Context.ConnectionId, budget))
         {
-            throw new HubException(
-                $"Rate limit exceeded: at most {_config.InvocationsPerMinutePerConnection} calls per minute."
-            );
+            throw new HubException($"Rate limit exceeded: at most {budget} calls per minute.");
         }
 
         return next(invocationContext);
@@ -47,7 +51,7 @@ public class HubRateLimitFilter : IHubFilter
         return next(context, exception);
     }
 
-    private bool TryTake(string connectionId)
+    private bool TryTake(string connectionId, int budget)
     {
         var now = Clock.Now;
 
@@ -60,7 +64,7 @@ public class HubRateLimitFilter : IHubFilter
                     : existing with { Count = existing.Count + 1 }
         );
 
-        return window.Count <= _config.InvocationsPerMinutePerConnection;
+        return window.Count <= budget;
     }
 
     private sealed record Window(DateTime StartedAt, int Count);

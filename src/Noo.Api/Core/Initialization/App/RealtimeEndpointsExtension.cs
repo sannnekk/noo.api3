@@ -42,14 +42,16 @@ public static class RealtimeEndpointsExtension
     )
         where THub : Hub
     {
-        var config = app.Services.GetRequiredService<IOptions<RealtimeConfig>>().Value;
+        var limits = app
+            .Services.GetRequiredService<IOptions<RealtimeConfig>>()
+            .Value.LimitsFor(typeof(THub).Name);
 
         var builder = app.MapHub<THub>(
             $"{HubPathPrefix}{pattern}",
             options =>
             {
-                options.ApplicationMaxBufferSize = config.ApplicationMaxBufferSize;
-                options.TransportMaxBufferSize = config.TransportMaxBufferSize;
+                options.ApplicationMaxBufferSize = limits.ApplicationMaxBufferSize;
+                options.TransportMaxBufferSize = limits.TransportMaxBufferSize;
 
                 // Without this a connection stays authenticated forever on a handshake that
                 // happened hours ago, so revoking a session would not close the sockets it
