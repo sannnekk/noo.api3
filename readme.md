@@ -142,6 +142,17 @@ The configuration is done in the `appsettings.json` file. An example (all possib
       }
     }
   },
+  "Collaboration": {
+    "Enabled": true,
+    "ConnectionString": "",
+    "LeaseTtlSeconds": 20,
+    "PresenceTtlSeconds": 45,
+    "DraftTtlHours": 4,
+    "MaxOps": 2000,
+    "MaxMembersPerRoom": 20,
+    "MaxOpBytes": 65536,
+    "MaxYjsFrameBytes": 16384
+  },
   "Jwt": {
     "Secret": "...",
     "Issuer": "https://localhost:5001",
@@ -213,6 +224,8 @@ The configuration is done in the `appsettings.json` file. An example (all possib
 `Sessions` config drives TTLs for online/active tracking and cleanup cadence; tune per environment to match expected activity and retention.
 
 `Google` configures the Google Sheets export integrations. `ClientId` / `ClientSecret` come from a Google Cloud OAuth 2.0 client of type *Web application*, and `RedirectUri` must be registered on that client and match the frontend's `/google-auth-callback` route exactly. Only the non-sensitive `drive.file` scope is requested, so the platform can read and write only the spreadsheets it created itself — no Google app verification is required. `TokenEncryptionKey` is a base64-encoded 256-bit key used to encrypt stored refresh tokens at rest; generate one with `openssl rand -base64 32`. Rotating it invalidates every stored token and forces users to reconnect their Google account. `MaxExportRows` caps a single export and makes oversized exports fail loudly instead of hanging.
+
+`Collaboration` configures rooms for collaborative editing. `ConnectionString` is where room state lives — leave it empty to use the cache Redis, which is the right default; with no Redis at all rooms fall back to process memory, which is correct for a single instance only, because a lease taken on one pod is then invisible to the next. `LeaseTtlSeconds` is how long a field stays claimed without a heartbeat and `PresenceTtlSeconds` how long a member survives in the roster without one — the second must comfortably exceed the client's heartbeat interval. `DraftTtlHours` is how long an unsaved draft outlives the last editor. `MaxOps` is where the draft is compacted into a single whole-document operation; the rest are payload bounds.
 
 `Events` configures the in-memory domain event bus. `QueueCapacity` is the bounded channel size; `HandlerTimeoutSeconds` caps the execution time of an individual handler; `MaxConcurrentEvents` limits how many events are dispatched in parallel; `MaxConcurrentHandlersPerEvent` limits how many handlers run in parallel for a single event.
 

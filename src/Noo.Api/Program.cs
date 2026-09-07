@@ -37,6 +37,7 @@ builder.Services.AddMetrics();
 builder.Services.AddDomainEvents();
 builder.Services.AddHostedServices();
 builder.Services.AddNooRealtime(builder.Configuration);
+builder.Services.AddNooCollaboration(builder.Configuration);
 
 builder.WebHost.AddWebServerConfiguration(builder.Configuration);
 
