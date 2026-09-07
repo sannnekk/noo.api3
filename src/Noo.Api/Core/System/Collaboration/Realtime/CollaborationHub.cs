@@ -21,6 +21,7 @@ namespace Noo.Api.Core.System.Collaboration.Realtime;
 public class CollaborationHub : NooHub<ICollaborationHubClient>
 {
     private const string _roomItemKey = "collab:room";
+    private const string _scopesItemKey = "collab:scopes";
 
     private readonly ICollaborationStore _store;
     private readonly CollaborationRoomHandlerRegistry _handlers;
@@ -180,6 +181,56 @@ public class CollaborationHub : NooHub<ICollaborationHubClient>
         return seq;
     }
 
+    /// <summary>
+    /// Opens the CRDT channel for one part of the document — a single task, for a work. Scoped
+    /// rather than room-wide so opening a work does not subscribe anyone to typing in the 299
+    /// tasks they are not looking at, which is what keeps a 300-task work as cheap as a one-task
+    /// one.
+    /// </summary>
+    public async Task<CollaborationScopeState> JoinScopeAsync(string scope)
+    {
+        var room = RequireRoom();
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, room.ScopeGroupName(scope));
+        JoinedScopes().Add(scope);
+
+        return await _store.JoinScopeAsync(room, scope, Context.ConnectionId);
+    }
+
+    public async Task LeaveScopeAsync(string scope)
+    {
+        var room = RequireRoom();
+
+        JoinedScopes().Remove(scope);
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, room.ScopeGroupName(scope));
+        await _store.LeaveScopeAsync(room, scope, Context.ConnectionId);
+    }
+
+    /// <summary>
+    /// Relays one CRDT frame to the others in its scope. The payload is never decoded: it is a
+    /// y-protocols sync or awareness message, and keeping it opaque is exactly what lets
+    /// multi-caret rich text work with no CRDT implementation on this side and no second server.
+    ///
+    /// Sent to the others, never back to the sender — a client has already applied its own
+    /// update locally, and echoing it would cost a round trip per keystroke.
+    /// </summary>
+    public Task PushYjsAsync(CollaborationFrame frame)
+    {
+        var room = RequireRoom();
+
+        if (!JoinedScopes().Contains(frame.Scope))
+        {
+            throw new BadRequestException($"Not in scope '{frame.Scope}'.");
+        }
+
+        if (frame.Payload.Length > _config.MaxYjsFrameBytes)
+        {
+            throw new BadRequestException("Frame is too large; sync it over HTTP instead.");
+        }
+
+        return Clients.OthersInGroup(room.ScopeGroupName(frame.Scope)).YjsFrameAsync(frame);
+    }
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         if (CurrentRoom() is { } room)
@@ -188,6 +239,24 @@ public class CollaborationHub : NooHub<ICollaborationHubClient>
         }
 
         await base.OnDisconnectedAsync(exception);
+    }
+
+    /// <summary>
+    /// The scopes this connection opened, so a disconnect can clear the seed claim it holds —
+    /// without that, an emptied scope would never be seeded again and the next editor to open
+    /// the task would find it blank.
+    /// </summary>
+    private HashSet<string> JoinedScopes()
+    {
+        if (Context.Items.TryGetValue(_scopesItemKey, out var raw) && raw is HashSet<string> scopes)
+        {
+            return scopes;
+        }
+
+        var created = new HashSet<string>(StringComparer.Ordinal);
+        Context.Items[_scopesItemKey] = created;
+
+        return created;
     }
 
     private CollaborationRoom? CurrentRoom() =>
@@ -212,6 +281,13 @@ public class CollaborationHub : NooHub<ICollaborationHubClient>
     /// </summary>
     private async Task ReleaseMembershipAsync(CollaborationRoom room)
     {
+        foreach (var scope in JoinedScopes().ToArray())
+        {
+            await _store.LeaveScopeAsync(room, scope, Context.ConnectionId);
+        }
+
+        JoinedScopes().Clear();
+
         var freed = await _store.LeaveAsync(room, Context.ConnectionId);
 
         foreach (var path in freed)
