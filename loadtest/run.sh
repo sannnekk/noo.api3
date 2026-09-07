@@ -18,7 +18,7 @@ LOCAL_BIN="$HOME/.local/bin"
 K6_VERSION="${K6_VERSION:-v1.1.0}"
 
 usage() {
-	echo -e "${BOLD}Usage${RESET}: $0 ${CYAN}<student|mentor|teacher|assistant|admin|realtime>${RESET} ${YELLOW}[smoke|load|stress]${RESET}"
+	echo -e "${BOLD}Usage${RESET}: $0 ${CYAN}<student|mentor|teacher|assistant|admin|realtime|collaboration>${RESET} ${YELLOW}[smoke|load|stress]${RESET}"
 	echo -e "  ${DIM}smoke  - 1 VU, 30s sanity run${RESET}"
 	echo -e "  ${DIM}load   - 10 VUs, 2m steady load (default)${RESET}"
 	echo -e "  ${DIM}stress - ramp 0 → 60 VUs over 3m${RESET}"
@@ -27,6 +27,7 @@ usage() {
 	echo -e "  ${CYAN}NOO_USER${RESET}      login (username or email) of an account with the chosen role ${RED}[required]${RESET}"
 	echo -e "  ${CYAN}NOO_PASSWORD${RESET}  password ${RED}[required]${RESET}"
 	echo -e "  ${CYAN}BASE_URL${RESET}      API base url ${DIM}(default: http://localhost:5001)${RESET}"
+	echo -e "  ${CYAN}WORK_ID${RESET}       the work every VU edits together ${DIM}(collaboration only)${RESET} ${RED}[required there]${RESET}"
 	echo -e "  ${CYAN}K6_VERSION${RESET}    k6 release to install if missing ${DIM}(default: ${K6_VERSION})${RESET}"
 }
 
@@ -65,7 +66,7 @@ ROLE="${1:-}"
 PROFILE="${2:-load}"
 
 case "$ROLE" in
-	student|mentor|teacher|assistant|admin|realtime) ;;
+	student|mentor|teacher|assistant|admin|realtime|collaboration) ;;
 	-h|--help) usage; exit 0 ;;
 	"") say_fail "Missing role"; usage; exit 1 ;;
 	*) say_fail "Unknown role: $ROLE"; usage; exit 1 ;;
@@ -102,4 +103,5 @@ exec k6 run \
 	-e NOO_USER="$NOO_USER" \
 	-e NOO_PASSWORD="$NOO_PASSWORD" \
 	-e PROFILE="$PROFILE" \
+	-e WORK_ID="${WORK_ID:-}" \
 	"$SCRIPT_DIR/$ROLE.js"

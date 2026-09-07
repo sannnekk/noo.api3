@@ -96,7 +96,26 @@ public class RealtimeHubTests : IClassFixture<ApiFactory>
             await connection.StopAsync();
         }
 
-        Assert.DoesNotContain(registry.Connected, user => user.UserId == userId);
+        // Polled, not asserted outright: StopAsync returns once the *client* is closed, and the
+        // server runs OnDisconnectedAsync on its own schedule afterwards.
+        await WaitUntilAsync(() => registry.Connected.All(user => user.UserId != userId));
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition())
+            {
+                return;
+            }
+
+            await Task.Delay(50);
+        }
+
+        Assert.True(condition(), "The condition was still not met after 10 seconds.");
     }
 
     [Fact]

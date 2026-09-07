@@ -25,6 +25,19 @@ namespace Noo.IntegrationTests;
 
 public class ApiFactory : WebApplicationFactory<Program>
 {
+    /// <summary>
+    /// Unique per factory, so one test's data is invisible to another's. A test that needs two
+    /// instances backed by the same data — the multi-pod cases — overrides this to share one.
+    /// </summary>
+    protected virtual string DatabaseName { get; } = $"TestDb-{Guid.NewGuid()}";
+
+    /// <summary>
+    /// Collaboration rooms live in process memory by default. A test covering what two instances
+    /// see of each other has to turn this off: with a store per instance, each one would only
+    /// ever see its own rooms, which is exactly the bug such a test exists to catch.
+    /// </summary>
+    protected virtual bool UseInMemoryCollaborationStore => true;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing"); // enables appsettings.Testing.json if you have it
@@ -87,8 +100,11 @@ public class ApiFactory : WebApplicationFactory<Program>
             // Collaboration rooms go to process memory, so a run does not depend on whether a
             // Redis happens to be listening — and does not leave rooms behind in one that is.
             // The Redis store's own behaviour is covered by CollaborationStoreTests.
-            services.RemoveAll<ICollaborationStore>();
-            services.AddSingleton<ICollaborationStore, InMemoryCollaborationStore>();
+            if (UseInMemoryCollaborationStore)
+            {
+                services.RemoveAll<ICollaborationStore>();
+                services.AddSingleton<ICollaborationStore, InMemoryCollaborationStore>();
+            }
 
             // Replace every outbound Google call so no test reaches Google. The OAuth state
             // signing and all authorization still run for real — only the network is faked.
@@ -116,7 +132,7 @@ public class ApiFactory : WebApplicationFactory<Program>
             // 1) Add InMemory provider (single DB name per factory to share across requests within a test)
             // IMPORTANT: Do NOT call Guid.NewGuid() inside the options lambda; that would create a new
             // in-memory store for every DbContext instance, making data from one request invisible to the next.
-            var dbName = $"TestDb-{Guid.NewGuid()}";
+            var dbName = DatabaseName;
             services.RemoveAll<IOptions<DbContextOptions<NooDbContext>>>();
             services.RemoveAll<IOptionsSnapshot<DbContextOptions<NooDbContext>>>();
             services.RemoveAll<IOptionsMonitor<DbContextOptions<NooDbContext>>>();

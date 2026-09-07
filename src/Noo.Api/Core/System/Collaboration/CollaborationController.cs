@@ -32,15 +32,17 @@ public class CollaborationController : ApiController
     private readonly CollaborationRoomHandlerRegistry _handlers;
     private readonly IRealtimePublisher<ICollaborationHubClient> _publisher;
     private readonly ICurrentUser _currentUser;
-    private readonly IUserService _users;
+    private readonly IUserRepository _users;
 
+    // The repository rather than IUserService: its GetUserByIdAsync throws NotFound despite its
+    // nullable signature, and a display name missing is no reason to fail a save.
     public CollaborationController(
         IMapper mapper,
         ICollaborationStore store,
         CollaborationRoomHandlerRegistry handlers,
         IRealtimePublisher<ICollaborationHubClient> publisher,
         ICurrentUser currentUser,
-        IUserService users
+        IUserRepository users
     )
         : base(mapper)
     {
@@ -125,7 +127,7 @@ public class CollaborationController : ApiController
         await _handlers.Resolve(roomType).SaveAsync(roomId, log.Ops, HttpContext.RequestAborted);
 
         var userId = _currentUser.RequireUserId();
-        var user = await _users.GetUserByIdAsync(userId);
+        var user = await _users.GetWithAvatarAsync(userId);
 
         var saved = new CollaborationSaved
         {

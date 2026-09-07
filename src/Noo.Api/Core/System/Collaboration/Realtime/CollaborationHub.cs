@@ -25,15 +25,17 @@ public class CollaborationHub : NooHub<ICollaborationHubClient>
 
     private readonly ICollaborationStore _store;
     private readonly CollaborationRoomHandlerRegistry _handlers;
-    private readonly IUserService _users;
+    private readonly IUserRepository _users;
     private readonly CollaborationConfig _config;
 
+    // The repository rather than IUserService: its GetUserByIdAsync throws NotFound despite its
+    // nullable signature, and a display name missing is no reason to refuse someone the room.
     public CollaborationHub(
         RealtimeMetrics metrics,
         RealtimeConnectionRegistry connections,
         ICollaborationStore store,
         CollaborationRoomHandlerRegistry handlers,
-        IUserService users,
+        IUserRepository users,
         IOptions<CollaborationConfig> config
     )
         : base(metrics, connections)
@@ -66,7 +68,7 @@ public class CollaborationHub : NooHub<ICollaborationHubClient>
             );
         }
 
-        var user = await _users.GetUserByIdAsync(CallerId);
+        var user = await _users.GetWithAvatarAsync(CallerId);
 
         var member = new CollaborationMember
         {

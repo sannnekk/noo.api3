@@ -11,7 +11,7 @@ NOO_USER=somestudent NOO_PASSWORD=... ./loadtest/run.sh student
 NOO_USER=somementor  NOO_PASSWORD=... ./loadtest/run.sh mentor stress
 ```
 
-`./loadtest/run.sh <role> [profile]` — the account in `NOO_USER` must actually have the chosen role, otherwise setup aborts. `realtime` is the exception: it works with any account, since it measures connections rather than a role's traffic.
+`./loadtest/run.sh <role> [profile]` — the account in `NOO_USER` must actually have the chosen role, otherwise setup aborts. `realtime` is the exception: it works with any account, since it measures connections rather than a role's traffic. `collaboration` needs an account that may edit works, plus `WORK_ID`.
 
 | Profile | Shape |
 | --- | --- |
@@ -31,12 +31,14 @@ Environment variables: `NOO_USER` / `NOO_PASSWORD` (required), `BASE_URL` (defau
 | `assistant.js` | Assigned works and statistics |
 | `admin.js` | User management, courses, memberships, platform statistics |
 | `realtime.js` | SignalR hub connections against `/hubs/ping`, spoken as raw WebSocket frames. Measures what an **idle** connection costs rather than throughput |
+| `collaboration.js` | Every VU joins the **same** work through `/hubs/collaboration` and edits it: coalesced CRDT frames, scalar operations, heartbeats. Measures fan-out, not connections |
 
 `lib.js` holds the shared plumbing: login with per-VU token refresh on 401, weighted action runner, id-pool discovery helpers, per-route thresholds, and 401/403/429 counters.
 
 ## Notes
 
 - **The realtime scenario measures memory, not throughput.** Its profiles hold connections open (`load` is 500 VUs for 3m, `stress` ramps to 5000) and the useful reading is taken from the API pod, not from k6: RSS and open file descriptors divided by the connection count give the per-connection cost that pod sizing depends on. `HOLD_SECONDS` and `PING_EVERY_SECONDS` tune how long a VU holds its socket and how often it pings. Past a few thousand VUs the k6 host runs out of descriptors first — raise its own `ulimit -n`, or run k6 distributed.
+- **The collaboration scenario measures fan-out, not connections.** Every VU is one more editor in the same room, and each frame it sends is delivered to all the others — with a backplane, one Redis publish each. Set `WORK_ID` to a work the account may edit, then watch `collab_frames_sent` against the backplane's ops/sec and the pod's RSS. Frames per editor per second is what the design bounds and should stay near ten however fast anyone types; if it does not, the knob is the client's coalescing window (`FRAME_EVERY_MS` imitates it here), not this script. It leaves an unsaved draft on the work — use a throwaway one.
 - **The student scenario writes to the database**: it autosaves generated draft answers into the student's unsolved assigned works (mimicking the frontend autosave). Use a throwaway student account on a dev database.
 - **Rate limiting**: the API allows 300 requests/min per IP, which any real run will exceed. Start the API with the limit raised:
 
