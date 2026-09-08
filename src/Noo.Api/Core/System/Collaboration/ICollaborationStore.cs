@@ -72,9 +72,10 @@ public interface ICollaborationStore
     );
 
     /// <summary>
-    /// Whether this connection may write to a path: either nobody holds it, or this connection
-    /// does. Enforced on the server because a client that disables an input is being polite, not
-    /// authoritative.
+    /// Whether this connection may write to a path: no lease held by anyone else covers it or
+    /// anything it contains. Enforced on the server because a client that disables an input is
+    /// being polite, not authoritative — and covering the whole subtree because removing a task
+    /// is a write to every field somebody might be holding inside it.
     /// </summary>
     public Task<bool> MayWriteAsync(
         CollaborationRoom room,

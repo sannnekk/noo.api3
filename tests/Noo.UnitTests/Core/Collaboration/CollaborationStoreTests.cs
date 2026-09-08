@@ -113,6 +113,41 @@ public class CollaborationStoreTests
         Assert.True(await store.MayWriteAsync(room, "/tasks/1/content", "b"));
     }
 
+    // Removing a task is a write to every field inside it, so a lease on one of them has to stand
+    // in the way — otherwise the field lock is bypassed by addressing its parent instead.
+    [Theory(DisplayName = "Store: a lease covers the path above it and everything under it")]
+    [MemberData(nameof(Stores))]
+    public async Task MayWrite_CoversTheWholeSubtree(string kind)
+    {
+        var store = Create(kind);
+        var room = NewRoom();
+        await store.JoinAsync(room, Member("a"));
+        await store.JoinAsync(room, Member("b"));
+        await store.AcquireLeaseAsync(room, "/tasks/1/content", "a");
+
+        Assert.False(await store.MayWriteAsync(room, "/tasks/1", "b"));
+        Assert.False(await store.MayWriteAsync(room, "/tasks/1/content/text", "b"));
+        Assert.True(await store.MayWriteAsync(room, "/tasks/1", "a"));
+
+        // Segment boundaries, not string prefixes: /tasks/12 is a different task.
+        Assert.True(await store.MayWriteAsync(room, "/tasks/12", "b"));
+        Assert.True(await store.MayWriteAsync(room, "/tasks/1/maxScore", "b"));
+    }
+
+    [Theory(DisplayName = "Store: a lease on a task blocks the fields inside it")]
+    [MemberData(nameof(Stores))]
+    public async Task MayWrite_ATaskLeaseBlocksItsFields(string kind)
+    {
+        var store = Create(kind);
+        var room = NewRoom();
+        await store.JoinAsync(room, Member("a"));
+        await store.JoinAsync(room, Member("b"));
+        await store.AcquireLeaseAsync(room, "/tasks/1", "a");
+
+        Assert.False(await store.MayWriteAsync(room, "/tasks/1/content", "b"));
+        Assert.True(await store.MayWriteAsync(room, "/tasks/1/content", "a"));
+    }
+
     [Theory(DisplayName = "Store: only the holder can release a lease")]
     [MemberData(nameof(Stores))]
     public async Task ReleaseLease_OnlyByHolder(string kind)

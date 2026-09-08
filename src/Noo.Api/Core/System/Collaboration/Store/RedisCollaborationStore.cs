@@ -223,9 +223,13 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
-        var holder = await Db.StringGetAsync(room.LeaseKey(path));
+        var allowed = await Db.ScriptEvaluateAsync(
+            CollaborationScripts.MayWrite,
+            [room.LeasePathsKey],
+            [path, connectionId, room.LeaseKeyPrefix]
+        );
 
-        return holder.IsNullOrEmpty || (string)holder! == connectionId;
+        return (long)allowed == 1;
     }
 
     public async Task<long> AppendOpsAsync(

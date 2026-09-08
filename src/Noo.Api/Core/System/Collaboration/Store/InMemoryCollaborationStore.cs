@@ -194,9 +194,13 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
 
         lock (state.Gate)
         {
-            var lease = LiveLease(state, path);
+            var blocked = state.Leases.Any(entry =>
+                entry.Value.ExpiresAt > Clock.Now
+                && entry.Value.ConnectionId != connectionId
+                && CollaborationPaths.Overlap(path, entry.Key)
+            );
 
-            return Task.FromResult(lease is null || lease.ConnectionId == connectionId);
+            return Task.FromResult(!blocked);
         }
     }
 

@@ -51,6 +51,34 @@ public static class CollaborationScripts
         """;
 
     /// <summary>
+    /// KEYS: room's leased-path set. ARGV: path, connectionId, lease key prefix.
+    /// Returns 0 when a lease held by someone else covers this path or anything it contains —
+    /// the same rule as <c>CollaborationPaths.Overlap</c>, which the conformance suite holds this
+    /// to. Entries whose lease already expired are dropped on the way past.
+    /// </summary>
+    public const string MayWrite = """
+        local function under(path, ancestor)
+          return #path > #ancestor
+            and string.sub(path, #ancestor + 1, #ancestor + 1) == '/'
+            and string.sub(path, 1, #ancestor) == ancestor
+        end
+        local path = ARGV[1]
+        local paths = redis.call('SMEMBERS', KEYS[1])
+        for i = 1, #paths do
+          local other = paths[i]
+          if other == path or under(path, other) or under(other, path) then
+            local holder = redis.call('GET', ARGV[3] .. other)
+            if not holder then
+              redis.call('SREM', KEYS[1], other)
+            elseif holder ~= ARGV[2] then
+              return 0
+            end
+          end
+        end
+        return 1
+        """;
+
+    /// <summary>
     /// KEYS: presence hash, presence seen zset, connection's lease set.
     /// ARGV: connectionId, now ms, lease ttl ms, lease key prefix, room ttl ms.
     /// Returns 0 when the member was already pruned, so the caller rejoins instead of
