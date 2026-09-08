@@ -1,7 +1,93 @@
 [
   {
+    "version": "1.6.0-alpha",
+    "date": "2026-09-08T11:46:23+02:00",
+    "changes": [
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "works: Made a work an editable collaboration room"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "collaboration: Added the room state and save endpoints"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "collaboration: Relayed Yjs sync and awareness inside a room scope"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "collaboration: Added the collaboration hub with presence and field leases"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "collaboration: Added the room store, its keys and config"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "sessions: Kept users online from their held hub connection"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "notifications: Pushed created notifications over a notification hub"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "realtime: Added the realtime publisher and job-progress contracts"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "realtime: Added the hub base, query-string auth and the hub filter pipeline"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "realtime: Added SignalR with a dedicated Redis backplane"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "support: Added editable FAQ items & made the platform links and contacts admin-editable"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "collaboration: Committed the save before clearing the draft it came from"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "works: Closed the gaps the patch endpoint left open"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "realtime: Sized hub limits per hub instead of once for the whole app"
+      },
+      {
+        "type": "optimization",
+        "author": "sannnekk",
+        "description": "sessions: Cached session-existence and blocked-user lookups in Redis"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "auth: Made ICurrentUser resolve its principal lazily through an accessor"
+      }
+    ]
+  },
+  {
     "version": "1.5.0-alpha",
-    "date": "2026-08-31T10:02:48+02:00",
+    "date": "2026-08-31T10:04:33+02:00",
     "changes": [
       {
         "type": "feature",
