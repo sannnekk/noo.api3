@@ -333,7 +333,12 @@ public class CollaborationHubTests : IClassFixture<ApiFactory>
             );
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        (await Within(notified)).Version.Should().Be(1);
+        var saved = await Within(notified);
+        saved.Version.Should().Be(1);
+
+        // Sequence numbers survive the save rather than restarting, so the operations it did not
+        // cover keep the numbers their authors already have.
+        saved.Seq.Should().Be(seq);
 
         var work = await client.AsTeacher().GetAsync($"/work/{workId}");
         var data = JsonDocument
@@ -345,7 +350,7 @@ public class CollaborationHubTests : IClassFixture<ApiFactory>
         var again = await client.AsTeacher()
             .PostAsJsonAsync(
                 $"/collaboration/work/{workId}/save",
-                new CollaborationSaveRequestDTO { ExpectedSeq = 0 },
+                new CollaborationSaveRequestDTO { ExpectedSeq = saved.Seq },
                 _json
             );
         again.StatusCode.Should().Be(HttpStatusCode.BadRequest);

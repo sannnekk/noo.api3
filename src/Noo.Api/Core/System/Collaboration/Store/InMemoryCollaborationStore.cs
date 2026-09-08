@@ -255,14 +255,41 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
         }
     }
 
+    public Task<long?> TryTrimDraftAsync(
+        CollaborationRoom room,
+        long throughSeq,
+        CancellationToken ct = default
+    )
+    {
+        var state = StateOf(room);
+
+        lock (state.Gate)
+        {
+            var count = throughSeq - state.SeqBase;
+
+            if (count < 0 || count > state.Ops.Count)
+            {
+                return Task.FromResult<long?>(null);
+            }
+
+            state.Ops.RemoveRange(0, (int)count);
+            state.SeqBase += count;
+            state.Version += 1;
+
+            return Task.FromResult<long?>(state.Version);
+        }
+    }
+
     public Task<long> ClearDraftAsync(CollaborationRoom room, CancellationToken ct = default)
     {
         var state = StateOf(room);
 
         lock (state.Gate)
         {
+            // The base absorbs what was dropped rather than resetting, so a room's sequence
+            // numbers only ever go forwards.
+            state.SeqBase += state.Ops.Count;
             state.Ops.Clear();
-            state.SeqBase = 0;
             state.Version += 1;
 
             return Task.FromResult(state.Version);

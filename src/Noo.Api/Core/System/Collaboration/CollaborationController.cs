@@ -136,12 +136,19 @@ public class CollaborationController : ApiController
         // for the user to try again.
         await _unitOfWork.CommitAsync();
 
+        // Only the operations this save actually applied are dropped. Someone editing while the
+        // save was in MySQL has their work still in the draft rather than silently discarded,
+        // and a null answer means a compaction or a discard beat us to the log — the entity is
+        // written either way, so the save stands and the clients re-read.
+        var version = await _store.TryTrimDraftAsync(room, log.Seq);
+
         var userId = _currentUser.RequireUserId();
         var user = await _users.GetWithAvatarAsync(userId);
 
         var saved = new CollaborationSaved
         {
-            Version = await _store.ClearDraftAsync(room),
+            Seq = (await _store.GetOpsAsync(room)).Seq,
+            Version = version ?? await _store.GetVersionAsync(room),
             SavedBy = userId,
             SavedByName = user?.Name ?? "—",
             SavedAt = Clock.Now,

@@ -105,6 +105,14 @@ public record CollaborationRoomState
 /// </summary>
 public record CollaborationSaved
 {
+    /// <summary>
+    /// Where the draft stands now. A save drops only the operations it applied, so anything sent
+    /// while it was running is still here — clients re-anchor on this rather than assuming the
+    /// draft is empty, which would strand those operations at a sequence nobody expects.
+    /// </summary>
+    [JsonPropertyName("seq")]
+    public long Seq { get; init; }
+
     [JsonPropertyName("version")]
     public long Version { get; init; }
 

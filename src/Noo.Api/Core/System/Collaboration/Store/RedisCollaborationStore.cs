@@ -296,6 +296,29 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         return (long)compacted == 1;
     }
 
+    public async Task<long?> TryTrimDraftAsync(
+        CollaborationRoom room,
+        long throughSeq,
+        CancellationToken ct = default
+    )
+    {
+        var version = (long)
+            await Db.ScriptEvaluateAsync(
+                CollaborationScripts.TrimDraft,
+                [room.OpsKey, room.SeqBaseKey, room.VersionKey],
+                [throughSeq, RoomTtlMs]
+            );
+
+        if (version < 0)
+        {
+            return null;
+        }
+
+        await Db.KeyExpireAsync(room.VersionKey, _config.DraftTtl);
+
+        return version;
+    }
+
     public async Task<long> ClearDraftAsync(
         CollaborationRoom room,
         CancellationToken ct = default
@@ -303,7 +326,8 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     {
         var version = await Db.ScriptEvaluateAsync(
             CollaborationScripts.ClearDraft,
-            [room.OpsKey, room.SeqBaseKey, room.VersionKey]
+            [room.OpsKey, room.SeqBaseKey, room.VersionKey],
+            [RoomTtlMs]
         );
 
         await Db.KeyExpireAsync(room.VersionKey, _config.DraftTtl);

@@ -215,7 +215,7 @@ public class CollaborationStoreTests
         Assert.Equal(2, (await store.GetOpsAsync(room)).Ops.Count);
     }
 
-    [Theory(DisplayName = "Store: saving clears the draft and bumps the version")]
+    [Theory(DisplayName = "Store: discarding clears the draft and bumps the version")]
     [MemberData(nameof(Stores))]
     public async Task ClearDraft_BumpsTheVersion(string kind)
     {
@@ -228,6 +228,46 @@ public class CollaborationStoreTests
 
         Assert.Empty((await store.GetOpsAsync(room)).Ops);
         Assert.Equal(1, await store.GetVersionAsync(room));
+
+        // Forwards, never back: a client re-reading the room must not be handed a sequence
+        // number it has already seen mean something else.
+        Assert.Equal(1, (await store.GetOpsAsync(room)).Seq);
+    }
+
+    // The seconds a save spends in MySQL are seconds everyone else is still typing.
+    [Theory(DisplayName = "Store: a save drops what it applied and keeps what arrived after")]
+    [MemberData(nameof(Stores))]
+    public async Task TrimDraft_KeepsWhatTheSaveDidNotCover(string kind)
+    {
+        var store = Create(kind);
+        var room = NewRoom();
+
+        var saved = await store.AppendOpsAsync(room, [Op("/a", 1), Op("/b", 2)]);
+        await store.AppendOpsAsync(room, [Op("/c", 3)]);
+
+        Assert.Equal(1, await store.TryTrimDraftAsync(room, saved));
+
+        var log = await store.GetOpsAsync(room);
+
+        Assert.Equal("/c", Assert.Single(log.Ops).Path);
+        // The survivor keeps the number it was given, so nobody has to renumber anything.
+        Assert.Equal(3, log.Seq);
+    }
+
+    [Theory(DisplayName = "Store: a save is refused the trim when the draft was discarded under it")]
+    [MemberData(nameof(Stores))]
+    public async Task TrimDraft_RefusesAStaleTrim(string kind)
+    {
+        var store = Create(kind);
+        var room = NewRoom();
+
+        var saved = await store.AppendOpsAsync(room, [Op("/a", 1)]);
+        await store.AppendOpsAsync(room, [Op("/b", 2)]);
+        await store.ClearDraftAsync(room);
+
+        // The sequence the save read is now behind the log's base: everything it was going to
+        // drop is already gone, and trimming from here would eat somebody else's operations.
+        Assert.Null(await store.TryTrimDraftAsync(room, saved));
     }
 
     // Two clients both writing the starting content into one CRDT document is how a
