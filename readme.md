@@ -237,6 +237,8 @@ Those are optional requirements that are needed for some features to work. All o
 
 - Docker
 - Redis (cache)
+- Redis (collaboration rooms) — the cache instance by default; set `Collaboration:ConnectionString`
+  to give rooms their own. Without any Redis, collaborative editing works on a single instance only.
 - Redis (SignalR backplane) — a **second, non-clustered** instance. The backplane uses classic pub/sub, which ignores database numbering, so sharing the cache instance shares its memory and CPU too. Leave `Realtime:BackplaneConnectionString` empty to run a single instance without one.
 - RabbitMQ (or other message broker, not decided yet) [Not implemented yet]
 - SMTP Server [Not implemented yet]
@@ -371,6 +373,90 @@ The k8s manifests live outside this repo. A hub deployment needs:
   against a server `max_connections` of 256.
 - Autoscaling on `noo.realtime.connections`, not CPU.
 
+## Collaborative editing
+
+Several people editing one document at once — a work today, a course next. It lives in
+`Core/System/Collaboration`, and the whole thing is built so that a module opts an entity in by
+writing **one class**.
+
+### How it is put together
+
+A **room** is one document being edited. Everyone in it shares a **draft**: the JSON Patch
+operations they have made, accumulated on top of the saved entity. Saving applies that draft
+through the entity's *existing* PATCH pipeline, which is the point of expressing it as operations
+— there is no second way to write a work, so task renumbering, the recomputed total score and the
+validation all keep happening exactly once, in one place.
+
+Two kinds of field, because they need different things:
+
+- **Scalar fields** — a score, a checkbox, a title — are claimed. Taking focus acquires a *lease*
+  on the field's path; everyone else sees the input disabled and who is holding it. The lease is
+  renewed by a heartbeat, released on blur or disconnect, and expires on its own if neither
+  happens. `PushOpsAsync` enforces it server-side: an input that disables itself is being polite,
+  not authoritative.
+- **Rich text** is not claimed at all — several people type in it at once, each with a caret. That
+  runs on Yjs, and **the server never decodes a byte of it**. `PushYjsAsync` relays opaque frames
+  to the others in a scope; peers sync with each other. The content reaches the draft as ordinary
+  Tiptap JSON, flushed by whoever typed it after a short pause, so nothing is lost when the last
+  editor leaves even though no CRDT state was ever stored.
+
+There is no Tiptap Cloud and no Hocuspocus. `y-protocols` is network-agnostic, and the hub the app
+already holds open is a perfectly good transport.
+
+### Adding a room type
+
+Implement `ICollaborationRoomHandler` in the module that owns the entity and register it:
+
+```csharp
+[RegisterScoped(typeof(ICollaborationRoomHandler))]
+public class CourseCollaborationHandler : ICollaborationRoomHandler
+{
+    public string RoomType => "course";
+
+    public Task<bool> CanEditAsync(Ulid roomId, CancellationToken ct = default) => ...;
+
+    // What the entity's UpdateDTO would accept. Checked as an operation enters the draft, so a
+    // malformed path fails for the client that sent it rather than for whoever saves later.
+    public bool IsPathAllowed(string path) => ...;
+
+    // The existing patch pipeline. Nothing else writes the entity.
+    public Task SaveAsync(Ulid roomId, IReadOnlyList<CollaborationOp> ops, CancellationToken ct = default) => ...;
+
+    // A session's worth of operations, replaced by the state they add up to.
+    public Task<IReadOnlyList<CollaborationOp>> CompactAsync(...) => ...;
+}
+```
+
+That is the whole server side: the hub, the client contract, the endpoints and the frontend
+composables are all room-type agnostic. On the frontend, add the type to `CollaborationRoomTypes`
+and give the editor a `useCollaborativeDocument` plus `provideCollaboration`; its fields then wrap
+in `noo-collab-field`.
+
+### Things that will bite
+
+- **A field not wired to the room is silently dropped on save.** Saving applies the shared draft,
+  not this tab's copy of the entity, so an input still bound with a plain `v-model` writes to a
+  local object nobody ever reads. Wrap every editable field, or make it read-only.
+- **Operations are emitted, never diffed.** A work holds up to 300 tasks; diffing it per keystroke
+  would be expensive, and a diff cannot tell an edit of one's own from one that just arrived.
+- **Paths are the API's, not the client's.** The patch exposes child collections as dictionaries
+  keyed by id — which is what makes an operation survive someone else reordering them — so a
+  client holding an array translates on the way in (`workOpsToLocal`).
+- **Client-minted ids.** A task gets a ULID when it is drafted, not when it is saved, because it
+  needs an address before it exists server-side. Anything that treated a missing id as "unsaved"
+  has to look at `createdAt` instead.
+- **Exactly one client seeds a CRDT scope.** The server elects it; everyone else waits for a peer.
+  Two clients seeding one document is how a collaborative editor ends up showing everything twice.
+- **`Realtime:HubLimits` is not optional for this hub.** The default 120 invocations/minute is
+  sized for a hub that only pushes; the collaboration hub is configured at 900.
+- **Room state is not durable.** It lives in Redis with a TTL, and losing it costs unsaved edits,
+  never saved ones. With no Redis at all it falls back to process memory, which is correct for a
+  single instance only — a lease taken on one pod would be invisible to the next.
+
+`./loadtest/run.sh collaboration load` (with `WORK_ID` set) measures the part that scales with
+people rather than connections: every frame one editor sends is delivered to all the others, and
+with a backplane that is one Redis publish each. The knob is the client's coalescing window.
+
 ## Code practices
 
 The following practices MUST be followed in the code:
@@ -442,7 +528,8 @@ Always use wrappers for all the third-party libraries, such as EF Core, Redis, R
 
 ## Ideas
 
-- [ ] Use ETags for caching and concurrency control
+- [ ] Use ETags for caching and concurrency control — still open for HTTP caching, but the
+      concurrency half is answered for collaboratively edited entities: see Collaborative editing
 - [ ] Use feature flags
 - [x] Implement rate limiting
 - [x] Add open telemetry
