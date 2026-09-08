@@ -400,6 +400,67 @@ public class CollaborationHubTests : IClassFixture<ApiFactory>
         state.Leases.Single().Path.Should().Be("/description");
     }
 
+    // Saving throws the draft away, so a save that does not go through must not: the work is
+    // still what it was, and the edits have to stay where everyone can see them and fix them.
+    // This covers a draft the entity's own validation refuses; a failure at commit time is
+    // guarded by the explicit commit in the controller, which the InMemory provider cannot
+    // provoke.
+    [Fact(DisplayName = "Collaboration: a save the entity rejects leaves the draft intact")]
+    public async Task ARejectedSaveKeepsTheDraft()
+    {
+        using var client = _factory.CreateClient();
+        var workId = await CreateWorkAsync(client);
+
+        await using var anna = BuildConnection(Ulid.NewUlid());
+        await anna.StartAsync();
+        await anna.InvokeAsync<CollaborationRoomState>("JoinAsync", "work", workId);
+
+        var taskId = (await GetTaskIdAsync(client, workId)).ToString();
+
+        // Past what the column can hold, which the DTO's own validation refuses.
+        var seq = await anna.InvokeAsync<long>(
+            "PushOpsAsync",
+            new[]
+            {
+                new CollaborationOp
+                {
+                    Op = "replace",
+                    Path = $"/tasks/{taskId}/maxScore",
+                    Value = JsonValue.Create(9999)
+                }
+            }
+        );
+
+        var response = await client.AsTeacher()
+            .PostAsJsonAsync(
+                $"/collaboration/work/{workId}/save",
+                new CollaborationSaveRequestDTO { ExpectedSeq = seq },
+                _json
+            );
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var state = await client.AsTeacher().GetAsync($"/collaboration/work/{workId}");
+        var room = (
+            await state.Content.ReadFromJsonAsync<ApiResponseDTO<CollaborationRoomState>>(_json)
+        )!.Data!;
+
+        room.Ops.Should().HaveCount(1);
+        room.Version.Should().Be(0);
+    }
+
+    private async Task<Ulid> GetTaskIdAsync(HttpClient client, Ulid workId)
+    {
+        var response = await client.AsTeacher().GetAsync($"/work/{workId}");
+        var data = JsonDocument
+            .Parse(await response.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("data");
+
+        return Ulid.Parse(
+            data.GetProperty("tasks").EnumerateArray().Single().GetProperty("id").GetString()!
+        );
+    }
+
     [Fact(DisplayName = "Collaboration: a room type nobody registered is a bad request")]
     public async Task AnUnknownRoomTypeIsRejected()
     {

@@ -1,6 +1,7 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Noo.Api.Core.DataAbstraction.Db;
 using Noo.Api.Core.Exceptions.Http;
 using Noo.Api.Core.Request;
 using Noo.Api.Core.Response;
@@ -33,6 +34,7 @@ public class CollaborationController : ApiController
     private readonly IRealtimePublisher<ICollaborationHubClient> _publisher;
     private readonly ICurrentUser _currentUser;
     private readonly IUserRepository _users;
+    private readonly IUnitOfWork _unitOfWork;
 
     // The repository rather than IUserService: its GetUserByIdAsync throws NotFound despite its
     // nullable signature, and a display name missing is no reason to fail a save.
@@ -42,7 +44,8 @@ public class CollaborationController : ApiController
         CollaborationRoomHandlerRegistry handlers,
         IRealtimePublisher<ICollaborationHubClient> publisher,
         ICurrentUser currentUser,
-        IUserRepository users
+        IUserRepository users,
+        IUnitOfWork unitOfWork
     )
         : base(mapper)
     {
@@ -51,6 +54,7 @@ public class CollaborationController : ApiController
         _publisher = publisher;
         _currentUser = currentUser;
         _users = users;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>
@@ -125,6 +129,12 @@ public class CollaborationController : ApiController
         }
 
         await _handlers.Resolve(roomType).SaveAsync(roomId, log.Ops, HttpContext.RequestAborted);
+
+        // Committed here rather than left to UnitOfWorkFilter, which runs after this action
+        // returns: the draft is about to be thrown away, and it must not be thrown away before
+        // the edits it holds have actually reached MySQL. A failure now leaves the draft intact
+        // for the user to try again.
+        await _unitOfWork.CommitAsync();
 
         var userId = _currentUser.RequireUserId();
         var user = await _users.GetWithAvatarAsync(userId);
