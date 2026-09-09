@@ -26,6 +26,37 @@ public class CourseContentRepository : Repository<CourseMaterialContentModel>, I
             .FirstOrDefaultAsync(c => c.Id == contentId);
     }
 
+    public async Task<CourseMaterialModel?> GetMaterialWithContentForUpdateAsync(
+        Ulid courseId,
+        Ulid materialId
+    )
+    {
+        // A material the same save has just added is in the change tracker and in no table yet, so
+        // the query below would miss it. It is also new, so it has no content to load — and its
+        // chapter belongs to this course, because the same patch is what created it.
+        var pending = Context
+            .ChangeTracker.Entries<CourseMaterialModel>()
+            .FirstOrDefault(entry =>
+                entry.State == EntityState.Added && entry.Entity.Id == materialId
+            );
+
+        if (pending is not null)
+        {
+            return pending.Entity;
+        }
+
+        return await Context
+            .GetDbSet<CourseMaterialModel>()
+            .Include(m => m.Content)
+            .ThenInclude(c => c.Medias)
+            .Include(m => m.Content)
+            .ThenInclude(c => c.NooTubeVideos)
+            .Include(m => m.Content)
+            .ThenInclude(c => c.WorkAssignments)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(m => m.Id == materialId && m.Chapter.CourseId == courseId);
+    }
+
     // A chapter carries its course id directly, so the nested chapter tree needs no walking.
     public Task<Ulid?> GetCourseIdByContentIdAsync(Ulid contentId)
     {

@@ -17,6 +17,15 @@ public static class CollaborationPaths
     public static bool Overlap(string path, string other) =>
         path == other || IsUnder(path, other) || IsUnder(other, path);
 
+    /// <summary>
+    /// Whether writing <paramref name="ancestor"/> settles what <paramref name="path"/> says —
+    /// the same path, or one containing it. Replacing a whole task makes an earlier edit to one
+    /// of its fields redundant, which is what lets a long draft be collapsed without reading the
+    /// document it applies to.
+    /// </summary>
+    public static bool Covers(string ancestor, string path) =>
+        ancestor == path || IsUnder(path, ancestor);
+
     private static bool IsUnder(string path, string ancestor) =>
         path.Length > ancestor.Length
         && path[ancestor.Length] == '/'

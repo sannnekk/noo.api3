@@ -9,6 +9,20 @@ public interface ICourseContentRepository : IRepository<CourseMaterialContentMod
     public Task<CourseMaterialContentModel?> GetAsync(Ulid contentId);
 
     /// <summary>
+    /// One of a course's materials, with whatever content it has, tracked for update. Null when
+    /// the material is not this course's — which is what keeps an operation naming somebody
+    /// else's material from reaching it.
+    ///
+    /// Addressed by material rather than by content because a material being edited collaboratively
+    /// has an id long before its content exists: the content is created the first time somebody
+    /// types into it, and until then there is no content id to name.
+    /// </summary>
+    public Task<CourseMaterialModel?> GetMaterialWithContentForUpdateAsync(
+        Ulid courseId,
+        Ulid materialId
+    );
+
+    /// <summary>
     /// Resolves the course a material content belongs to, or null when the id names no content.
     /// </summary>
     public Task<Ulid?> GetCourseIdByContentIdAsync(Ulid contentId);

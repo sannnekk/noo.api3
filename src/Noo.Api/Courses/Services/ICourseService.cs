@@ -24,4 +24,14 @@ public interface ICourseService
     public Task ToggleMaterialReactionAsync(Ulid courseId, Ulid materialId, CourseMaterialReactionTypes reaction);
     public Task UpdateAsync(Ulid courseId, JsonPatchDocument<UpdateCourseDTO> courseUpdateDto);
     public Task UpdateContentAsync(Ulid contentId, JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto);
+
+    /// <summary>
+    /// Patches a material's content, giving the material one if it has none yet. Addressed by
+    /// material because a material being edited together has an id before its content exists,
+    /// and scoped to the course so an operation cannot reach a material outside it.
+    ///
+    /// False when the course has no such material — which a shared draft can name, because
+    /// somebody may have removed it before anyone pressed Save.
+    /// </summary>
+    public Task<bool> UpdateMaterialContentAsync(Ulid courseId, Ulid materialId, JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto);
 }

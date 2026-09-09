@@ -219,6 +219,52 @@ public class CourseService : ICourseService
         }
     }
 
+    /// <summary>
+    /// Patches a material's content, giving the material one if it has none yet.
+    ///
+    /// A material being edited together is addressed by its own id from the moment it is drafted,
+    /// while its content only comes into existence the first time somebody types into it. Creating
+    /// it here rather than making the client do it first is what lets an edit to a brand new
+    /// material be an ordinary operation in the shared draft like any other.
+    ///
+    /// Scoped to the course, so an operation naming a material of some other course reaches
+    /// nothing rather than being trusted to have come from the right room.
+    ///
+    /// Returns false when the course has no such material, rather than throwing: a draft may well
+    /// hold edits to a material that somebody removed before anyone pressed Save, and one of those
+    /// must not be able to make the whole draft unsaveable.
+    /// </summary>
+    public async Task<bool> UpdateMaterialContentAsync(
+        Ulid courseId,
+        Ulid materialId,
+        JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto
+    )
+    {
+        var material = await _courseContentRepository.GetMaterialWithContentForUpdateAsync(
+            courseId,
+            materialId
+        );
+
+        if (material is null)
+        {
+            return false;
+        }
+
+        if (material.Content is null)
+        {
+            var created = new CourseMaterialContentModel();
+
+            _courseContentRepository.Add(created);
+
+            material.Content = created;
+            material.ContentId = created.Id;
+        }
+
+        ApplyContentPatch(material.Content, contentUpdateDto);
+
+        return true;
+    }
+
     public async Task UpdateContentAsync(
         Ulid contentId,
         JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto
@@ -228,6 +274,14 @@ public class CourseService : ICourseService
 
         model.ThrowNotFoundIfNull();
 
+        ApplyContentPatch(model, contentUpdateDto);
+    }
+
+    private void ApplyContentPatch(
+        CourseMaterialContentModel model,
+        JsonPatchDocument<UpdateCourseMaterialContentDTO> contentUpdateDto
+    )
+    {
         var patched = _jsonPatchUpdateService.ApplyPatch(model, contentUpdateDto);
 
         if (patched.Medias != null)
