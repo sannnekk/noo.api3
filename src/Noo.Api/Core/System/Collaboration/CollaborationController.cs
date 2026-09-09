@@ -82,7 +82,6 @@ public class CollaborationController : ApiController
             new CollaborationRoomState
             {
                 Seq = log.Seq,
-                Version = await _store.GetVersionAsync(room),
                 Members = await _store.GetMembersAsync(room),
                 Leases = await _store.GetLeasesAsync(room),
                 Ops = log.Ops,
@@ -137,10 +136,10 @@ public class CollaborationController : ApiController
         await _unitOfWork.CommitAsync();
 
         // Only the operations this save actually applied are dropped. Someone editing while the
-        // save was in MySQL has their work still in the draft rather than silently discarded,
-        // and a null answer means a compaction or a discard beat us to the log — the entity is
-        // written either way, so the save stands and the clients re-read.
-        var version = await _store.TryTrimDraftAsync(room, log.Seq);
+        // save was in MySQL has their work still in the draft rather than silently discarded. A
+        // refusal means a compaction or a discard beat us to the log — the entity is written
+        // either way, so the save stands and the clients re-read.
+        await _store.TryTrimDraftAsync(room, log.Seq);
 
         var userId = _currentUser.RequireUserId();
         var user = await _users.GetWithAvatarAsync(userId);
@@ -148,7 +147,6 @@ public class CollaborationController : ApiController
         var saved = new CollaborationSaved
         {
             Seq = (await _store.GetOpsAsync(room)).Seq,
-            Version = version ?? await _store.GetVersionAsync(room),
             SavedBy = userId,
             SavedByName = user?.Name ?? "—",
             SavedAt = Clock.Now,

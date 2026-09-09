@@ -29,7 +29,6 @@ internal readonly record struct RedisRoomKeys(CollaborationRoom Room)
     /// </summary>
     public string SeqBase => $"{Prefix}ops:base";
 
-    public string Version => $"{Prefix}version";
 
     public string Lease(string path) => $"{Prefix}lease:{path}";
 

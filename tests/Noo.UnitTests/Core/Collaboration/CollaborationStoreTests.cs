@@ -270,19 +270,17 @@ public class CollaborationStoreTests
         Assert.Equal(2, (await store.GetOpsAsync(room)).Ops.Count);
     }
 
-    [Theory(DisplayName = "Store: discarding clears the draft and bumps the version")]
+    [Theory(DisplayName = "Store: discarding clears the draft without rewinding the sequence")]
     [MemberData(nameof(Stores))]
-    public async Task ClearDraft_BumpsTheVersion(string kind)
+    public async Task ClearDraft_KeepsTheSequenceMovingForwards(string kind)
     {
         var store = Create(kind);
         var room = NewRoom();
         await store.AppendOpsAsync(room, [Op("/a", 1)]);
 
-        Assert.Equal(0, await store.GetVersionAsync(room));
-        Assert.Equal(1, await store.ClearDraftAsync(room));
+        await store.ClearDraftAsync(room);
 
         Assert.Empty((await store.GetOpsAsync(room)).Ops);
-        Assert.Equal(1, await store.GetVersionAsync(room));
 
         // Forwards, never back: a client re-reading the room must not be handed a sequence
         // number it has already seen mean something else.
@@ -300,7 +298,7 @@ public class CollaborationStoreTests
         var saved = await store.AppendOpsAsync(room, [Op("/a", 1), Op("/b", 2)]);
         await store.AppendOpsAsync(room, [Op("/c", 3)]);
 
-        Assert.Equal(1, await store.TryTrimDraftAsync(room, saved));
+        Assert.True(await store.TryTrimDraftAsync(room, saved));
 
         var log = await store.GetOpsAsync(room);
 
@@ -322,7 +320,7 @@ public class CollaborationStoreTests
 
         // The sequence the save read is now behind the log's base: everything it was going to
         // drop is already gone, and trimming from here would eat somebody else's operations.
-        Assert.Null(await store.TryTrimDraftAsync(room, saved));
+        Assert.False(await store.TryTrimDraftAsync(room, saved));
     }
 
     // Two clients both writing the starting content into one CRDT document is how a

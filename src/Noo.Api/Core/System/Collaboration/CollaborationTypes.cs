@@ -101,8 +101,6 @@ public record CollaborationRoomState
     [JsonPropertyName("seq")]
     public long Seq { get; init; }
 
-    [JsonPropertyName("version")]
-    public long Version { get; init; }
 
     [JsonPropertyName("members")]
     public IReadOnlyList<CollaborationMember> Members { get; init; } = [];
@@ -129,8 +127,6 @@ public record CollaborationSaved
     [JsonPropertyName("seq")]
     public long Seq { get; init; }
 
-    [JsonPropertyName("version")]
-    public long Version { get; init; }
 
     [JsonPropertyName("savedBy")]
     public Ulid SavedBy { get; init; }

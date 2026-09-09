@@ -413,7 +413,6 @@ public class CollaborationHubTests : IClassFixture<ApiFactory>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var saved = await Within(notified);
-        saved.Version.Should().Be(1);
 
         // Sequence numbers survive the save rather than restarting, so the operations it did not
         // cover keep the numbers their authors already have.
@@ -530,7 +529,6 @@ public class CollaborationHubTests : IClassFixture<ApiFactory>
         )!.Data!;
 
         room.Ops.Should().HaveCount(1);
-        room.Version.Should().Be(0);
     }
 
     private async Task<Ulid> GetTaskIdAsync(HttpClient client, Ulid workId)

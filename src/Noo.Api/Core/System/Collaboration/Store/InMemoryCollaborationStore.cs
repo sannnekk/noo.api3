@@ -48,7 +48,6 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
                 new CollaborationRoomState
                 {
                     Seq = state.SeqBase + state.Ops.Count,
-                    Version = state.Version,
                     Members = OrderedMembers(state),
                     Leases = LiveLeases(state),
                     Ops = [.. state.Ops],
@@ -257,7 +256,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
         }
     }
 
-    public Task<long?> TryTrimDraftAsync(
+    public Task<bool> TryTrimDraftAsync(
         CollaborationRoom room,
         long throughSeq
     )
@@ -270,18 +269,17 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
 
             if (count < 0 || count > state.Ops.Count)
             {
-                return Task.FromResult<long?>(null);
+                return Task.FromResult(false);
             }
 
             state.Ops.RemoveRange(0, (int)count);
             state.SeqBase += count;
-            state.Version += 1;
 
-            return Task.FromResult<long?>(state.Version);
+            return Task.FromResult(true);
         }
     }
 
-    public Task<long> ClearDraftAsync(CollaborationRoom room)
+    public Task ClearDraftAsync(CollaborationRoom room)
     {
         var state = StateOf(room);
 
@@ -291,21 +289,11 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
             // numbers only ever go forwards.
             state.SeqBase += state.Ops.Count;
             state.Ops.Clear();
-            state.Version += 1;
 
-            return Task.FromResult(state.Version);
+            return Task.CompletedTask;
         }
     }
 
-    public Task<long> GetVersionAsync(CollaborationRoom room)
-    {
-        var state = StateOf(room);
-
-        lock (state.Gate)
-        {
-            return Task.FromResult(state.Version);
-        }
-    }
 
     public Task<CollaborationScopeState> JoinScopeAsync(
         CollaborationRoom room,
@@ -429,6 +417,5 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
         public HashSet<string> Seeded { get; } = new(StringComparer.Ordinal);
         public List<CollaborationOp> Ops { get; } = [];
         public long SeqBase { get; set; }
-        public long Version { get; set; }
     }
 }

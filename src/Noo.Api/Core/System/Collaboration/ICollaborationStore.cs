@@ -105,25 +105,23 @@ public interface ICollaborationStore
 
     /// <summary>
     /// Drops the operations a save actually applied — those up to <paramref name="throughSeq"/> —
-    /// and leaves anything appended while that save was running. Returns the new version, or null
-    /// when the log no longer starts where the caller thinks it does, which means a compaction or
+    /// and leaves anything appended while that save was running. Returns false when the log no longer starts where the caller thinks it does, which means a compaction or
     /// a discard got there first.
     ///
     /// Clearing the whole draft instead would throw away the edits someone made during the
     /// seconds the save spent in MySQL, and they would be gone with no sign that they existed.
     /// </summary>
-    public Task<long?> TryTrimDraftAsync(
+    public Task<bool> TryTrimDraftAsync(
         CollaborationRoom room,
         long throughSeq
     );
 
     /// <summary>
-    /// Throws the whole draft away unconditionally and bumps the version. This is the discard
+    /// Throws the whole draft away unconditionally. This is the discard
     /// path; a save uses <see cref="TryTrimDraftAsync"/> so it drops only what it saved.
     /// </summary>
-    public Task<long> ClearDraftAsync(CollaborationRoom room);
+    public Task ClearDraftAsync(CollaborationRoom room);
 
-    public Task<long> GetVersionAsync(CollaborationRoom room);
 
     /// <summary>
     /// Adds a connection to a CRDT scope and says whether it is the one that must seed the

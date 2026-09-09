@@ -66,7 +66,6 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         return new CollaborationRoomState
         {
             Seq = log.Seq,
-            Version = await GetVersionAsync(room),
             Members = members,
             Leases = leases,
             Ops = log.Ops,
@@ -320,50 +319,33 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         return (long)compacted == 1;
     }
 
-    public async Task<long?> TryTrimDraftAsync(
+    public async Task<bool> TryTrimDraftAsync(
         CollaborationRoom room,
         long throughSeq
     )
     {
         var keys = new RedisRoomKeys(room);
 
-        var version = (long)
-            await Db.ScriptEvaluateAsync(
-                CollaborationScripts.TrimDraft,
-                [keys.Ops, keys.SeqBase, keys.Version],
-                [throughSeq, RoomTtlMs]
-            );
+        var trimmed = await Db.ScriptEvaluateAsync(
+            CollaborationScripts.TrimDraft,
+            [keys.Ops, keys.SeqBase],
+            [throughSeq, RoomTtlMs]
+        );
 
-        if (version < 0)
-        {
-            return null;
-        }
-
-        await Db.KeyExpireAsync(keys.Version, _config.DraftTtl);
-
-        return version;
+        return (long)trimmed == 1;
     }
 
-    public async Task<long> ClearDraftAsync(
-        CollaborationRoom room
-    )
+    public Task ClearDraftAsync(CollaborationRoom room)
     {
         var keys = new RedisRoomKeys(room);
 
-        var version = await Db.ScriptEvaluateAsync(
+        return Db.ScriptEvaluateAsync(
             CollaborationScripts.ClearDraft,
-            [keys.Ops, keys.SeqBase, keys.Version],
+            [keys.Ops, keys.SeqBase],
             [RoomTtlMs]
         );
-
-        await Db.KeyExpireAsync(keys.Version, _config.DraftTtl);
-
-        return (long)version;
     }
 
-    public async Task<long> GetVersionAsync(
-        CollaborationRoom room
-    ) => (long?)await Db.StringGetAsync(Keys(room).Version) ?? 0;
 
     public async Task<CollaborationScopeState> JoinScopeAsync(
         CollaborationRoom room,

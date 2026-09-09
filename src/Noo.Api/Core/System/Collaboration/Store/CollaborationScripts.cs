@@ -170,25 +170,25 @@ public static class CollaborationScripts
         """;
 
     /// <summary>
-    /// KEYS: ops list, seq base, version. ARGV: through seq, room ttl ms.
+    /// KEYS: ops list, seq base. ARGV: through seq, room ttl ms.
     /// Drops the leading operations a save applied and keeps the rest, so edits made while the
-    /// save was in MySQL survive it. Returns -1 when the log no longer starts where the caller
+    /// save was in MySQL survive it. Returns 0 when the log no longer starts where the caller
     /// read it — a compaction or a discard got there first, and the caller must not trim blindly.
     /// </summary>
     public const string TrimDraft = """
         local base = tonumber(redis.call('GET', KEYS[2]) or '0')
         local len = redis.call('LLEN', KEYS[1])
         local count = tonumber(ARGV[1]) - base
-        if count < 0 or count > len then return -1 end
+        if count < 0 or count > len then return 0 end
         redis.call('LTRIM', KEYS[1], count, -1)
         redis.call('SET', KEYS[2], base + count)
         redis.call('PEXPIRE', KEYS[1], ARGV[2])
         redis.call('PEXPIRE', KEYS[2], ARGV[2])
-        return redis.call('INCR', KEYS[3])
+        return 1
         """;
 
     /// <summary>
-    /// KEYS: ops list, seq base, version. ARGV: room ttl ms. Returns the new version.
+    /// KEYS: ops list, seq base. ARGV: room ttl ms.
     /// The base absorbs what was dropped rather than resetting, so a room's sequence numbers only
     /// ever go forwards and a client that re-reads the room cannot be handed a number it has
     /// already seen mean something else.
@@ -199,7 +199,7 @@ public static class CollaborationScripts
         redis.call('DEL', KEYS[1])
         redis.call('SET', KEYS[2], base + len)
         redis.call('PEXPIRE', KEYS[2], ARGV[1])
-        return redis.call('INCR', KEYS[3])
+        return 1
         """;
 
     /// <summary>
