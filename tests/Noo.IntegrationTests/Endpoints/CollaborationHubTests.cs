@@ -99,6 +99,21 @@ public class CollaborationHubTests : IClassFixture<ApiFactory>
             .Id;
     }
 
+    /// <summary>The id the draft addresses a task by, which only the saved work knows.</summary>
+    private async Task<Ulid> FirstTaskIdAsync(HttpClient client, Ulid workId)
+    {
+        var work = await client.AsTeacher().GetAsync($"/work/{workId}");
+
+        return Ulid.Parse(
+            JsonDocument
+                .Parse(await work.Content.ReadAsStringAsync())
+                .RootElement.GetProperty("data")
+                .GetProperty("tasks")[0]
+                .GetProperty("id")
+                .GetString()!
+        );
+    }
+
     private static TaskCompletionSource<T> Expect<T>(HubConnection connection, string method)
     {
         var source = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -164,6 +179,70 @@ public class CollaborationHubTests : IClassFixture<ApiFactory>
 
         // The holder itself is not blocked by its own lease.
         await anna.InvokeAsync<long>("PushOpsAsync", new[] { Op("/title", "Анна") });
+    }
+
+    // Removing a task is a write to every field inside it, so addressing the parent used to walk
+    // straight past a lease held on one of its fields.
+    [Fact(DisplayName = "Hub: a leased field cannot be written by addressing the task around it")]
+    public async Task WritingAroundALeasedFieldIsRefused()
+    {
+        using var client = _factory.CreateClient();
+        var workId = await CreateWorkAsync(client);
+        var taskId = await FirstTaskIdAsync(client, workId);
+
+        await using var anna = BuildConnection(Ulid.NewUlid());
+        await using var boris = BuildConnection(Ulid.NewUlid());
+        await anna.StartAsync();
+        await boris.StartAsync();
+
+        await anna.InvokeAsync<CollaborationRoomState>("JoinAsync", "work", workId);
+        await boris.InvokeAsync<CollaborationRoomState>("JoinAsync", "work", workId);
+        await anna.InvokeAsync<CollaborationLease>("AcquireLeaseAsync", $"/tasks/{taskId}/content");
+
+        var refused = await Assert.ThrowsAsync<HubException>(
+            () =>
+                boris.InvokeAsync<long>(
+                    "PushOpsAsync",
+                    new[] { new CollaborationOp { Op = "remove", Path = $"/tasks/{taskId}" } }
+                )
+        );
+        refused.Message.Should().Contain(taskId.ToString());
+    }
+
+    // An operation the patch document could never apply used to be accepted into the draft and
+    // then break the save — for whoever pressed it, not for whoever sent it.
+    [Fact(DisplayName = "Hub: an operation a draft cannot carry is refused when it is sent")]
+    public async Task UnsupportedOperationsAreRefused()
+    {
+        using var client = _factory.CreateClient();
+        var workId = await CreateWorkAsync(client);
+        var taskId = await FirstTaskIdAsync(client, workId);
+
+        await using var anna = BuildConnection(Ulid.NewUlid());
+        await anna.StartAsync();
+        await anna.InvokeAsync<CollaborationRoomState>("JoinAsync", "work", workId);
+
+        // "move" needs a "from" the wire format does not carry.
+        await Assert.ThrowsAsync<HubException>(
+            () =>
+                anna.InvokeAsync<long>(
+                    "PushOpsAsync",
+                    new[] { new CollaborationOp { Op = "move", Path = "/title" } }
+                )
+        );
+
+        // A field the DTO does not have.
+        await Assert.ThrowsAsync<HubException>(
+            () =>
+                anna.InvokeAsync<long>(
+                    "PushOpsAsync",
+                    new[] { Op($"/tasks/{taskId}/notAField", "x") }
+                )
+        );
+
+        (await anna.InvokeAsync<CollaborationRoomState>("JoinAsync", "work", workId))
+            .Ops.Should()
+            .BeEmpty();
     }
 
     [Fact(DisplayName = "Hub: an edit reaches the other editor with its sequence number")]

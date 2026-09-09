@@ -1,4 +1,6 @@
+using System.Reflection;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using AutoMapper;
 using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.Request.Patching;
@@ -106,7 +108,39 @@ public class WorkCollaborationHandlerTests
         Assert.False(handler.IsPathAllowed("/tasks"));
         Assert.False(handler.IsPathAllowed("/tasks/0/maxScore"));
         Assert.False(handler.IsPathAllowed($"/tasks/{taskId}/content/content/0/text"));
+
+        // A field the DTO does not have used to pass the check and then fail the save, for
+        // whoever pressed it rather than for whoever sent the operation.
+        Assert.False(handler.IsPathAllowed($"/tasks/{taskId}/notAField"));
+        Assert.False(handler.IsPathAllowed($"/tasks/{taskId}/id"));
+        Assert.False(handler.IsPathAllowed("/notAField"));
     }
+
+    [Fact(DisplayName = "WorkCollaborationHandler: the editable fields are the ones the DTOs declare")]
+    public void IsPathAllowed_TracksTheDtos()
+    {
+        var handler = new WorkCollaborationHandler(null!, null!);
+        var taskId = Ulid.NewUlid().ToString();
+
+        // Read off the DTO rather than listed here, so renaming a property on the patch endpoint
+        // cannot leave the draft accepting a path the save would reject.
+        foreach (var field in JsonFieldsOf<UpdateWorkTaskDTO>().Except(["id"]))
+        {
+            Assert.True(handler.IsPathAllowed($"/tasks/{taskId}/{field}"), field);
+        }
+
+        foreach (var field in JsonFieldsOf<UpdateWorkDTO>().Except(["id", "tasks"]))
+        {
+            Assert.True(handler.IsPathAllowed($"/{field}"), field);
+        }
+    }
+
+    private static IEnumerable<string> JsonFieldsOf<T>() =>
+        typeof(T)
+            .GetProperties()
+            .Select(property =>
+                property.GetCustomAttribute<JsonPropertyNameAttribute>()!.Name
+            );
 
     // The whole point of expressing the draft as patch operations: saving is the existing PATCH
     // pipeline, so the total score and the task numbering are settled by the same code as before.

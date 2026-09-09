@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Noo.Api.Core.Security.Authorization;
@@ -58,6 +59,19 @@ public record CollaborationLease
 /// </summary>
 public record CollaborationOp
 {
+    /// <summary>
+    /// The verbs a draft can carry — deliberately not the whole JSON Patch vocabulary.
+    /// <c>move</c> and <c>copy</c> need a <c>from</c> this record does not have, and <c>test</c>
+    /// asserts rather than edits. All three would be accepted into the draft and then throw when
+    /// somebody pressed Save, stranding the room's work behind an operation nobody can apply.
+    /// </summary>
+    private static readonly FrozenSet<string> _supportedKinds = new[]
+    {
+        "add",
+        "replace",
+        "remove",
+    }.ToFrozenSet(StringComparer.Ordinal);
+
     [JsonPropertyName("op")]
     public string Op { get; init; } = string.Empty;
 
@@ -66,6 +80,8 @@ public record CollaborationOp
 
     [JsonPropertyName("value")]
     public JsonNode? Value { get; init; }
+
+    public bool HasSupportedKind => _supportedKinds.Contains(Op);
 }
 
 /// <summary>

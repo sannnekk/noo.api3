@@ -1,6 +1,8 @@
+using System.Collections.Frozen;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
+using System.Text.Json.Serialization;
 using AutoMapper;
 using Noo.Api.Core.System.Collaboration;
 using Noo.Api.Core.Utils.DI;
@@ -19,7 +21,7 @@ namespace Noo.Api.Works.Collaboration;
 /// validation all keep happening exactly once, in one place.
 /// </summary>
 [RegisterScoped(typeof(ICollaborationRoomHandler))]
-public partial class WorkCollaborationHandler : ICollaborationRoomHandler
+public class WorkCollaborationHandler : ICollaborationRoomHandler
 {
     /// <summary>
     /// The same conventions the controller's patch endpoint reads with. Without them a task's
@@ -58,8 +60,20 @@ public partial class WorkCollaborationHandler : ICollaborationRoomHandler
     /// Only what <see cref="UpdateWorkDTO"/> would accept. Checked when the operation enters the
     /// draft rather than when someone presses Save, so a malformed path fails for the client that
     /// sent it instead of for whoever saves an hour later.
+    ///
+    /// The field names are read off the DTOs rather than written out here, because a hand-kept
+    /// list is a list that drifts: a property renamed on the patch endpoint would otherwise keep
+    /// being accepted into drafts that can no longer be saved.
     /// </summary>
-    public bool IsPathAllowed(string path) => EditablePath().IsMatch(path);
+    public bool IsPathAllowed(string path) =>
+        path.Split('/') switch
+        {
+            ["", var field] => _workFields.Contains(field),
+            ["", "tasks", var id] => Ulid.TryParse(id, out _),
+            ["", "tasks", var id, var field] => Ulid.TryParse(id, out _)
+                && _taskFields.Contains(field),
+            _ => false,
+        };
 
     public async Task SaveAsync(
         Ulid roomId,
@@ -149,12 +163,28 @@ public partial class WorkCollaborationHandler : ICollaborationRoomHandler
         value is null ? null : JsonSerializer.Deserialize<JsonElement>(value.ToJsonString());
 
     /// <summary>
-    /// The work's own fields, a whole task, or one field of a task. Task keys are ULIDs because
-    /// the patch exposes the collection as a dictionary keyed by id — which is also what makes an
-    /// operation survive another editor reordering the tasks under it.
+    /// The work's own editable fields. <c>id</c> is not one of them, and <c>tasks</c> is reached
+    /// a task at a time — replacing the whole collection in one operation would make every
+    /// concurrent edit to a task inside it unmergeable.
     /// </summary>
-    [GeneratedRegex(
-        @"^/(title|description|type|subjectId|tasks/[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}(/[a-zA-Z]+)?)$"
-    )]
-    private static partial Regex EditablePath();
+    private static readonly FrozenSet<string> _workFields = JsonFieldsOf<UpdateWorkDTO>(
+        except: ["id", "tasks"]
+    );
+
+    private static readonly FrozenSet<string> _taskFields = JsonFieldsOf<UpdateWorkTaskDTO>(
+        except: ["id"]
+    );
+
+    /// <summary>
+    /// The names the patch endpoint binds, taken from the DTO itself so the two cannot drift.
+    /// </summary>
+    private static FrozenSet<string> JsonFieldsOf<T>(string[] except) =>
+        typeof(T)
+            .GetProperties()
+            .Select(property =>
+                property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name
+                ?? JsonNamingPolicy.CamelCase.ConvertName(property.Name)
+            )
+            .Except(except)
+            .ToFrozenSet(StringComparer.Ordinal);
 }

@@ -159,6 +159,14 @@ public class CollaborationHub : NooHub<ICollaborationHubClient>
 
         foreach (var op in ops)
         {
+            // Checked here rather than at save time on purpose: an operation the patch document
+            // could never apply would otherwise sit in the draft until somebody pressed Save an
+            // hour later, and fail for them rather than for whoever sent it.
+            if (!op.HasSupportedKind)
+            {
+                throw new BadRequestException($"'{op.Op}' is not an operation a draft can carry.");
+            }
+
             RequireAllowedPath(room, op.Path);
 
             if (JsonSerializer.Serialize(op).Length > _config.MaxOpBytes)
