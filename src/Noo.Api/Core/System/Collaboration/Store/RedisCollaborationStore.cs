@@ -37,13 +37,15 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         // Before the cap is applied, so a room full of members an instance died holding is not a
         // room nobody can get back into.
         await PruneLapsedMembersAsync(room);
 
         var joined = await Db.ScriptEvaluateAsync(
             CollaborationScripts.Join,
-            [room.PresenceKey, room.PresenceSeenKey],
+            [keys.Presence, keys.PresenceSeen],
             [
                 member.ConnectionId,
                 JsonSerializer.Serialize(member, _json),
@@ -78,15 +80,17 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         var freed = await Db.ScriptEvaluateAsync(
             CollaborationScripts.Leave,
             [
-                room.PresenceKey,
-                room.PresenceSeenKey,
-                room.ConnectionLeasesKey(connectionId),
-                room.LeasePathsKey,
+                keys.Presence,
+                keys.PresenceSeen,
+                keys.ConnectionLeases(connectionId),
+                keys.LeasePaths,
             ],
-            [connectionId, room.LeaseKeyPrefix]
+            [connectionId, keys.LeasePrefix]
         );
 
         return [.. ((RedisResult[])freed!).Select(path => (string)path!)];
@@ -98,10 +102,12 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         var alive = await Db.ScriptEvaluateAsync(
             CollaborationScripts.Heartbeat,
-            [room.PresenceKey, room.PresenceSeenKey, room.ConnectionLeasesKey(connectionId)],
-            [connectionId, NowMs(), LeaseTtlMs, room.LeaseKeyPrefix, RoomTtlMs]
+            [keys.Presence, keys.PresenceSeen, keys.ConnectionLeases(connectionId)],
+            [connectionId, NowMs(), LeaseTtlMs, keys.LeasePrefix, RoomTtlMs]
         );
 
         return (long)alive == 1;
@@ -112,7 +118,9 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
-        var entries = await Db.HashGetAllAsync(room.PresenceKey);
+        var keys = new RedisRoomKeys(room);
+
+        var entries = await Db.HashGetAllAsync(keys.Presence);
 
         return
         [
@@ -133,7 +141,9 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
-        var raw = await Db.HashGetAsync(room.PresenceKey, connectionId);
+        var keys = new RedisRoomKeys(room);
+
+        var raw = await Db.HashGetAsync(keys.Presence, connectionId);
 
         if (raw.IsNullOrEmpty)
         {
@@ -146,7 +156,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         };
 
         await Db.HashSetAsync(
-            room.PresenceKey,
+            keys.Presence,
             connectionId,
             JsonSerializer.Serialize(member, _json)
         );
@@ -159,13 +169,15 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         var result = (RedisResult[])(
             await Db.ScriptEvaluateAsync(
                 CollaborationScripts.AcquireLease,
                 [
-                    room.LeaseKey(path),
-                    room.ConnectionLeasesKey(connectionId),
-                    room.LeasePathsKey,
+                    keys.Lease(path),
+                    keys.ConnectionLeases(connectionId),
+                    keys.LeasePaths,
                 ],
                 [connectionId, LeaseTtlMs, path, RoomTtlMs]
             )
@@ -184,9 +196,11 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         var released = await Db.ScriptEvaluateAsync(
             CollaborationScripts.ReleaseLease,
-            [room.LeaseKey(path), room.ConnectionLeasesKey(connectionId), room.LeasePathsKey],
+            [keys.Lease(path), keys.ConnectionLeases(connectionId), keys.LeasePaths],
             [connectionId, path]
         );
 
@@ -198,21 +212,23 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         var db = Db;
-        var paths = await db.SetMembersAsync(room.LeasePathsKey);
+        var paths = await db.SetMembersAsync(keys.LeasePaths);
         var leases = new List<CollaborationLease>();
 
         foreach (var entry in paths)
         {
             var path = (string)entry!;
-            var holder = await db.StringGetAsync(room.LeaseKey(path));
-            var ttl = await db.KeyTimeToLiveAsync(room.LeaseKey(path));
+            var holder = await db.StringGetAsync(keys.Lease(path));
+            var ttl = await db.KeyTimeToLiveAsync(keys.Lease(path));
 
             // The lease expired on its own; the index entry it left behind is dropped here
             // rather than by a sweep nobody would remember to schedule.
             if (holder.IsNullOrEmpty || ttl is null)
             {
-                await db.SetRemoveAsync(room.LeasePathsKey, entry);
+                await db.SetRemoveAsync(keys.LeasePaths, entry);
                 continue;
             }
 
@@ -231,10 +247,12 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         var allowed = await Db.ScriptEvaluateAsync(
             CollaborationScripts.MayWrite,
-            [room.LeasePathsKey],
-            [path, connectionId, room.LeaseKeyPrefix]
+            [keys.LeasePaths],
+            [path, connectionId, keys.LeasePrefix]
         );
 
         return (long)allowed == 1;
@@ -246,6 +264,8 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         if (ops.Count == 0)
         {
             return (await GetOpsAsync(room, ct)).Seq;
@@ -259,7 +279,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
 
         var seq = await Db.ScriptEvaluateAsync(
             CollaborationScripts.AppendOps,
-            [room.OpsKey, room.SeqBaseKey],
+            [keys.Ops, keys.SeqBase],
             args
         );
 
@@ -271,9 +291,11 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         var db = Db;
-        var raw = await db.ListRangeAsync(room.OpsKey);
-        var seqBase = (long?)await db.StringGetAsync(room.SeqBaseKey) ?? 0;
+        var raw = await db.ListRangeAsync(keys.Ops);
+        var seqBase = (long?)await db.StringGetAsync(keys.SeqBase) ?? 0;
 
         return new CollaborationOpLog(
             seqBase + raw.Length,
@@ -292,6 +314,8 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         RedisValue[] args =
         [
             expectedSeq,
@@ -301,7 +325,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
 
         var compacted = await Db.ScriptEvaluateAsync(
             CollaborationScripts.CompactOps,
-            [room.OpsKey, room.SeqBaseKey],
+            [keys.Ops, keys.SeqBase],
             args
         );
 
@@ -314,10 +338,12 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         var version = (long)
             await Db.ScriptEvaluateAsync(
                 CollaborationScripts.TrimDraft,
-                [room.OpsKey, room.SeqBaseKey, room.VersionKey],
+                [keys.Ops, keys.SeqBase, keys.Version],
                 [throughSeq, RoomTtlMs]
             );
 
@@ -326,7 +352,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
             return null;
         }
 
-        await Db.KeyExpireAsync(room.VersionKey, _config.DraftTtl);
+        await Db.KeyExpireAsync(keys.Version, _config.DraftTtl);
 
         return version;
     }
@@ -336,13 +362,15 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         var version = await Db.ScriptEvaluateAsync(
             CollaborationScripts.ClearDraft,
-            [room.OpsKey, room.SeqBaseKey, room.VersionKey],
+            [keys.Ops, keys.SeqBase, keys.Version],
             [RoomTtlMs]
         );
 
-        await Db.KeyExpireAsync(room.VersionKey, _config.DraftTtl);
+        await Db.KeyExpireAsync(keys.Version, _config.DraftTtl);
 
         return (long)version;
     }
@@ -350,7 +378,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     public async Task<long> GetVersionAsync(
         CollaborationRoom room,
         CancellationToken ct = default
-    ) => (long?)await Db.StringGetAsync(room.VersionKey) ?? 0;
+    ) => (long?)await Db.StringGetAsync(Keys(room).Version) ?? 0;
 
     public async Task<CollaborationScopeState> JoinScopeAsync(
         CollaborationRoom room,
@@ -359,10 +387,12 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         CancellationToken ct = default
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         var result = (RedisResult[])(
             await Db.ScriptEvaluateAsync(
                 CollaborationScripts.JoinScope,
-                [room.ScopeMembersKey(scope), room.ScopeSeedKey(scope)],
+                [keys.ScopeMembers(scope), keys.ScopeSeed(scope)],
                 [connectionId, RoomTtlMs]
             )
         )!;
@@ -382,7 +412,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     ) =>
         Db.ScriptEvaluateAsync(
             CollaborationScripts.LeaveScope,
-            [room.ScopeMembersKey(scope), room.ScopeSeedKey(scope)],
+            [Keys(room).ScopeMembers(scope), Keys(room).ScopeSeed(scope)],
             [connectionId]
         );
 
@@ -392,10 +422,12 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     /// </summary>
     private async Task PruneLapsedMembersAsync(CollaborationRoom room)
     {
+        var keys = new RedisRoomKeys(room);
+
         var cutoff = NowMs() - (long)_config.PresenceTtl.TotalMilliseconds;
 
         var lapsed = await Db.SortedSetRangeByScoreAsync(
-            room.PresenceSeenKey,
+            keys.PresenceSeen,
             double.NegativeInfinity,
             cutoff
         );
@@ -413,12 +445,14 @@ public sealed class RedisCollaborationStore : ICollaborationStore
         long ttlMs
     )
     {
+        var keys = new RedisRoomKeys(room);
+
         if (string.IsNullOrEmpty(holderConnectionId) || ttlMs <= 0)
         {
             return CollaborationLease.Released(path);
         }
 
-        var raw = await Db.HashGetAsync(room.PresenceKey, holderConnectionId);
+        var raw = await Db.HashGetAsync(keys.Presence, holderConnectionId);
 
         return new CollaborationLease
         {
@@ -429,6 +463,8 @@ public sealed class RedisCollaborationStore : ICollaborationStore
             ExpiresAt = Clock.Now.AddMilliseconds(ttlMs),
         };
     }
+
+    private static RedisRoomKeys Keys(CollaborationRoom room) => new(room);
 
     private static long NowMs() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 }
