@@ -334,6 +334,37 @@ public class CourseCollaborationHandlerTests
         Assert.Null(untouched!.Chapters!.Single().Materials!.Single().ContentId);
     }
 
+    // The foreign key lives on the material, so EF has no cascade to follow: without this the row
+    // would simply be left behind, which is what used to happen whenever a client forgot to ask.
+    [Fact(DisplayName = "CourseCollaborationHandler: removing a material takes its content with it")]
+    public async Task SaveAsync_RemovesTheContentOfARemovedMaterial()
+    {
+        var harness = await CreateAsync();
+        var materialPath = $"/chapters/{harness.ChapterId}/materials/{harness.MaterialId}";
+
+        await harness.Handler.SaveAsync(
+            harness.CourseId,
+            [Replace($"{materialPath}/content/content", RichText("Текст"))]
+        );
+        await harness.Commit();
+
+        var withContent = await harness.Service.GetByIdAsync(
+            harness.CourseId,
+            includeInactive: true
+        );
+        var contentId = withContent!.Chapters!.Single().Materials!.Single().ContentId!.Value;
+
+        Assert.NotNull(await harness.Service.GetContentByIdAsync(contentId));
+
+        await harness.Handler.SaveAsync(
+            harness.CourseId,
+            [new CollaborationOp { Op = "remove", Path = materialPath }]
+        );
+        await harness.Commit();
+
+        Assert.Null(await harness.Service.GetContentByIdAsync(contentId));
+    }
+
     // A material can be removed by one editor while another is still typing into it, so the draft
     // outlives the material. That must cost the operation, never the whole save.
     [Fact(DisplayName = "CourseCollaborationHandler: content for a removed material does not block the save")]

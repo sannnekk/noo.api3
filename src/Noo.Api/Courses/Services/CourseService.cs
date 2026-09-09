@@ -178,6 +178,8 @@ public class CourseService : ICourseService
 
         model.ThrowNotFoundIfNull();
 
+        var contentsBefore = MaterialContentIds(model);
+
         var patched = _jsonPatchUpdateService.ApplyPatch(model, courseUpdateDto);
 
         if (patched.AuthorIds != null)
@@ -189,7 +191,23 @@ public class CourseService : ICourseService
         {
             SetPublic(model, patched.IsPublic.Value);
         }
+
+        // A removed material orphans the content row it pointed at — nothing else references one,
+        // and the foreign key lives on the material, so EF has no cascade to follow. This used to
+        // be the client's to remember, which is exactly the kind of bookkeeping a caller forgets.
+        foreach (var orphaned in contentsBefore.Except(MaterialContentIds(model)))
+        {
+            _courseContentRepository.DeleteById(orphaned);
+        }
     }
+
+    private static HashSet<Ulid> MaterialContentIds(CourseModel course) =>
+        [
+            .. (course.Chapters ?? [])
+                .SelectMany(chapter => chapter.Materials ?? [])
+                .Select(material => material.ContentId)
+                .OfType<Ulid>(),
+        ];
 
     /// <summary>
     /// Opening a course to everyone is a single audience row, so the flip costs the same whether
