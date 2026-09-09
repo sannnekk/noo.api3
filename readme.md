@@ -375,7 +375,7 @@ The k8s manifests live outside this repo. A hub deployment needs:
 
 ## Collaborative editing
 
-Several people editing one document at once — a work today, a course next. It lives in
+Several people editing one document at once — a work or a course. It lives in
 `Core/System/Collaboration`, and the whole thing is built so that a module opts an entity in by
 writing **one class**.
 
@@ -405,13 +405,15 @@ already holds open is a perfectly good transport.
 
 ### Adding a room type
 
-Implement `ICollaborationRoomHandler` in the module that owns the entity and register it:
+Implement `ICollaborationRoomHandler` in the module that owns the entity and register it. Two are
+registered today — `WorkCollaborationHandler` and `CourseCollaborationHandler` — and the second is
+worth reading first, because it is the awkward shape:
 
 ```csharp
 [RegisterScoped(typeof(ICollaborationRoomHandler))]
-public class CourseCollaborationHandler : ICollaborationRoomHandler
+public class PollCollaborationHandler : ICollaborationRoomHandler
 {
-    public string RoomType => "course";
+    public string RoomType => "poll";
 
     // Both halves of "may this happen": that the caller's role edits this kind of document, and
     // that this particular one exists and is theirs. The hub's policy only asks for a signed-in,
@@ -425,10 +427,27 @@ public class CourseCollaborationHandler : ICollaborationRoomHandler
     // The existing patch pipeline. Nothing else writes the entity.
     public Task SaveAsync(Ulid roomId, IReadOnlyList<CollaborationOp> ops, CancellationToken ct = default) => ...;
 
-    // A session's worth of operations, replaced by the state they add up to.
+    // A session's worth of operations, replaced by the state they add up to. `CollaborationOps
+    // .Deduplicate` does it by path alone when rebuilding the document would be the expensive way.
     public Task<IReadOnlyList<CollaborationOp>> CompactAsync(...) => ...;
 }
 ```
+
+**A document made of more than one entity is still one room.** A course is the example: its chapter
+tree and each material's content row are separate tables with a patch endpoint each, and
+`CourseCollaborationHandler` is the only place that knows it. The draft stays one flat list of
+operations — `/chapters/{id}/materials/{id}/content/...` is simply a path — and `SaveAsync` splits
+it back into the two pipelines, tree first, because a material drafted in the same session has to
+exist before its content can be attached to it. Three things fall out of that and are worth copying:
+
+- **Route the second entity through the first.** The content half is resolved through the course the
+  room names, so an operation naming another course's material reaches nothing. Room scoping is
+  structural rather than a check somebody has to remember to write.
+- **Let the save create what the draft implies.** A material's content row does not exist until
+  somebody types into it; the save brings it into being rather than making the client create it
+  first and thread the id back through everyone else's draft.
+- **Compaction stops at the entity boundary.** Replacing a whole material settles its title and its
+  ordering and says nothing about its content, so the two are compacted separately.
 
 That is the whole server side: the hub, the client contract, the endpoints and the frontend
 composables are all room-type agnostic. On the frontend, add the type to `CollaborationRoomTypes`
@@ -444,10 +463,13 @@ in `noo-collab-field`.
   would be expensive, and a diff cannot tell an edit of one's own from one that just arrived.
 - **Paths are the API's, not the client's.** The patch exposes child collections as dictionaries
   keyed by id — which is what makes an operation survive someone else reordering them — so a
-  client holding an array translates on the way in (`workOpsToLocal`).
-- **Client-minted ids.** A task gets a ULID when it is drafted, not when it is saved, because it
-  needs an address before it exists server-side. Anything that treated a missing id as "unsaved"
-  has to look at `createdAt` instead.
+  client holding an array translates on the way in (`workOpsToLocal`, `courseOpsToLocal`).
+- **Client-minted ids.** A task, a chapter and a material all get a ULID when they are drafted, not
+  when they are saved, because each needs an address before it exists server-side. Anything that
+  treated a missing id as "unsaved" has to look at `createdAt` instead.
+- **A course's chapter list is flat in the editor.** The tree the sidebar renders is derived from
+  `parentChapterId`, so moving a chapter is one field write rather than a subtree lifted out and put
+  back — which is what lets it survive somebody editing inside it at the same time.
 - **Exactly one client seeds a CRDT scope.** The server elects it; everyone else waits for a peer.
   Two clients seeding one document is how a collaborative editor ends up showing everything twice.
 - **`Realtime:HubLimits` is not optional for this hub.** The default 120 invocations/minute is
