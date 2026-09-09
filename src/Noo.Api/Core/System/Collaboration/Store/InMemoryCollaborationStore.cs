@@ -22,8 +22,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
 
     public Task<CollaborationRoomState?> TryJoinAsync(
         CollaborationRoom room,
-        CollaborationMember member,
-        CancellationToken ct = default
+        CollaborationMember member
     )
     {
         var state = StateOf(room);
@@ -60,8 +59,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
 
     public Task<IReadOnlyList<string>> LeaveAsync(
         CollaborationRoom room,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var state = StateOf(room);
@@ -74,8 +72,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
 
     public Task<bool> HeartbeatAsync(
         CollaborationRoom room,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var state = StateOf(room);
@@ -102,8 +99,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
     }
 
     public Task<IReadOnlyList<CollaborationMember>> GetMembersAsync(
-        CollaborationRoom room,
-        CancellationToken ct = default
+        CollaborationRoom room
     )
     {
         var state = StateOf(room);
@@ -117,8 +113,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
     public Task SetScopeAsync(
         CollaborationRoom room,
         string connectionId,
-        string? scope,
-        CancellationToken ct = default
+        string? scope
     )
     {
         var state = StateOf(room);
@@ -137,8 +132,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
     public Task<CollaborationLease> AcquireLeaseAsync(
         CollaborationRoom room,
         string path,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var state = StateOf(room);
@@ -162,8 +156,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
     public Task<bool> ReleaseLeaseAsync(
         CollaborationRoom room,
         string path,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var state = StateOf(room);
@@ -181,8 +174,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
     }
 
     public Task<IReadOnlyList<CollaborationLease>> GetLeasesAsync(
-        CollaborationRoom room,
-        CancellationToken ct = default
+        CollaborationRoom room
     )
     {
         var state = StateOf(room);
@@ -196,8 +188,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
     public Task<bool> MayWriteAsync(
         CollaborationRoom room,
         string path,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var state = StateOf(room);
@@ -216,8 +207,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
 
     public Task<long> AppendOpsAsync(
         CollaborationRoom room,
-        IReadOnlyList<CollaborationOp> ops,
-        CancellationToken ct = default
+        IReadOnlyList<CollaborationOp> ops
     )
     {
         var state = StateOf(room);
@@ -231,8 +221,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
     }
 
     public Task<CollaborationOpLog> GetOpsAsync(
-        CollaborationRoom room,
-        CancellationToken ct = default
+        CollaborationRoom room
     )
     {
         var state = StateOf(room);
@@ -248,8 +237,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
     public Task<bool> TryCompactOpsAsync(
         CollaborationRoom room,
         long expectedSeq,
-        IReadOnlyList<CollaborationOp> ops,
-        CancellationToken ct = default
+        IReadOnlyList<CollaborationOp> ops
     )
     {
         var state = StateOf(room);
@@ -271,8 +259,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
 
     public Task<long?> TryTrimDraftAsync(
         CollaborationRoom room,
-        long throughSeq,
-        CancellationToken ct = default
+        long throughSeq
     )
     {
         var state = StateOf(room);
@@ -294,7 +281,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
         }
     }
 
-    public Task<long> ClearDraftAsync(CollaborationRoom room, CancellationToken ct = default)
+    public Task<long> ClearDraftAsync(CollaborationRoom room)
     {
         var state = StateOf(room);
 
@@ -310,7 +297,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
         }
     }
 
-    public Task<long> GetVersionAsync(CollaborationRoom room, CancellationToken ct = default)
+    public Task<long> GetVersionAsync(CollaborationRoom room)
     {
         var state = StateOf(room);
 
@@ -323,8 +310,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
     public Task<CollaborationScopeState> JoinScopeAsync(
         CollaborationRoom room,
         string scope,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var state = StateOf(room);
@@ -349,8 +335,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
     public Task LeaveScopeAsync(
         CollaborationRoom room,
         string scope,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var state = StateOf(room);

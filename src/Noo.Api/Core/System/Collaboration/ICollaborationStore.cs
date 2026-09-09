@@ -4,6 +4,10 @@ namespace Noo.Api.Core.System.Collaboration;
 /// Where a room's shared state lives while it is being edited. Everything here is deliberately
 /// short-lived and reconstructible: the entity in MySQL plus this store is the whole truth, and
 /// losing the store costs unsaved edits, never saved ones.
+///
+/// No cancellation token: these are single round trips to Redis or a lock held for microseconds,
+/// and StackExchange.Redis takes no token to hand one to. A parameter every caller passed
+/// <c>default</c> to and every implementation ignored only claimed a guarantee that was not there.
 /// </summary>
 public interface ICollaborationStore
 {
@@ -17,15 +21,13 @@ public interface ICollaborationStore
     /// </summary>
     public Task<CollaborationRoomState?> TryJoinAsync(
         CollaborationRoom room,
-        CollaborationMember member,
-        CancellationToken ct = default
+        CollaborationMember member
     );
 
     /// <summary>Removes a member and every lease it held. Returns the paths that were freed.</summary>
     public Task<IReadOnlyList<string>> LeaveAsync(
         CollaborationRoom room,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     );
 
     /// <summary>
@@ -34,20 +36,17 @@ public interface ICollaborationStore
     /// </summary>
     public Task<bool> HeartbeatAsync(
         CollaborationRoom room,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     );
 
     public Task<IReadOnlyList<CollaborationMember>> GetMembersAsync(
-        CollaborationRoom room,
-        CancellationToken ct = default
+        CollaborationRoom room
     );
 
     public Task SetScopeAsync(
         CollaborationRoom room,
         string connectionId,
-        string? scope,
-        CancellationToken ct = default
+        string? scope
     );
 
     /// <summary>
@@ -57,21 +56,18 @@ public interface ICollaborationStore
     public Task<CollaborationLease> AcquireLeaseAsync(
         CollaborationRoom room,
         string path,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     );
 
     /// <summary>Releases a lease, but only if this connection still holds it.</summary>
     public Task<bool> ReleaseLeaseAsync(
         CollaborationRoom room,
         string path,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     );
 
     public Task<IReadOnlyList<CollaborationLease>> GetLeasesAsync(
-        CollaborationRoom room,
-        CancellationToken ct = default
+        CollaborationRoom room
     );
 
     /// <summary>
@@ -83,20 +79,17 @@ public interface ICollaborationStore
     public Task<bool> MayWriteAsync(
         CollaborationRoom room,
         string path,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     );
 
     /// <summary>Appends to the draft. Returns the sequence number of the last operation added.</summary>
     public Task<long> AppendOpsAsync(
         CollaborationRoom room,
-        IReadOnlyList<CollaborationOp> ops,
-        CancellationToken ct = default
+        IReadOnlyList<CollaborationOp> ops
     );
 
     public Task<CollaborationOpLog> GetOpsAsync(
-        CollaborationRoom room,
-        CancellationToken ct = default
+        CollaborationRoom room
     );
 
     /// <summary>
@@ -107,8 +100,7 @@ public interface ICollaborationStore
     public Task<bool> TryCompactOpsAsync(
         CollaborationRoom room,
         long expectedSeq,
-        IReadOnlyList<CollaborationOp> ops,
-        CancellationToken ct = default
+        IReadOnlyList<CollaborationOp> ops
     );
 
     /// <summary>
@@ -122,17 +114,16 @@ public interface ICollaborationStore
     /// </summary>
     public Task<long?> TryTrimDraftAsync(
         CollaborationRoom room,
-        long throughSeq,
-        CancellationToken ct = default
+        long throughSeq
     );
 
     /// <summary>
     /// Throws the whole draft away unconditionally and bumps the version. This is the discard
     /// path; a save uses <see cref="TryTrimDraftAsync"/> so it drops only what it saved.
     /// </summary>
-    public Task<long> ClearDraftAsync(CollaborationRoom room, CancellationToken ct = default);
+    public Task<long> ClearDraftAsync(CollaborationRoom room);
 
-    public Task<long> GetVersionAsync(CollaborationRoom room, CancellationToken ct = default);
+    public Task<long> GetVersionAsync(CollaborationRoom room);
 
     /// <summary>
     /// Adds a connection to a CRDT scope and says whether it is the one that must seed the
@@ -141,8 +132,7 @@ public interface ICollaborationStore
     public Task<CollaborationScopeState> JoinScopeAsync(
         CollaborationRoom room,
         string scope,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     );
 
     /// <summary>
@@ -152,7 +142,6 @@ public interface ICollaborationStore
     public Task LeaveScopeAsync(
         CollaborationRoom room,
         string scope,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     );
 }

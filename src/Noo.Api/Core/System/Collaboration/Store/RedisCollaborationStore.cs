@@ -33,8 +33,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
 
     public async Task<CollaborationRoomState?> TryJoinAsync(
         CollaborationRoom room,
-        CollaborationMember member,
-        CancellationToken ct = default
+        CollaborationMember member
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -60,14 +59,14 @@ public sealed class RedisCollaborationStore : ICollaborationStore
             return null;
         }
 
-        var members = await GetMembersAsync(room, ct);
-        var leases = await GetLeasesAsync(room, ct);
-        var log = await GetOpsAsync(room, ct);
+        var members = await GetMembersAsync(room);
+        var leases = await GetLeasesAsync(room);
+        var log = await GetOpsAsync(room);
 
         return new CollaborationRoomState
         {
             Seq = log.Seq,
-            Version = await GetVersionAsync(room, ct),
+            Version = await GetVersionAsync(room),
             Members = members,
             Leases = leases,
             Ops = log.Ops,
@@ -76,8 +75,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
 
     public async Task<IReadOnlyList<string>> LeaveAsync(
         CollaborationRoom room,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -98,8 +96,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
 
     public async Task<bool> HeartbeatAsync(
         CollaborationRoom room,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -114,8 +111,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     }
 
     public async Task<IReadOnlyList<CollaborationMember>> GetMembersAsync(
-        CollaborationRoom room,
-        CancellationToken ct = default
+        CollaborationRoom room
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -137,8 +133,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     public async Task SetScopeAsync(
         CollaborationRoom room,
         string connectionId,
-        string? scope,
-        CancellationToken ct = default
+        string? scope
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -165,8 +160,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     public async Task<CollaborationLease> AcquireLeaseAsync(
         CollaborationRoom room,
         string path,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -192,8 +186,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     public async Task<bool> ReleaseLeaseAsync(
         CollaborationRoom room,
         string path,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -208,8 +201,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     }
 
     public async Task<IReadOnlyList<CollaborationLease>> GetLeasesAsync(
-        CollaborationRoom room,
-        CancellationToken ct = default
+        CollaborationRoom room
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -243,8 +235,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     public async Task<bool> MayWriteAsync(
         CollaborationRoom room,
         string path,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -260,15 +251,14 @@ public sealed class RedisCollaborationStore : ICollaborationStore
 
     public async Task<long> AppendOpsAsync(
         CollaborationRoom room,
-        IReadOnlyList<CollaborationOp> ops,
-        CancellationToken ct = default
+        IReadOnlyList<CollaborationOp> ops
     )
     {
         var keys = new RedisRoomKeys(room);
 
         if (ops.Count == 0)
         {
-            return (await GetOpsAsync(room, ct)).Seq;
+            return (await GetOpsAsync(room)).Seq;
         }
 
         RedisValue[] args =
@@ -287,8 +277,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     }
 
     public async Task<CollaborationOpLog> GetOpsAsync(
-        CollaborationRoom room,
-        CancellationToken ct = default
+        CollaborationRoom room
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -310,8 +299,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     public async Task<bool> TryCompactOpsAsync(
         CollaborationRoom room,
         long expectedSeq,
-        IReadOnlyList<CollaborationOp> ops,
-        CancellationToken ct = default
+        IReadOnlyList<CollaborationOp> ops
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -334,8 +322,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
 
     public async Task<long?> TryTrimDraftAsync(
         CollaborationRoom room,
-        long throughSeq,
-        CancellationToken ct = default
+        long throughSeq
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -358,8 +345,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     }
 
     public async Task<long> ClearDraftAsync(
-        CollaborationRoom room,
-        CancellationToken ct = default
+        CollaborationRoom room
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -376,15 +362,13 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     }
 
     public async Task<long> GetVersionAsync(
-        CollaborationRoom room,
-        CancellationToken ct = default
+        CollaborationRoom room
     ) => (long?)await Db.StringGetAsync(Keys(room).Version) ?? 0;
 
     public async Task<CollaborationScopeState> JoinScopeAsync(
         CollaborationRoom room,
         string scope,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     )
     {
         var keys = new RedisRoomKeys(room);
@@ -407,8 +391,7 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     public Task LeaveScopeAsync(
         CollaborationRoom room,
         string scope,
-        string connectionId,
-        CancellationToken ct = default
+        string connectionId
     ) =>
         Db.ScriptEvaluateAsync(
             CollaborationScripts.LeaveScope,
