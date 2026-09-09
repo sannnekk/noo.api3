@@ -205,31 +205,54 @@ public sealed class RedisCollaborationStore : ICollaborationStore
     {
         var keys = new RedisRoomKeys(room);
 
-        var db = Db;
-        var paths = await db.SetMembersAsync(keys.LeasePaths);
-        var leases = new List<CollaborationLease>();
+        // Two round trips whatever the room holds: the leases, then the roster to name their
+        // holders. A GET and a PTTL per path would grow with the number of fields being edited,
+        // and this runs on every join.
+        var rows = (RedisResult[])(
+            await Db.ScriptEvaluateAsync(
+                CollaborationScripts.GetLeases,
+                [keys.LeasePaths],
+                [keys.LeasePrefix]
+            )
+        )!;
 
-        foreach (var entry in paths)
+        if (rows.Length == 0)
         {
-            var path = (string)entry!;
-            var holder = await db.StringGetAsync(keys.Lease(path));
-            var ttl = await db.KeyTimeToLiveAsync(keys.Lease(path));
+            return [];
+        }
 
-            // The lease expired on its own; the index entry it left behind is dropped here
-            // rather than by a sweep nobody would remember to schedule.
-            if (holder.IsNullOrEmpty || ttl is null)
+        var holders = await MembersByConnectionAsync(room);
+        var leases = new List<CollaborationLease>(rows.Length / 3);
+
+        for (var index = 0; index + 2 < rows.Length; index += 3)
+        {
+            var ttlMs = long.Parse((string)rows[index + 2]!);
+
+            if (ttlMs <= 0)
             {
-                await db.SetRemoveAsync(keys.LeasePaths, entry);
                 continue;
             }
 
             leases.Add(
-                await BuildLeaseAsync(room, path, (string)holder!, (long)ttl.Value.TotalMilliseconds)
+                new CollaborationLease
+                {
+                    Path = (string)rows[index]!,
+                    Holder = holders.GetValueOrDefault((string)rows[index + 1]!),
+                    ExpiresAt = Clock.Now.AddMilliseconds(ttlMs),
+                }
             );
         }
 
         return leases;
     }
+
+    private async Task<Dictionary<string, CollaborationMember>> MembersByConnectionAsync(
+        CollaborationRoom room
+    ) =>
+        (await GetMembersAsync(room)).ToDictionary(
+            member => member.ConnectionId,
+            StringComparer.Ordinal
+        );
 
     public async Task<bool> MayWriteAsync(
         CollaborationRoom room,

@@ -97,6 +97,30 @@ public static class CollaborationScripts
         """;
 
     /// <summary>
+    /// KEYS: room's leased-path set. ARGV: lease key prefix.
+    /// Returns path, holder and remaining ttl ms, flat, three entries per standing lease. One
+    /// round trip rather than a GET and a PTTL each: this runs on every join and every read of
+    /// the room, and the two would also disagree with each other for a lease expiring between
+    /// them. Index entries whose lease already lapsed are dropped on the way past.
+    /// </summary>
+    public const string GetLeases = """
+        local paths = redis.call('SMEMBERS', KEYS[1])
+        local out = {}
+        for i = 1, #paths do
+          local key = ARGV[1] .. paths[i]
+          local holder = redis.call('GET', key)
+          if holder then
+            out[#out + 1] = paths[i]
+            out[#out + 1] = holder
+            out[#out + 1] = tostring(redis.call('PTTL', key))
+          else
+            redis.call('SREM', KEYS[1], paths[i])
+          end
+        end
+        return out
+        """;
+
+    /// <summary>
     /// KEYS: presence hash, presence seen zset, connection's lease set.
     /// ARGV: connectionId, now ms, lease ttl ms, lease key prefix, room ttl ms.
     /// Returns 0 when the member was already pruned, so the caller rejoins instead of
