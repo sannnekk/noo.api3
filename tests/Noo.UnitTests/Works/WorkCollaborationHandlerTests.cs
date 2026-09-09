@@ -203,6 +203,44 @@ public class WorkCollaborationHandlerTests
         Assert.Equal(14, saved.MaxScore);
     }
 
+    // A long session that added a task then crossed the compaction threshold used to produce a
+    // log that could never be saved: a replace needs the key to already exist, and this one only
+    // exists in the draft.
+    [Fact(DisplayName = "WorkCollaborationHandler: compacting a drafted task keeps it saveable")]
+    public async Task CompactAsync_KeepsADraftedTaskSaveable()
+    {
+        var harness = await CreateAsync();
+        var newId = Ulid.NewUlid();
+
+        List<CollaborationOp> ops =
+        [
+            new CollaborationOp
+            {
+                Op = "add",
+                Path = $"/tasks/{newId}",
+                Value = JsonNode.Parse(
+                    $$"""
+                    {
+                      "id": "{{newId}}", "type": "word", "order": 3, "maxScore": 4,
+                      "content": {"$type":"tiptap","type":"doc","content":[
+                        {"type":"paragraph","content":[{"type":"text","text":"новое"}]}]}
+                    }
+                    """
+                ),
+            },
+        ];
+
+        var compacted = await harness.Handler.CompactAsync(harness.WorkId, ops);
+
+        await harness.Handler.SaveAsync(harness.WorkId, compacted);
+        await harness.Commit();
+
+        var saved = await harness.Service.GetWorkAsync(harness.WorkId);
+
+        Assert.Equal(3, saved!.Tasks!.Count);
+        Assert.Contains(saved.Tasks, task => task.Id == newId);
+    }
+
     // Compaction has to be an exact substitute for the operations it replaces, or a long session
     // would save something different from what everyone was looking at.
     [Fact(DisplayName = "WorkCollaborationHandler: a compacted draft saves the same work as the original")]
