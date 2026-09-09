@@ -2,8 +2,10 @@ using System.Reflection;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using AutoMapper;
+using Moq;
 using Noo.Api.Core.DataAbstraction.Cache;
 using Noo.Api.Core.Request.Patching;
+using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.System.Collaboration;
 using Noo.Api.Core.Utils.Richtext;
 using Noo.Api.Works.Collaboration;
@@ -76,11 +78,24 @@ public class WorkCollaborationHandlerTests
         await uow.CommitAsync();
 
         return new Harness(
-            new WorkCollaborationHandler(service, mapper),
+            new WorkCollaborationHandler(service, mapper, MakeUser(UserRoles.Teacher)),
             service,
             () => uow.CommitAsync(),
             workId
         );
+    }
+
+    private static ICurrentUser MakeUser(UserRoles role)
+    {
+        var mock = new Mock<ICurrentUser>();
+
+        mock.SetupGet(m => m.UserId).Returns(Ulid.NewUlid());
+        mock.SetupGet(m => m.UserRole).Returns(role);
+        mock.SetupGet(m => m.IsAuthenticated).Returns(true);
+        mock.Setup(m => m.IsInRole(It.IsAny<UserRoles[]>()))
+            .Returns<UserRoles[]>(roles => roles.Contains(role));
+
+        return mock.Object;
     }
 
     private static CollaborationOp Replace(string path, JsonNode? value) =>
@@ -94,7 +109,7 @@ public class WorkCollaborationHandlerTests
     [Fact(DisplayName = "WorkCollaborationHandler: only paths the patch endpoint accepts are editable")]
     public void IsPathAllowed_MatchesThePatchDocument()
     {
-        var handler = new WorkCollaborationHandler(null!, null!);
+        var handler = new WorkCollaborationHandler(null!, null!, null!);
         var taskId = Ulid.NewUlid().ToString();
 
         Assert.True(handler.IsPathAllowed("/title"));
@@ -119,7 +134,7 @@ public class WorkCollaborationHandlerTests
     [Fact(DisplayName = "WorkCollaborationHandler: the editable fields are the ones the DTOs declare")]
     public void IsPathAllowed_TracksTheDtos()
     {
-        var handler = new WorkCollaborationHandler(null!, null!);
+        var handler = new WorkCollaborationHandler(null!, null!, null!);
         var taskId = Ulid.NewUlid().ToString();
 
         // Read off the DTO rather than listed here, so renaming a property on the patch endpoint
@@ -282,5 +297,25 @@ public class WorkCollaborationHandlerTests
 
         Assert.True(await harness.Handler.CanEditAsync(harness.WorkId));
         Assert.False(await harness.Handler.CanEditAsync(Ulid.NewUlid()));
+    }
+
+    // The roles are the handler's answer rather than a policy's in Core, so this is the only
+    // place that decides who edits a work — and the only place a course would differ.
+    [Theory(DisplayName = "WorkCollaborationHandler: only the roles the patch endpoint admits may edit")]
+    [InlineData(UserRoles.Admin, true)]
+    [InlineData(UserRoles.Teacher, true)]
+    [InlineData(UserRoles.Mentor, false)]
+    [InlineData(UserRoles.Assistant, false)]
+    [InlineData(UserRoles.Student, false)]
+    public async Task CanEditAsync_ChecksTheRole(UserRoles role, bool allowed)
+    {
+        var harness = await CreateAsync();
+        var handler = new WorkCollaborationHandler(
+            harness.Service,
+            CreateMapper(),
+            MakeUser(role)
+        );
+
+        Assert.Equal(allowed, await handler.CanEditAsync(harness.WorkId));
     }
 }

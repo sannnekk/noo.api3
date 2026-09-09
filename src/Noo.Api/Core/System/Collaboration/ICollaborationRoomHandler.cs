@@ -12,8 +12,12 @@ public interface ICollaborationRoomHandler
     public string RoomType { get; }
 
     /// <summary>
-    /// Whether the caller may edit this particular document. Role checks belong on the hub's
-    /// policy; this is the per-entity answer — that it exists, and that this user may have it.
+    /// Whether the caller may edit this particular document: that it exists, and that the user
+    /// asking is one this kind of document lets in.
+    ///
+    /// The role check lives here rather than on the hub's policy because it is the one thing
+    /// certain to differ between document types, and a policy naming every module's roles would
+    /// have to be edited every time a handler is registered.
     /// </summary>
     public Task<bool> CanEditAsync(Ulid roomId, CancellationToken ct = default);
 

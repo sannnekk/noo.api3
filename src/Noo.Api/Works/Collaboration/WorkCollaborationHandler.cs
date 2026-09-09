@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using AutoMapper;
+using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.System.Collaboration;
 using Noo.Api.Core.Utils.DI;
 using Noo.Api.Core.Utils.Json;
@@ -44,17 +45,28 @@ public class WorkCollaborationHandler : ICollaborationRoomHandler
 
     private readonly IWorkService _workService;
     private readonly IMapper _mapper;
+    private readonly ICurrentUser _currentUser;
 
-    public WorkCollaborationHandler(IWorkService workService, IMapper mapper)
+    public WorkCollaborationHandler(
+        IWorkService workService,
+        IMapper mapper,
+        ICurrentUser currentUser
+    )
     {
         _workService = workService;
         _mapper = mapper;
+        _currentUser = currentUser;
     }
 
     public string RoomType => "work";
 
+    /// <summary>
+    /// The same roles the work's own PATCH endpoint admits, checked here rather than by a policy
+    /// in Core so that the next handler can answer differently without touching anything shared.
+    /// </summary>
     public async Task<bool> CanEditAsync(Ulid roomId, CancellationToken ct = default) =>
-        await _workService.GetWorkAsync(roomId) is not null;
+        _currentUser.IsInRole(UserRoles.Admin, UserRoles.Teacher)
+        && await _workService.GetWorkAsync(roomId) is not null;
 
     /// <summary>
     /// Only what <see cref="UpdateWorkDTO"/> would accept. Checked when the operation enters the
