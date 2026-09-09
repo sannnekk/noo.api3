@@ -84,10 +84,30 @@ public class CollaborationStoreTests
         var store = Create(kind);
         var room = NewRoom();
 
-        await store.JoinAsync(room, Member("a", "Анна") with { JoinedAt = Clock.Now.AddSeconds(-1) });
-        var state = await store.JoinAsync(room, Member("b", "Борис"));
+        await store.TryJoinAsync(room, Member("a", "Анна") with { JoinedAt = Clock.Now.AddSeconds(-1) });
+        var state = await store.TryJoinAsync(room, Member("b", "Борис"));
 
-        Assert.Equal(["Анна", "Борис"], state.Members.Select(member => member.Name));
+        Assert.Equal(["Анна", "Борис"], state!.Members.Select(member => member.Name));
+    }
+
+    // Counted and joined in one step, or two connections arriving together both find room in a
+    // roster with one place left.
+    [Theory(DisplayName = "Store: a full room refuses the next member")]
+    [MemberData(nameof(Stores))]
+    public async Task Join_RefusesWhenFull(string kind)
+    {
+        var store = Create(kind);
+        var room = NewRoom();
+
+        for (var index = 0; index < _config.MaxMembersPerRoom; index += 1)
+        {
+            Assert.NotNull(await store.TryJoinAsync(room, Member($"c{index}")));
+        }
+
+        Assert.Null(await store.TryJoinAsync(room, Member("one-too-many")));
+
+        // Rejoining is not arriving: a client already in the roster is not turned away by it.
+        Assert.NotNull(await store.TryJoinAsync(room, Member("c0")));
     }
 
     [Theory(DisplayName = "Store: a field is claimed by one connection and refused to the next")]
@@ -96,8 +116,8 @@ public class CollaborationStoreTests
     {
         var store = Create(kind);
         var room = NewRoom();
-        await store.JoinAsync(room, Member("a", "Анна"));
-        await store.JoinAsync(room, Member("b", "Борис"));
+        await store.TryJoinAsync(room, Member("a", "Анна"));
+        await store.TryJoinAsync(room, Member("b", "Борис"));
 
         var mine = await store.AcquireLeaseAsync(room, "/tasks/1/maxScore", "a");
         var theirs = await store.AcquireLeaseAsync(room, "/tasks/1/maxScore", "b");
@@ -121,8 +141,8 @@ public class CollaborationStoreTests
     {
         var store = Create(kind);
         var room = NewRoom();
-        await store.JoinAsync(room, Member("a"));
-        await store.JoinAsync(room, Member("b"));
+        await store.TryJoinAsync(room, Member("a"));
+        await store.TryJoinAsync(room, Member("b"));
         await store.AcquireLeaseAsync(room, "/tasks/1/content", "a");
 
         Assert.False(await store.MayWriteAsync(room, "/tasks/1", "b"));
@@ -140,8 +160,8 @@ public class CollaborationStoreTests
     {
         var store = Create(kind);
         var room = NewRoom();
-        await store.JoinAsync(room, Member("a"));
-        await store.JoinAsync(room, Member("b"));
+        await store.TryJoinAsync(room, Member("a"));
+        await store.TryJoinAsync(room, Member("b"));
         await store.AcquireLeaseAsync(room, "/tasks/1", "a");
 
         Assert.False(await store.MayWriteAsync(room, "/tasks/1/content", "b"));
@@ -154,8 +174,8 @@ public class CollaborationStoreTests
     {
         var store = Create(kind);
         var room = NewRoom();
-        await store.JoinAsync(room, Member("a"));
-        await store.JoinAsync(room, Member("b"));
+        await store.TryJoinAsync(room, Member("a"));
+        await store.TryJoinAsync(room, Member("b"));
         await store.AcquireLeaseAsync(room, "/title", "a");
 
         Assert.False(await store.ReleaseLeaseAsync(room, "/title", "b"));
@@ -173,8 +193,8 @@ public class CollaborationStoreTests
     {
         var store = Create(kind);
         var room = NewRoom();
-        await store.JoinAsync(room, Member("a"));
-        await store.JoinAsync(room, Member("b"));
+        await store.TryJoinAsync(room, Member("a"));
+        await store.TryJoinAsync(room, Member("b"));
         await store.AcquireLeaseAsync(room, "/title", "a");
         await store.AcquireLeaseAsync(room, "/tasks/1/maxScore", "a");
 
@@ -195,7 +215,7 @@ public class CollaborationStoreTests
     {
         var store = Create(kind);
         var room = NewRoom();
-        await store.JoinAsync(room, Member("a"));
+        await store.TryJoinAsync(room, Member("a"));
 
         Assert.True(await store.HeartbeatAsync(room, "a"));
         Assert.False(await store.HeartbeatAsync(room, "ghost"));
@@ -342,7 +362,7 @@ public class CollaborationStoreTests
     {
         var store = Create(kind);
         var room = NewRoom();
-        await store.JoinAsync(room, Member("a"));
+        await store.TryJoinAsync(room, Member("a"));
 
         await store.SetScopeAsync(room, "a", "task-5");
 

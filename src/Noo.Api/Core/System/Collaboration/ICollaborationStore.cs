@@ -8,11 +8,14 @@ namespace Noo.Api.Core.System.Collaboration;
 public interface ICollaborationStore
 {
     /// <summary>
-    /// Adds a member and returns the room as it now stands. Also prunes members whose heartbeat
-    /// lapsed — an instance that died holding connections leaves entries no disconnect will ever
-    /// clear, and a join is the natural moment to notice.
+    /// Adds a member and returns the room as it now stands, or null when the room is already
+    /// full. The cap is enforced here rather than counted first and joined after, because two
+    /// connections arriving together would both read a roster with room in it.
+    ///
+    /// Also prunes members whose heartbeat lapsed — an instance that died holding connections
+    /// leaves entries no disconnect will ever clear, and a join is the natural moment to notice.
     /// </summary>
-    public Task<CollaborationRoomState> JoinAsync(
+    public Task<CollaborationRoomState?> TryJoinAsync(
         CollaborationRoom room,
         CollaborationMember member,
         CancellationToken ct = default

@@ -51,6 +51,24 @@ public static class CollaborationScripts
         """;
 
     /// <summary>
+    /// KEYS: presence hash, presence seen zset.
+    /// ARGV: connectionId, member json, now ms, room ttl ms, max members.
+    /// Returns 0 when the room is full. Counting and adding have to be one step: two connections
+    /// arriving together would otherwise both read a roster with room left in it.
+    /// </summary>
+    public const string Join = """
+        if redis.call('HEXISTS', KEYS[1], ARGV[1]) == 0
+           and redis.call('HLEN', KEYS[1]) >= tonumber(ARGV[5]) then
+          return 0
+        end
+        redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+        redis.call('ZADD', KEYS[2], ARGV[3], ARGV[1])
+        redis.call('PEXPIRE', KEYS[1], ARGV[4])
+        redis.call('PEXPIRE', KEYS[2], ARGV[4])
+        return 1
+        """;
+
+    /// <summary>
     /// KEYS: room's leased-path set. ARGV: path, connectionId, lease key prefix.
     /// Returns 0 when a lease held by someone else covers this path or anything it contains —
     /// the same rule as <c>CollaborationPaths.Overlap</c>, which the conformance suite holds this

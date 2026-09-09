@@ -20,7 +20,7 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
         _config = config.Value;
     }
 
-    public Task<CollaborationRoomState> JoinAsync(
+    public Task<CollaborationRoomState?> TryJoinAsync(
         CollaborationRoom room,
         CollaborationMember member,
         CancellationToken ct = default
@@ -30,12 +30,22 @@ public sealed class InMemoryCollaborationStore : ICollaborationStore
 
         lock (state.Gate)
         {
+            // Before the cap is applied, so a roster full of lapsed members is not a room nobody
+            // can get back into.
             PruneLapsed(state);
+
+            if (
+                !state.Members.ContainsKey(member.ConnectionId)
+                && state.Members.Count >= _config.MaxMembersPerRoom
+            )
+            {
+                return Task.FromResult<CollaborationRoomState?>(null);
+            }
 
             state.Members[member.ConnectionId] = member;
             state.LastSeen[member.ConnectionId] = Clock.Now;
 
-            return Task.FromResult(
+            return Task.FromResult<CollaborationRoomState?>(
                 new CollaborationRoomState
                 {
                     Seq = state.SeqBase + state.Ops.Count,

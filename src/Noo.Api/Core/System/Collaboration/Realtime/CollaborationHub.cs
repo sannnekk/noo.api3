@@ -61,13 +61,6 @@ public class CollaborationHub : NooHub<ICollaborationHubClient>
         // connection, and without this it would stay in the roster of the one it left.
         await LeaveAsync();
 
-        if ((await _store.GetMembersAsync(room)).Count >= _config.MaxMembersPerRoom)
-        {
-            throw new ConflictException(
-                $"This document already has {_config.MaxMembersPerRoom} editors."
-            );
-        }
-
         var user = await _users.GetWithAvatarAsync(CallerId);
 
         var member = new CollaborationMember
@@ -79,9 +72,15 @@ public class CollaborationHub : NooHub<ICollaborationHubClient>
             JoinedAt = Clock.Now,
         };
 
-        Context.Items[_roomItemKey] = room;
+        // The cap is the store's to apply: counting here and joining there would let two
+        // connections arriving together both find room in a roster with one place left.
+        var state =
+            await _store.TryJoinAsync(room, member)
+            ?? throw new ConflictException(
+                $"This document already has {_config.MaxMembersPerRoom} editors."
+            );
 
-        var state = await _store.JoinAsync(room, member);
+        Context.Items[_roomItemKey] = room;
 
         await Groups.AddToGroupAsync(Context.ConnectionId, room.GroupName);
         await Clients.Group(room.GroupName).PresenceChangedAsync([.. state.Members]);

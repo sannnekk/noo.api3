@@ -31,24 +31,32 @@ public sealed class RedisCollaborationStore : ICollaborationStore
 
     private long LeaseTtlMs => (long)_config.LeaseTtl.TotalMilliseconds;
 
-    public async Task<CollaborationRoomState> JoinAsync(
+    public async Task<CollaborationRoomState?> TryJoinAsync(
         CollaborationRoom room,
         CollaborationMember member,
         CancellationToken ct = default
     )
     {
+        // Before the cap is applied, so a room full of members an instance died holding is not a
+        // room nobody can get back into.
         await PruneLapsedMembersAsync(room);
 
-        var db = Db;
-
-        await db.HashSetAsync(
-            room.PresenceKey,
-            member.ConnectionId,
-            JsonSerializer.Serialize(member, _json)
+        var joined = await Db.ScriptEvaluateAsync(
+            CollaborationScripts.Join,
+            [room.PresenceKey, room.PresenceSeenKey],
+            [
+                member.ConnectionId,
+                JsonSerializer.Serialize(member, _json),
+                NowMs(),
+                RoomTtlMs,
+                _config.MaxMembersPerRoom,
+            ]
         );
-        await db.SortedSetAddAsync(room.PresenceSeenKey, member.ConnectionId, NowMs());
-        await db.KeyExpireAsync(room.PresenceKey, _config.DraftTtl);
-        await db.KeyExpireAsync(room.PresenceSeenKey, _config.DraftTtl);
+
+        if ((long)joined == 0)
+        {
+            return null;
+        }
 
         var members = await GetMembersAsync(room, ct);
         var leases = await GetLeasesAsync(room, ct);
