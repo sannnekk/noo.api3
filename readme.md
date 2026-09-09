@@ -413,6 +413,9 @@ public class CourseCollaborationHandler : ICollaborationRoomHandler
 {
     public string RoomType => "course";
 
+    // Both halves of "may this happen": that the caller's role edits this kind of document, and
+    // that this particular one exists and is theirs. The hub's policy only asks for a signed-in,
+    // unblocked user — roles differ per document type, so they are answered here.
     public Task<bool> CanEditAsync(Ulid roomId, CancellationToken ct = default) => ...;
 
     // What the entity's UpdateDTO would accept. Checked as an operation enters the draft, so a
@@ -449,6 +452,11 @@ in `noo-collab-field`.
   Two clients seeding one document is how a collaborative editor ends up showing everything twice.
 - **`Realtime:HubLimits` is not optional for this hub.** The default 120 invocations/minute is
   sized for a hub that only pushes; the collaboration hub is configured at 900.
+- **A save drops only what it applied.** Operations sent while the save was in MySQL stay in the
+  draft, and the room's sequence numbers never restart — `CollaborationSaved.seq` says where the
+  draft now stands, and clients re-anchor on it rather than assuming it is empty.
+- **A lease covers the whole subtree.** Holding `/tasks/{id}/content` blocks writes to
+  `/tasks/{id}` too, because removing a task is a write to every field inside it.
 - **Room state is not durable.** It lives in Redis with a TTL, and losing it costs unsaved edits,
   never saved ones. With no Redis at all it falls back to process memory, which is correct for a
   single instance only — a lease taken on one pod would be invisible to the next.

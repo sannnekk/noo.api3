@@ -148,7 +148,11 @@ public record CollaborationFrame
     [JsonPropertyName("scope")]
     public string Scope { get; init; } = string.Empty;
 
-    /// <summary>"sync" or "awareness"; the client's own dispatch tag, passed through.</summary>
+    /// <summary>
+    /// The client's own dispatch tag, passed through untouched — currently its payload format
+    /// version, <c>"y1"</c>. Nothing on this side reads it; it is here so the client can change
+    /// the format without a session in progress misreading the frames still in flight.
+    /// </summary>
     [JsonPropertyName("kind")]
     public string Kind { get; init; } = string.Empty;
 
