@@ -74,22 +74,6 @@ public class SignalRRealtimePublisher<THub, TClient> : IRealtimePublisher<TClien
         return send(_hub.Clients.Group(group));
     }
 
-    public Task SendToGroupExceptAsync(
-        string group,
-        IReadOnlyCollection<string> exceptConnectionIds,
-        Func<TClient, Task> send,
-        CancellationToken ct = default
-    )
-    {
-        if (exceptConnectionIds.Count == 0)
-        {
-            return SendToGroupAsync(group, send, ct);
-        }
-
-        _metrics.MessageSent(HubName, "group-except");
-
-        return send(_hub.Clients.GroupExcept(group, [.. exceptConnectionIds]));
-    }
 
     /// <summary>
     /// Not chunked, deliberately: reaching everyone is one backplane publish that each instance
