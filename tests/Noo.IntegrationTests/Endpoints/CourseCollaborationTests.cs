@@ -257,12 +257,15 @@ public class CourseCollaborationTests : IClassFixture<ApiFactory>
         // And the first is told about the second without asking.
         (await Within(annaSawPresence)).Should().HaveCount(2);
 
-        // Each of them is in the other's roster under a connection id that is not their own.
-        var annaConnectionId = annaState.Members.Single().ConnectionId;
+        // Each of them is told which member of the roster is themselves, so neither has to
+        // recognise itself — an editor that guesses wrong lists itself as somebody else.
+        annaState.SelfConnectionId.Should().Be(annaState.Members.Single().ConnectionId);
+        borisState.SelfConnectionId.Should().NotBeNullOrEmpty();
         borisState
             .Members.Select(member => member.ConnectionId)
             .Should()
-            .Contain(annaConnectionId);
+            .Contain([annaState.SelfConnectionId, borisState.SelfConnectionId]);
+        borisState.SelfConnectionId.Should().NotBe(annaState.SelfConnectionId);
 
         var applied = new TaskCompletionSource<(long, CollaborationOp[])>(
             TaskCreationOptions.RunContinuationsAsynchronously

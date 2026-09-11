@@ -85,7 +85,9 @@ public class CollaborationHub : NooHub<ICollaborationHubClient>
         await Groups.AddToGroupAsync(Context.ConnectionId, room.GroupName);
         await Clients.Group(room.GroupName).PresenceChangedAsync([.. state.Members]);
 
-        return state;
+        // Named here rather than left for the client to recognise itself: this is the key the
+        // roster is built from, and only this side knows it for certain.
+        return state with { SelfConnectionId = Context.ConnectionId };
     }
 
     public async Task LeaveAsync()

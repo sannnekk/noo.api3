@@ -98,6 +98,19 @@ public record CollaborationOpLog(long Seq, IReadOnlyList<CollaborationOp> Ops)
 /// </summary>
 public record CollaborationRoomState
 {
+    /// <summary>
+    /// Which member of <see cref="Members"/> is the caller.
+    ///
+    /// Answered by the server because the server is what decides it. A client reading its own
+    /// connection id back off the transport is guessing at the key the roster is built from, and
+    /// when that guess comes back empty every member matches nobody — so the editor politely
+    /// lists you as somebody else editing alongside yourself.
+    ///
+    /// Empty when the state was fetched over HTTP, which has no connection to name.
+    /// </summary>
+    [JsonPropertyName("selfConnectionId")]
+    public string SelfConnectionId { get; init; } = string.Empty;
+
     [JsonPropertyName("seq")]
     public long Seq { get; init; }
 
