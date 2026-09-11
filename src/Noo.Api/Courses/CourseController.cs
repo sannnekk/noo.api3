@@ -59,7 +59,14 @@ public class CourseController : ApiController
     )]
     public async Task<IActionResult> GetCourseAsync([FromRoute] Ulid courseId)
     {
-        var course = await _courseService.GetByIdAsync(courseId, false);
+        // Whoever may edit the course sees all of it, including what is not published yet: a
+        // material is drafted inactive, so an editor handed the reader's tree would be missing
+        // everything anyone had just added — and would be editing a document it cannot see.
+        //
+        // Decided here from the caller rather than taken as a flag, because a flag is something a
+        // student could also send.
+        var includeInactive = _currentUser.IsInRole(UserRoles.Admin, UserRoles.Teacher);
+        var course = await _courseService.GetByIdAsync(courseId, includeInactive);
 
         return SendResponse<CourseModel, CourseDTO>(course);
     }

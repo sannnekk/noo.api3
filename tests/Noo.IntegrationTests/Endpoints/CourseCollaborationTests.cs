@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Noo.Api.Core.Response;
 using Noo.Api.Core.Security.Authorization;
 using Noo.Api.Core.System.Collaboration;
+using Noo.Api.Core.System.Collaboration.Realtime;
 using Noo.Api.Core.Utils.Json;
 using Noo.Api.Subjects.DTO;
 
@@ -113,6 +114,45 @@ public class CourseCollaborationTests : IClassFixture<ApiFactory>
         );
     }
 
+    private static TaskCompletionSource<T> Expect<T>(HubConnection connection, string method)
+    {
+        var source = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        connection.On<T>(method, value => source.TrySetResult(value));
+
+        return source;
+    }
+
+    /// <summary>
+    /// Waits for a push that satisfies <paramref name="until"/>, not merely the first one. A
+    /// joining editor is told about its own arrival before anyone else's, so latching the first
+    /// roster would assert on the wrong one.
+    /// </summary>
+    private static TaskCompletionSource<T> ExpectWhere<T>(
+        HubConnection connection,
+        string method,
+        Func<T, bool> until
+    )
+    {
+        var source = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        connection.On<T>(
+            method,
+            value =>
+            {
+                if (until(value))
+                {
+                    source.TrySetResult(value);
+                }
+            }
+        );
+
+        return source;
+    }
+
+    private static Task<T> Within<T>(TaskCompletionSource<T> source) =>
+        source.Task.WaitAsync(TimeSpan.FromSeconds(15));
+
     private static CollaborationOp Replace(string path, object? value) =>
         new()
         {
@@ -177,6 +217,171 @@ public class CourseCollaborationTests : IClassFixture<ApiFactory>
             .GetString()
             .Should()
             .NotBeNull();
+    }
+
+    // Two people in one course, which is the whole feature and what none of the coverage so far
+    // actually exercised: that each of them appears in the other's roster, that an edit crosses,
+    // and that a caret frame reaches the other editor of the same material.
+    [Fact(DisplayName = "Course collaboration: two editors see each other, each other's edits and each other's carets")]
+    public async Task TwoEditorsShareTheRoom()
+    {
+        using var client = _factory.CreateClient();
+        var (courseId, chapterId, materialId) = await CreateCourseAsync(client);
+
+        await using var anna = BuildConnection(Ulid.NewUlid());
+        await using var boris = BuildConnection(Ulid.NewUlid());
+        await anna.StartAsync();
+        await boris.StartAsync();
+
+        var annaSawPresence = ExpectWhere<CollaborationMember[]>(
+            anna,
+            nameof(ICollaborationHubClient.PresenceChangedAsync),
+            members => members.Length == 2
+        );
+
+        var annaState = await anna.InvokeAsync<CollaborationRoomState>(
+            "JoinAsync",
+            "course",
+            courseId
+        );
+        var borisState = await boris.InvokeAsync<CollaborationRoomState>(
+            "JoinAsync",
+            "course",
+            courseId
+        );
+
+        // The roster the second arrival is handed already holds the first.
+        borisState.Members.Should().HaveCount(2);
+        annaState.Members.Should().HaveCount(1);
+
+        // And the first is told about the second without asking.
+        (await Within(annaSawPresence)).Should().HaveCount(2);
+
+        // Each of them is in the other's roster under a connection id that is not their own.
+        var annaConnectionId = annaState.Members.Single().ConnectionId;
+        borisState
+            .Members.Select(member => member.ConnectionId)
+            .Should()
+            .Contain(annaConnectionId);
+
+        var applied = new TaskCompletionSource<(long, CollaborationOp[])>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        boris.On<long, CollaborationOp[]>(
+            nameof(ICollaborationHubClient.OpsAppliedAsync),
+            (fromSeq, ops) => applied.TrySetResult((fromSeq, ops))
+        );
+
+        await anna.InvokeAsync<long>(
+            "PushOpsAsync",
+            new[] { Replace("/name", "Переименован") }
+        );
+
+        var (_, crossed) = await applied.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        crossed.Single().Path.Should().Be("/name");
+
+        // The caret channel: one scope per material, and a frame reaches the others in it.
+        var scope = $"material:{materialId}";
+
+        await anna.InvokeAsync<CollaborationScopeState>("JoinScopeAsync", scope);
+        await boris.InvokeAsync<CollaborationScopeState>("JoinScopeAsync", scope);
+
+        var borisSawFrame = Expect<CollaborationFrame>(
+            boris,
+            nameof(ICollaborationHubClient.YjsFrameAsync)
+        );
+
+        await anna.InvokeAsync(
+            "PushYjsAsync",
+            new CollaborationFrame
+            {
+                Scope = scope,
+                Kind = "y1",
+                Payload = "AQIDBA==",
+            }
+        );
+
+        (await Within(borisSawFrame)).Payload.Should().Be("AQIDBA==");
+    }
+
+    // Exactly one client is told to write the starting content into a fresh shared document; two
+    // seeding one document is how a collaborative editor ends up showing everything twice.
+    [Fact(DisplayName = "Course collaboration: one editor of a material is elected to seed its text")]
+    public async Task OneEditorSeedsAMaterialsText()
+    {
+        using var client = _factory.CreateClient();
+        var (courseId, _, materialId) = await CreateCourseAsync(client);
+
+        await using var anna = BuildConnection(Ulid.NewUlid());
+        await using var boris = BuildConnection(Ulid.NewUlid());
+        await anna.StartAsync();
+        await boris.StartAsync();
+
+        await anna.InvokeAsync<CollaborationRoomState>("JoinAsync", "course", courseId);
+        await boris.InvokeAsync<CollaborationRoomState>("JoinAsync", "course", courseId);
+
+        var scope = $"material:{materialId}";
+        var first = await anna.InvokeAsync<CollaborationScopeState>("JoinScopeAsync", scope);
+        var second = await boris.InvokeAsync<CollaborationScopeState>("JoinScopeAsync", scope);
+
+        first.MaySeed.Should().BeTrue();
+        second.MaySeed.Should().BeFalse();
+        second.MemberCount.Should().Be(2);
+    }
+
+    // A material is drafted inactive, so an editor handed the reader's filtered tree would be
+    // missing everything anyone had just added — and would be editing a document it cannot see.
+    [Fact(DisplayName = "Course collaboration: an editor is handed the whole tree, published or not")]
+    public async Task AnEditorSeesUnpublishedMaterials()
+    {
+        using var client = _factory.CreateClient();
+        var (courseId, chapterId, _) = await CreateCourseAsync(client);
+        var draftedId = Ulid.NewUlid();
+
+        await using var anna = BuildConnection(Ulid.NewUlid());
+        await anna.StartAsync();
+        await anna.InvokeAsync<CollaborationRoomState>("JoinAsync", "course", courseId);
+
+        var seq = await anna.InvokeAsync<long>(
+            "PushOpsAsync",
+            new[]
+            {
+                new CollaborationOp
+                {
+                    Op = "add",
+                    Path = $"/chapters/{chapterId}/materials/{draftedId}",
+                    Value = System.Text.Json.Nodes.JsonNode.Parse(
+                        $$"""
+                        {"id":"{{draftedId}}","order":2,"title":"Черновик","isActive":false,
+                         "isPinned":false}
+                        """
+                    ),
+                },
+            }
+        );
+
+        var response = await client.AsTeacher()
+            .PostAsJsonAsync(
+                $"/collaboration/course/{courseId}/save",
+                new CollaborationSaveRequestDTO { ExpectedSeq = seq },
+                _json
+            );
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var reloaded = await client.AsTeacher().GetAsync($"/course/{courseId}");
+        var materials = JsonDocument
+            .Parse(await reloaded.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("data")
+            .GetProperty("chapters")[0]
+            .GetProperty("materials");
+
+        // The one that was there plus the unpublished one somebody just drafted.
+        materials.GetArrayLength().Should().Be(2);
+        materials
+            .EnumerateArray()
+            .Select(material => material.GetProperty("id").GetString())
+            .Should()
+            .Contain(draftedId.ToString());
     }
 
     [Fact(DisplayName = "Course collaboration: a path the course patch would reject is refused")]
