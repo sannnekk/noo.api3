@@ -458,7 +458,10 @@ in `noo-collab-field`.
 
 - **A field not wired to the room is silently dropped on save.** Saving applies the shared draft,
   not this tab's copy of the entity, so an input still bound with a plain `v-model` writes to a
-  local object nobody ever reads. Wrap every editable field, or make it read-only.
+  local object nobody ever reads. Wrap every editable field, or make it read-only. This includes
+  the lists: a picker that replaces its whole collection is one operation carrying this client's
+  entire list, which undoes whatever somebody else added in the same moment — send one operation
+  per entry added or removed instead (`setContentReferences` is the worked example).
 - **Operations are emitted, never diffed.** A work holds up to 300 tasks; diffing it per keystroke
   would be expensive, and a diff cannot tell an edit of one's own from one that just arrived.
 - **Paths are the API's, not the client's.** The patch exposes child collections as dictionaries
