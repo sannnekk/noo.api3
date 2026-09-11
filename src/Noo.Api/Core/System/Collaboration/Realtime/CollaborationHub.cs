@@ -57,9 +57,17 @@ public class CollaborationHub : NooHub<ICollaborationHubClient>
 
         var room = new CollaborationRoom(handler.RoomType, roomId);
 
-        // Leaving whatever was open first: a client that navigates between two works reuses its
-        // connection, and without this it would stay in the roster of the one it left.
-        await LeaveAsync();
+        // Leaving whatever *other* document was open: a client that navigates between two works
+        // reuses its connection, and without this it would stay in the roster of the one it left.
+        //
+        // Re-entering the room you are already in is a refresh, not a departure and a return. A
+        // client has more than one reason to send a second join — a reconnect, a heartbeat that
+        // came back saying it had been pruned — and tearing the membership down first would drop
+        // the leases it holds, take it out of its scopes, and tell everyone else it had gone.
+        if (CurrentRoom() is { } open && !open.Equals(room))
+        {
+            await LeaveAsync();
+        }
 
         var user = await _users.GetWithAvatarAsync(CallerId);
 

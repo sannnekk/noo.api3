@@ -181,6 +181,43 @@ public class CollaborationHubTests : IClassFixture<ApiFactory>
         await anna.InvokeAsync<long>("PushOpsAsync", new[] { Op("/title", "Анна") });
     }
 
+    // A client has more than one reason to send a second join — a reconnect, a heartbeat that came
+    // back saying it had been pruned — and tearing the membership down first would drop the fields
+    // it holds and tell everyone else it had gone.
+    [Fact(DisplayName = "Hub: re-entering the room you are in refreshes rather than departs")]
+    public async Task RejoiningTheSameRoomIsARefresh()
+    {
+        using var client = _factory.CreateClient();
+        var workId = await CreateWorkAsync(client);
+
+        await using var anna = BuildConnection(Ulid.NewUlid());
+        await using var boris = BuildConnection(Ulid.NewUlid());
+        await anna.StartAsync();
+        await boris.StartAsync();
+
+        await anna.InvokeAsync<CollaborationRoomState>("JoinAsync", "work", workId);
+        await boris.InvokeAsync<CollaborationRoomState>("JoinAsync", "work", workId);
+        await anna.InvokeAsync<CollaborationLease>("AcquireLeaseAsync", "/title");
+
+        var again = await anna.InvokeAsync<CollaborationRoomState>(
+            "JoinAsync",
+            "work",
+            workId
+        );
+
+        // Still both of them, and Anna still holds what she had claimed.
+        again.Members.Should().HaveCount(2);
+        again.Leases.Should()
+            .ContainSingle(lease => lease.Path == "/title")
+            .Which.Holder!.ConnectionId.Should()
+            .Be(again.SelfConnectionId);
+
+        // And the field is still hers as far as anyone writing to it is concerned.
+        await Assert.ThrowsAsync<HubException>(
+            () => boris.InvokeAsync<long>("PushOpsAsync", new[] { Op("/title", "Борис") })
+        );
+    }
+
     // Removing a task is a write to every field inside it, so addressing the parent used to walk
     // straight past a lease held on one of its fields.
     [Fact(DisplayName = "Hub: a leased field cannot be written by addressing the task around it")]
