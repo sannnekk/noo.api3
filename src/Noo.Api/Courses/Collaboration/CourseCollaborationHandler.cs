@@ -73,6 +73,25 @@ public class CourseCollaborationHandler : ICollaborationRoomHandler
     private static readonly FrozenSet<string> _contentFields =
         JsonFieldsOf<UpdateCourseMaterialContentDTO>(except: []);
 
+    /// <summary>
+    /// The collections inside a material's content that are keyed by id, so an entry can be added
+    /// or removed on its own rather than the whole collection being replaced — which is what keeps
+    /// two people attaching different files from undoing each other.
+    /// </summary>
+    private static readonly FrozenSet<string> _contentCollections = new[]
+    {
+        "medias",
+        "nooTubeVideos",
+        "workAssignments",
+    }.ToFrozenSet(StringComparer.Ordinal);
+
+    /// <summary>
+    /// A work assignment's own fields. The other two collections hold bare id references, so there
+    /// is nothing inside one of their entries to address.
+    /// </summary>
+    private static readonly FrozenSet<string> _workAssignmentFields =
+        JsonFieldsOf<UpdateCourseWorkAssignmentDTO>(except: []);
+
     private readonly ICourseService _courseService;
     private readonly ICurrentUser _currentUser;
 
@@ -113,6 +132,35 @@ public class CourseCollaborationHandler : ICollaborationRoomHandler
                 && IsId(material),
             ["", "chapters", var chapter, "materials", var material, _contentSegment, var field] =>
                 IsId(chapter) && IsId(material) && _contentFields.Contains(field),
+            // One entry of a keyed collection inside the content, and a work assignment's own
+            // fields inside that.
+            [
+                "",
+                "chapters",
+                var chapter,
+                "materials",
+                var material,
+                _contentSegment,
+                var collection,
+                var entry
+            ] => IsId(chapter)
+                && IsId(material)
+                && _contentCollections.Contains(collection)
+                && IsId(entry),
+            [
+                "",
+                "chapters",
+                var chapter,
+                "materials",
+                var material,
+                _contentSegment,
+                "workAssignments",
+                var entry,
+                var field
+            ] => IsId(chapter)
+                && IsId(material)
+                && IsId(entry)
+                && _workAssignmentFields.Contains(field),
             ["", "chapters", var chapter, "materials", var material, var field] => IsId(chapter)
                 && IsId(material)
                 && _materialFields.Contains(field),

@@ -163,6 +163,43 @@ public class CourseCollaborationHandlerTests
         );
     }
 
+    // Attaching a file is one entry, not the whole collection: two people attaching different
+    // files at the same moment must not undo each other.
+    [Fact(DisplayName = "CourseCollaborationHandler: an entry of a content collection is addressable")]
+    public void IsPathAllowed_CoversTheCollectionsInsideContent()
+    {
+        var handler = new CourseCollaborationHandler(null!, null!);
+        var chapter = Ulid.NewUlid().ToString();
+        var material = Ulid.NewUlid().ToString();
+        var entry = Ulid.NewUlid().ToString();
+        var content = $"/chapters/{chapter}/materials/{material}/content";
+
+        Assert.True(handler.IsPathAllowed($"{content}/medias/{entry}"));
+        Assert.True(handler.IsPathAllowed($"{content}/nooTubeVideos/{entry}"));
+        Assert.True(handler.IsPathAllowed($"{content}/workAssignments/{entry}"));
+        Assert.True(handler.IsPathAllowed($"{content}/workAssignments/{entry}/note"));
+        Assert.True(handler.IsPathAllowed($"{content}/workAssignments/{entry}/solveDeadlineAt"));
+
+        Assert.False(handler.IsPathAllowed($"{content}/notACollection/{entry}"));
+        Assert.False(handler.IsPathAllowed($"{content}/medias/not-an-id"));
+        Assert.False(handler.IsPathAllowed($"{content}/workAssignments/{entry}/notAField"));
+        // A bare id reference has nothing inside it to address.
+        Assert.False(handler.IsPathAllowed($"{content}/medias/{entry}/id"));
+    }
+
+    [Fact(DisplayName = "CourseCollaborationHandler: a work assignment's fields are the ones its DTO declares")]
+    public void IsPathAllowed_TracksTheWorkAssignmentDto()
+    {
+        var handler = new CourseCollaborationHandler(null!, null!);
+        var content =
+            $"/chapters/{Ulid.NewUlid()}/materials/{Ulid.NewUlid()}/content/workAssignments/{Ulid.NewUlid()}";
+
+        foreach (var field in JsonFieldsOf<UpdateCourseWorkAssignmentDTO>())
+        {
+            Assert.True(handler.IsPathAllowed($"{content}/{field}"), field);
+        }
+    }
+
     // Pointing one material at another's content would reach a row the caller may not be able to
     // open at all, so the server keeps that field for itself.
     [Fact(DisplayName = "CourseCollaborationHandler: a material's content id is not the client's to set")]
@@ -332,6 +369,36 @@ public class CourseCollaborationHandlerTests
         var untouched = await other.Service.GetByIdAsync(other.CourseId, includeInactive: true);
 
         Assert.Null(untouched!.Chapters!.Single().Materials!.Single().ContentId);
+    }
+
+    // The path the client sends is the material's; what reaches the content patch is the part past
+    // it. An off-by-one in that rewrite would send "/medias/{id}" as "/{id}" and fail at the save.
+    [Fact(DisplayName = "CourseCollaborationHandler: an entry inside the content saves through its own path")]
+    public async Task SaveAsync_AppliesAnEntryOfAContentCollection()
+    {
+        var harness = await CreateAsync();
+        var mediaId = Ulid.NewUlid();
+        var content =
+            $"/chapters/{harness.ChapterId}/materials/{harness.MaterialId}/content";
+
+        await harness.Handler.SaveAsync(
+            harness.CourseId,
+            [
+                new CollaborationOp
+                {
+                    Op = "add",
+                    Path = $"{content}/medias/{mediaId}",
+                    Value = JsonNode.Parse($$"""{"id":"{{mediaId}}"}"""),
+                },
+            ]
+        );
+        await harness.Commit();
+
+        var saved = await harness.Service.GetByIdAsync(harness.CourseId, includeInactive: true);
+        var contentId = saved!.Chapters!.Single().Materials!.Single().ContentId!.Value;
+        var row = await harness.Service.GetContentByIdAsync(contentId);
+
+        Assert.Equal(mediaId, Assert.Single(row!.Medias!).Id);
     }
 
     // The foreign key lives on the material, so EF has no cascade to follow: without this the row
