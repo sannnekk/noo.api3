@@ -1,7 +1,103 @@
 [
   {
+    "version": "1.6.1-alpha",
+    "date": "2026-09-13T18:19:52+02:00",
+    "changes": [
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "media: Added GET /media/{id}"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "courses: Made the collections inside a material's content addressable one entry at a time"
+      },
+      {
+        "type": "feature",
+        "author": "sannnekk",
+        "description": "courses: Made a course an editable collaboration room"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "courses: Named the videos collection the same way on the update DTO"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "collaboration: Made re-entering the room you are in a refresh, not a departure"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "collaboration: Named the caller's connection in the room state it is handed"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "courses: Handed an editor the whole tree instead of the reader's published one"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "courses: Deleted the content row a removed material leaves behind"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "collaboration: Applied the roster cap inside the join rather than before it"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "collaboration: Refused operations the patch document could never apply"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "collaboration: Made a lease cover the path above it and everything under it"
+      },
+      {
+        "type": "bug-fix",
+        "author": "sannnekk",
+        "description": "collaboration: Kept the operations a save did not cover instead of dropping them"
+      },
+      {
+        "type": "optimization",
+        "author": "sannnekk",
+        "description": "collaboration: Read a room's leases in two round trips instead of one per lease"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "collaboration: Dropped the room version nothing ever read"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "realtime: Dropped the group-except publisher nobody sends through"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "collaboration: Dropped the cancellation token the room store never honoured"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "collaboration: Let the room handler decide which roles may edit"
+      },
+      {
+        "type": "refactor",
+        "author": "sannnekk",
+        "description": "collaboration: Moved the Redis key layout out of the room record"
+      }
+    ]
+  },
+  {
     "version": "1.6.0-alpha",
-    "date": "2026-09-08T11:46:23+02:00",
+    "date": "2026-09-08T12:53:15+02:00",
     "changes": [
       {
         "type": "feature",
