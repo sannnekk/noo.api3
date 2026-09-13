@@ -274,7 +274,7 @@ public class MaterialContentPatchTests : IClassFixture<ApiFactory>
         var videoId = await SeedVideoAsync();
 
         var patch = $$"""
-            [ { "op": "add", "path": "/nootubeVideos/{{videoId}}", "value": { "id": "{{videoId}}" } } ]
+            [ { "op": "add", "path": "/nooTubeVideos/{{videoId}}", "value": { "id": "{{videoId}}" } } ]
             """;
         (await PatchAsync(client.AsTeacher(), $"/course/material-content/{contentId}", patch))
             .StatusCode.Should().Be(HttpStatusCode.NoContent);

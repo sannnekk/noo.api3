@@ -174,6 +174,10 @@ public class CourseCollaborationHandlerTests
         var entry = Ulid.NewUlid().ToString();
         var content = $"/chapters/{chapter}/materials/{material}/content";
 
+        // The collection itself is what a picker leases while somebody is choosing what to attach.
+        Assert.True(handler.IsPathAllowed($"{content}/medias"));
+        Assert.True(handler.IsPathAllowed($"{content}/nooTubeVideos"));
+
         Assert.True(handler.IsPathAllowed($"{content}/medias/{entry}"));
         Assert.True(handler.IsPathAllowed($"{content}/nooTubeVideos/{entry}"));
         Assert.True(handler.IsPathAllowed($"{content}/workAssignments/{entry}"));

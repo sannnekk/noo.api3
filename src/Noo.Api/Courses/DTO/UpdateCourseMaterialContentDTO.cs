@@ -12,7 +12,7 @@ public record UpdateCourseMaterialContentDTO
     [JsonPropertyName("pollId")]
     public Ulid? PollId { get; init; }
 
-    [JsonPropertyName("nootubeVideos")]
+    [JsonPropertyName("nooTubeVideos")]
     public IDictionary<string, IdReferenceDTO>? NooTubeVideos { get; init; }
 
     [JsonPropertyName("medias")]
