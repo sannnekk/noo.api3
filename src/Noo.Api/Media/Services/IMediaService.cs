@@ -29,6 +29,12 @@ public interface IMediaService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the media record after running every access rule registered for its
+    /// category. Not a download: nothing is presigned here and no event is raised.
+    /// </summary>
+    public Task<MediaModel> GetByIdAsync(Ulid mediaId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Issues a presigned GET URL after running every access rule registered for
     /// the media's category.
     /// </summary>

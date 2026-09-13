@@ -97,6 +97,31 @@ public class MediaController : ApiController
     }
 
     /// <summary>
+    /// The media record, with a presigned URL, after enforcing every access rule registered
+    /// for its category. What a client that was handed only a media id — a collaborator's
+    /// attachment arriving through a shared draft — calls to show the file.
+    /// </summary>
+    [HttpGet("{mediaId:ulid}")]
+    [Authorize]
+    [MapToApiVersion(NooApiVersions.Current)]
+    [Produces(
+        typeof(ApiResponseDTO<MediaDTO>),
+        StatusCodes.Status200OK,
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound
+    )]
+    public async Task<IActionResult> GetByIdAsync(
+        [FromRoute] Ulid mediaId,
+        CancellationToken cancellationToken
+    )
+    {
+        var media = await _mediaService.GetByIdAsync(mediaId, cancellationToken);
+        var dto = _mapper.Map<MediaDTO>(media);
+        return SendResponse(dto);
+    }
+
+    /// <summary>
     /// Issue a short-lived presigned download URL after enforcing every access rule
     /// registered for this media's category.
     /// </summary>

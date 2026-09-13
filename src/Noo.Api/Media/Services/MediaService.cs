@@ -127,6 +127,19 @@ public class MediaService : IMediaService
         return media;
     }
 
+    public async Task<MediaModel> GetByIdAsync(
+        Ulid mediaId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var media =
+            await _media.GetByIdAsync(mediaId) ?? throw new NotFoundException("Media not found");
+
+        await _access.EnsureCanAccessAsync(media, cancellationToken);
+
+        return media;
+    }
+
     public async Task<string> GetDownloadUrlAsync(
         Ulid mediaId,
         CancellationToken cancellationToken = default
