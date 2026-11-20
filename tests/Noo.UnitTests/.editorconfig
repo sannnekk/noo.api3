@@ -14,6 +14,7 @@ dotnet_diagnostic.RCS1174.severity = error # Remove redundant async/await
 dotnet_diagnostic.IDE0008.severity = none  # Use explicit type instead of 'var'
 dotnet_diagnostic.RCS1047.severity = error # Do not use Async suffix in non-assync method name
 dotnet_diagnostic.RCS1194.severity = none  # Implement exception constructors
+dotnet_diagnostic.RCS1251.severity = error # Remove unnecessary braces from empty type declaration
 
 # Report any unnecessary using directives (IDE0005) as a error
 dotnet_diagnostic.IDE0005.severity = error

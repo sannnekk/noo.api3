@@ -34,12 +34,15 @@ public class HealthTests : IClassFixture<ApiFactory>
         using var doc = JsonDocument.Parse(json);
         var checks = doc.RootElement.GetProperty("checks");
 
-        bool hasLiveness = false, hasMemory = false;
+        bool hasLiveness = false,
+            hasMemory = false;
         foreach (var entry in checks.EnumerateArray())
         {
             var key = entry.GetProperty("key").GetString();
-            if (key == "liveness") hasLiveness = true;
-            if (key == "memory") hasMemory = true;
+            if (key == "liveness")
+                hasLiveness = true;
+            if (key == "memory")
+                hasMemory = true;
         }
 
         hasLiveness.Should().BeTrue("liveness check should be registered under 'live' tag");
@@ -60,7 +63,8 @@ public class HealthTests : IClassFixture<ApiFactory>
         foreach (var entry in checks.EnumerateArray())
         {
             var key = entry.GetProperty("key").GetString();
-            if (key == "database") hasDatabase = true;
+            if (key == "database")
+                hasDatabase = true;
         }
 
         hasDatabase.Should().BeTrue("database check should be registered under 'ready' tag");
@@ -89,9 +93,9 @@ public class HealthTests : IClassFixture<ApiFactory>
 
         memoryEntry.HasValue.Should().BeTrue("memory check should be present");
         var data = memoryEntry!.Value.GetProperty("data");
-        data.TryGetProperty("AllocatedMemoryInMb", out _).Should().BeTrue();
-        data.TryGetProperty("AvailableMemoryInMb", out _).Should().BeTrue();
-        data.TryGetProperty("Ratio", out _).Should().BeTrue();
+        data.TryGetProperty("allocatedMemoryInMb", out _).Should().BeTrue();
+        data.TryGetProperty("availableMemoryInMb", out _).Should().BeTrue();
+        data.TryGetProperty("ratio", out _).Should().BeTrue();
     }
 
     [Fact(DisplayName = "Health endpoint returns 503 when database check is unhealthy")]
@@ -105,19 +109,23 @@ public class HealthTests : IClassFixture<ApiFactory>
                 services.PostConfigure<HealthCheckServiceOptions>(options =>
                 {
                     // Remove existing 'database' registrations (mutate in place)
-                    var dbRegs = options.Registrations
-                        .Where(r => string.Equals(r.Name, "database", StringComparison.OrdinalIgnoreCase))
+                    var dbRegs = options
+                        .Registrations.Where(r =>
+                            string.Equals(r.Name, "database", StringComparison.OrdinalIgnoreCase)
+                        )
                         .ToList();
                     foreach (var reg in dbRegs)
                         options.Registrations.Remove(reg);
 
                     // Add failing 'database' check
-                    options.Registrations.Add(new HealthCheckRegistration(
-                        "database",
-                        sp => new AlwaysUnhealthyCheck("simulated db failure"),
-                        failureStatus: HealthStatus.Unhealthy,
-                        tags: new[] { "ready" }
-                    ));
+                    options.Registrations.Add(
+                        new HealthCheckRegistration(
+                            "database",
+                            sp => new AlwaysUnhealthyCheck("simulated db failure"),
+                            failureStatus: HealthStatus.Unhealthy,
+                            tags: new[] { "ready" }
+                        )
+                    );
                 });
             });
         });
@@ -130,7 +138,9 @@ public class HealthTests : IClassFixture<ApiFactory>
         using var doc = JsonDocument.Parse(json);
         doc.RootElement.GetProperty("status").GetString().Should().Be("Unhealthy");
         var checks = doc.RootElement.GetProperty("checks");
-        var dbCheck = checks.EnumerateArray().FirstOrDefault(e => e.GetProperty("key").GetString() == "database");
+        var dbCheck = checks
+            .EnumerateArray()
+            .FirstOrDefault(e => e.GetProperty("key").GetString() == "database");
         dbCheck.ValueKind.Should().NotBe(JsonValueKind.Undefined);
         dbCheck.GetProperty("value").GetString().Should().Be("Unhealthy");
     }
@@ -145,19 +155,23 @@ public class HealthTests : IClassFixture<ApiFactory>
                 services.PostConfigure<HealthCheckServiceOptions>(options =>
                 {
                     // Remove existing 'memory' registrations (mutate in place)
-                    var memRegs = options.Registrations
-                        .Where(r => string.Equals(r.Name, "memory", StringComparison.OrdinalIgnoreCase))
+                    var memRegs = options
+                        .Registrations.Where(r =>
+                            string.Equals(r.Name, "memory", StringComparison.OrdinalIgnoreCase)
+                        )
                         .ToList();
                     foreach (var reg in memRegs)
                         options.Registrations.Remove(reg);
 
                     // Add failing 'memory' check
-                    options.Registrations.Add(new HealthCheckRegistration(
-                        "memory",
-                        sp => new AlwaysUnhealthyCheck("simulated memory pressure"),
-                        failureStatus: HealthStatus.Unhealthy,
-                        tags: new[] { "live" }
-                    ));
+                    options.Registrations.Add(
+                        new HealthCheckRegistration(
+                            "memory",
+                            sp => new AlwaysUnhealthyCheck("simulated memory pressure"),
+                            failureStatus: HealthStatus.Unhealthy,
+                            tags: new[] { "live" }
+                        )
+                    );
                 });
             });
         });
@@ -170,7 +184,9 @@ public class HealthTests : IClassFixture<ApiFactory>
         using var doc = JsonDocument.Parse(json);
         doc.RootElement.GetProperty("status").GetString().Should().Be("Unhealthy");
         var checks = doc.RootElement.GetProperty("checks");
-        var memCheck = checks.EnumerateArray().FirstOrDefault(e => e.GetProperty("key").GetString() == "memory");
+        var memCheck = checks
+            .EnumerateArray()
+            .FirstOrDefault(e => e.GetProperty("key").GetString() == "memory");
         memCheck.ValueKind.Should().NotBe(JsonValueKind.Undefined);
         memCheck.GetProperty("value").GetString().Should().Be("Unhealthy");
     }
@@ -178,8 +194,12 @@ public class HealthTests : IClassFixture<ApiFactory>
     private sealed class AlwaysUnhealthyCheck : IHealthCheck
     {
         private readonly string _message;
+
         public AlwaysUnhealthyCheck(string message) => _message = message;
-        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
-            => Task.FromResult(HealthCheckResult.Unhealthy(_message));
+
+        public Task<HealthCheckResult> CheckHealthAsync(
+            HealthCheckContext context,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult(HealthCheckResult.Unhealthy(_message));
     }
 }

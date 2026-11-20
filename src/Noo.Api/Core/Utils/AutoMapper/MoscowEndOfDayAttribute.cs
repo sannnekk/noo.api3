@@ -10,6 +10,4 @@ namespace Noo.Api.Core.Utils.AutoMapper;
 /// not off any specific model.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-public sealed class MoscowEndOfDayAttribute : Attribute
-{
-}
+public sealed class MoscowEndOfDayAttribute : Attribute;

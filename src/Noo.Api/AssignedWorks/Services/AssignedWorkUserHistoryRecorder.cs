@@ -6,16 +6,9 @@ namespace Noo.Api.AssignedWorks.Services;
 
 public interface IAssignedWorkUserHistoryRecorder
 {
-    /// <summary>
-    /// Records an assigned-work milestone in the student's history.
-    /// </summary>
     public Task RecordAsync(Ulid assignedWorkId, Ulid? actorId, UserHistoryType type);
 }
 
-/// <summary>
-/// Shared by the assigned-work user-history handlers, which all need the same thing: the work's
-/// student and title, denormalized into one history entry.
-/// </summary>
 [RegisterScoped(typeof(IAssignedWorkUserHistoryRecorder))]
 public class AssignedWorkUserHistoryRecorder : IAssignedWorkUserHistoryRecorder
 {

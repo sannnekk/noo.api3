@@ -2,9 +2,7 @@ namespace Noo.Api.UserHistory.Types;
 
 /// <summary>
 /// The kinds of event recorded in a user's activity log.
-///
-/// Stored as a string rather than a MySQL ENUM, so adding a kind needs no schema migration.
-/// Serialized to kebab-case over the wire by the global enum converter.
+/// Stored as a string rather than a MySQL ENUM, so adding a kind needs no schema migration
 /// </summary>
 public enum UserHistoryType
 {

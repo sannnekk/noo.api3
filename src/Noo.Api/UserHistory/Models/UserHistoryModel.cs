@@ -12,15 +12,12 @@ using IndexAttribute = Microsoft.EntityFrameworkCore.IndexAttribute;
 namespace Noo.Api.UserHistory.Models;
 
 /// <summary>
-/// One entry in a user's activity log.
+/// Represents a single entry in a user's history
 /// </summary>
 /// <remarks>
 /// The indexes pair the user column with <c>Id</c> because ULIDs are time-ordered and
 /// <c>ApplyDefaultOrdering</c> sorts by <c>Id DESC</c>: one index then serves both the filter and
-/// the sort, keeping a user's page cost independent of how large the table has grown.
-///
-/// There is deliberately no <c>changed_at</c> column — <see cref="BaseModel.CreatedAt"/> already
-/// records when the entry was written, and these rows are never updated.
+/// the sort, keeping a user's page cost independent of how large the table has grown
 /// </remarks>
 [Model("user_history")]
 [Index(nameof(SubjectUserId), nameof(Id))]
@@ -33,7 +30,7 @@ public class UserHistoryModel : BaseModel
     public UserHistoryType Type { get; set; }
 
     /// <summary>
-    /// The user whose history this entry belongs to.
+    /// The user whose history this entry belongs to
     /// </summary>
     [Column("subject_user_id", TypeName = DbDataTypes.Ulid)]
     [ForeignKey(nameof(SubjectUser))]
@@ -42,16 +39,12 @@ public class UserHistoryModel : BaseModel
 
     /// <summary>
     /// Who performed the action. Null when the subject acted on their own behalf or when the
-    /// action was performed by the system.
+    /// action was performed by the system
     /// </summary>
     [Column("actor_user_id", TypeName = DbDataTypes.Ulid)]
     [ForeignKey(nameof(Actor))]
     public Ulid? ActorUserId { get; set; }
 
-    /// <summary>
-    /// Display data captured when the entry was written, so rendering needs no joins and the
-    /// entry stays readable after the entities it refers to are renamed or deleted.
-    /// </summary>
     [JsonColumn("payload")]
     public Dictionary<string, string>? Payload { get; set; }
 

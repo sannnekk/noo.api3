@@ -28,8 +28,6 @@ public class UserHistoryService : IUserHistoryService
             new UserHistoryModel
             {
                 SubjectUserId = subjectUserId,
-                // An actor who is the subject adds nothing; keep it null so "done by" queries
-                // return only actions on other people.
                 ActorUserId = actorUserId == subjectUserId ? null : actorUserId,
                 Type = type,
                 Payload = payload,

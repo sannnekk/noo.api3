@@ -8,10 +8,7 @@ public class OnModelCreationExtension : IOnModelCreationExtension
 {
     public void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Store the kind as its name rather than an ordinal or a MySQL ENUM: new kinds are added
-        // continuously here, and neither of those alternatives tolerates that without a migration.
-        modelBuilder.Entity<UserHistoryModel>()
-            .Property(x => x.Type)
-            .HasConversion<string>();
+        // Deliberately not using MySQL enum to avoid issues with migrations
+        modelBuilder.Entity<UserHistoryModel>().Property(x => x.Type).HasConversion<string>();
     }
 }

@@ -27,10 +27,7 @@ public class UserHistoryController : ApiController
     }
 
     /// <summary>
-    /// Gets a user's activity log, paginated.
-    ///
-    /// The <c>perspective</c> parameter picks the side: <c>subject</c> (the default) returns what
-    /// happened to the user, <c>actor</c> returns what the user did to others.
+    /// Gets a user's activity log
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpGet("{userId}/history")]

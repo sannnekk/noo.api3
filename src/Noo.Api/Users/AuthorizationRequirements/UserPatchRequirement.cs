@@ -5,4 +5,4 @@ namespace Noo.Api.Users.AuthorizationRequirements;
 /// <summary>
 /// User can patch only their own data
 /// </summary>
-public class UserPatchRequirement : IAuthorizationRequirement { }
+public class UserPatchRequirement : IAuthorizationRequirement;

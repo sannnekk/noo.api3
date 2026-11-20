@@ -9,7 +9,6 @@ public class UserHistoryPolicies : IPolicyRegistrar
 
     public void RegisterPolicies(AuthorizationOptions options)
     {
-        // A user's activity log is an auditing tool, not something the user themselves reads.
         options.AddPolicy(
             CanGetUserHistory,
             policy =>

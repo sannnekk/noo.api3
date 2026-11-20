@@ -7,7 +7,7 @@ namespace Noo.UnitTests.Core.Events;
 
 public class DomainEventQueueTests
 {
-    private sealed class DummyEvent : IDomainEvent { }
+    private sealed class DummyEvent : IDomainEvent;
 
     private static DomainEventQueue CreateQueue(int capacity, int enqueueTimeoutSeconds = 2)
     {

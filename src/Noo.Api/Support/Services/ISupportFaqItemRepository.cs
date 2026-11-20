@@ -3,4 +3,4 @@ using Noo.Api.Support.Models;
 
 namespace Noo.Api.Support.Services;
 
-public interface ISupportFaqItemRepository : IRepository<SupportFaqItemModel> { }
+public interface ISupportFaqItemRepository : IRepository<SupportFaqItemModel>;

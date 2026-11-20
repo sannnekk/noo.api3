@@ -3,4 +3,4 @@ using Noo.Api.UserHistory.Models;
 
 namespace Noo.Api.UserHistory.Services;
 
-public interface IUserHistoryRepository : IRepository<UserHistoryModel> { }
+public interface IUserHistoryRepository : IRepository<UserHistoryModel>;
