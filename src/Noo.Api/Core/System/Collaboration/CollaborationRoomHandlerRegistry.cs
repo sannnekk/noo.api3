@@ -5,7 +5,7 @@ namespace Noo.Api.Core.System.Collaboration;
 
 /// <summary>
 /// Resolves the handler for a room type coming off the wire. Registered handlers are discovered
-/// through DI, so a module opts its entity into collaborative editing by registering one class.
+/// through DI
 /// </summary>
 [RegisterScoped]
 public class CollaborationRoomHandlerRegistry

@@ -113,6 +113,8 @@ public class UserModel : BaseModel
 
     public ICollection<NotificationModel> Notifications { get; set; } = [];
 
+    public ICollection<PushSubscriptionModel> PushSubscriptions { get; set; } = [];
+
     public UserSettingsModel? Settings { get; set; }
 
     public ICollection<NooTubeVideoModel> UploadedVideos { get; set; } = [];

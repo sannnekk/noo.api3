@@ -50,7 +50,7 @@ public class AssignedWorkController : ApiController
     }
 
     /// <summary>
-    /// Gets the current user's list of assigned works.
+    /// Gets the current users list of assigned works.
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpGet]
@@ -106,8 +106,7 @@ public class AssignedWorkController : ApiController
     }
 
     /// <summary>
-    /// Creates an assigned work instance by a work assignment ID.
-    /// This is used when a student starts working on a work
+    /// Creates an assigned work instance by a work assignment id
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpPost("{workAssignmentId}")]
@@ -152,7 +151,7 @@ public class AssignedWorkController : ApiController
     }
 
     /// <summary>
-    /// Gets an assigned work by its ID.
+    /// Gets an assigned work by its id
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpGet("{assignedWorkId}")]
@@ -173,12 +172,12 @@ public class AssignedWorkController : ApiController
     }
 
     /// <summary>
-    /// Gets the progress of an assigned work by its ID.
+    /// Gets the progress of an assigned work by its id.
     /// Used when loading the whole assigned work is not needed.
     /// </summary>
     /// <remarks>
     /// It returns an array of progress because there can be multiple AssignedWork's as separate attempts
-    /// for one WorkAssignment.
+    /// for one WorkAssignment
     /// </remarks>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpGet("{workAssignmentId}/progress")]
@@ -201,8 +200,7 @@ public class AssignedWorkController : ApiController
     }
 
     /// <summary>
-    /// Remakes an assigned work.
-    /// Returns the ID of the newly created assigned work.
+    /// Remakes an assigned work, returns the id of the newly created assigned work
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpPost("{assignedWorkId}/remake")]
@@ -227,10 +225,9 @@ public class AssignedWorkController : ApiController
 
     /// <summary>
     /// Saves an Answer to an assigned work.
-    /// This is used by students to submit their answers to assigned works,
+    /// This is used by students to submit their answers,
     /// or by mentors to save their comments on the assigned work.
-    /// If the answer already exists, it will be updated.
-    /// If the answer does not exist, it will be created.
+    /// If the answer already exists, it will be updated, otherwise created.
     /// </summary>
     /// <remarks>
     /// It will also update the status of the assigned work to "In Progress" if it was not already.
@@ -257,10 +254,8 @@ public class AssignedWorkController : ApiController
     }
 
     /// <summary>
-    /// Saves the caller's comment on an assigned work as a whole.
-    /// A work carries one comment per participant — the student's, the main mentor's and the
-    /// helper mentor's — and the caller's seat on the work decides which one is written.
-    /// If that comment already exists, it will be updated, otherwise it will be created.
+    /// Saves the comment on an assigned work.
+    /// IFuu THATu comment already exists, it will be updated, otherwise it will be created.
     /// </summary>
     /// <remarks>
     /// It will also update the status of the assigned work to "In Progress" if it was not already.

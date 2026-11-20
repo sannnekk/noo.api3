@@ -6,8 +6,7 @@ using Noo.Api.Core.Security.Authorization;
 namespace Noo.Api.Core.System.Collaboration;
 
 /// <summary>
-/// Someone currently in a room. Identified by connection rather than by user: the same person in
-/// two tabs is two members, and a lease belongs to the tab that took it.
+/// Someone currently in a room
 /// </summary>
 public record CollaborationMember
 {
@@ -35,9 +34,7 @@ public record CollaborationMember
 }
 
 /// <summary>
-/// A claim on one field. <see cref="ExpiresAt"/> is absolute and sent to every client, so a lease
-/// lapses on its own on both sides — no server timer, and a client whose heartbeat stopped
-/// reaching us stops believing it holds the field at the same moment we do.
+/// A claim on one field
 /// </summary>
 public record CollaborationLease
 {
@@ -53,17 +50,10 @@ public record CollaborationLease
     public static CollaborationLease Released(string path) => new() { Path = path };
 }
 
-/// <summary>
-/// One edit to the shared draft, in the vocabulary the entity's PATCH endpoint already speaks.
-/// The draft is nothing but the accumulated list of these, so saving is the existing patch call.
-/// </summary>
 public record CollaborationOp
 {
     /// <summary>
-    /// The verbs a draft can carry — deliberately not the whole JSON Patch vocabulary.
-    /// <c>move</c> and <c>copy</c> need a <c>from</c> this record does not have, and <c>test</c>
-    /// asserts rather than edits. All three would be accepted into the draft and then throw when
-    /// somebody pressed Save, stranding the room's work behind an operation nobody can apply.
+    /// The only needed and supported operations in the collaboration mode
     /// </summary>
     private static readonly FrozenSet<string> _supportedKinds = new[]
     {
@@ -114,7 +104,6 @@ public record CollaborationRoomState
     [JsonPropertyName("seq")]
     public long Seq { get; init; }
 
-
     [JsonPropertyName("members")]
     public IReadOnlyList<CollaborationMember> Members { get; init; } = [];
 
@@ -139,7 +128,6 @@ public record CollaborationSaved
     /// </summary>
     [JsonPropertyName("seq")]
     public long Seq { get; init; }
-
 
     [JsonPropertyName("savedBy")]
     public Ulid SavedBy { get; init; }

@@ -9,6 +9,7 @@ public class NotificationPolicies : IPolicyRegistrar
     public const string CanReadNotifications = nameof(CanReadNotifications);
     public const string CanBulkCreateNotifications = nameof(CanBulkCreateNotifications);
     public const string CanDeleteNotifications = nameof(CanDeleteNotifications);
+    public const string CanManagePushSubscriptions = nameof(CanManagePushSubscriptions);
 
     public void RegisterPolicies(AuthorizationOptions options)
     {
@@ -31,6 +32,11 @@ public class NotificationPolicies : IPolicyRegistrar
         });
 
         options.AddPolicy(CanDeleteNotifications, policy =>
+        {
+            policy.RequireAuthenticatedUser().RequireNotBlocked();
+        });
+
+        options.AddPolicy(CanManagePushSubscriptions, policy =>
         {
             policy.RequireAuthenticatedUser().RequireNotBlocked();
         });

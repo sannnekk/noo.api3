@@ -11,19 +11,21 @@ public class SchedulerHostedService : BackgroundService
     public SchedulerHostedService(
         IServiceProvider services,
         ScheduledJobRegistry registry,
-        ILogger<SchedulerHostedService> logger)
+        ILogger<SchedulerHostedService> logger
+    )
     {
         _services = services;
         _registry = registry;
         _logger = logger;
     }
 
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override Task ExecuteAsync(CancellationToken ct)
     {
-        var loops = _registry.JobTypes.Select(type => RunLoopAsync(type, stoppingToken));
+        var loops = _registry.JobTypes.Select(type => RunLoopAsync(type, ct));
         return Task.WhenAll(loops);
     }
 
+    // TODO: Rethink the loop, maybe use some lib or so... Timer is not the best option
     private async Task RunLoopAsync(Type jobType, CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(GetInterval(jobType));

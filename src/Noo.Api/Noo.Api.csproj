@@ -24,6 +24,7 @@
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Google.Apis.Auth" Version="1.70.0" />
     <PackageReference Include="Google.Apis.Drive.v3" Version="1.70.0.3856" />
+    <PackageReference Include="Lib.Net.Http.WebPush" Version="3.3.1" />
   <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="9.0.0" />
     <PackageReference Include="EntityFramework" Version="6.5.1" />
     <PackageReference Include="Google.Apis.Sheets.v4" Version="1.70.0.3819" />

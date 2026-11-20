@@ -1607,6 +1607,65 @@ namespace Noo.Api.Migrations
                     b.ToTable("notification");
                 });
 
+            modelBuilder.Entity("Noo.Api.Notifications.Models.PushSubscriptionModel", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("VARCHAR(63)")
+                        .HasColumnName("auth");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TIMESTAMP(6)")
+                        .HasColumnName("created_at");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<DateTime>("CreatedAt"));
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("VARCHAR(1024)")
+                        .HasColumnName("endpoint")
+                        .UseCollation("ascii_bin");
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("Endpoint"), "ascii");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasMaxLength(127)
+                        .HasColumnType("VARCHAR(127)")
+                        .HasColumnName("p256dh");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("TIMESTAMP(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("VARCHAR(512)")
+                        .HasColumnName("user_agent");
+
+                    b.Property<byte[]>("UserId")
+                        .IsRequired()
+                        .HasColumnType("BINARY(16)")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Endpoint")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("push_subscription");
+                });
+
             modelBuilder.Entity("Noo.Api.Platform.Models.PlatformSettingsModel", b =>
                 {
                     b.Property<byte[]>("Id")
@@ -3072,6 +3131,17 @@ namespace Noo.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Noo.Api.Notifications.Models.PushSubscriptionModel", b =>
+                {
+                    b.HasOne("Noo.Api.Users.Models.UserModel", "User")
+                        .WithMany("PushSubscriptions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Noo.Api.Polls.Models.PollAnswerModel", b =>
                 {
                     b.HasOne("Noo.Api.Polls.Models.PollParticipationModel", null)
@@ -3409,6 +3479,8 @@ namespace Noo.Api.Migrations
                     b.Navigation("Notifications");
 
                     b.Navigation("PollParticipations");
+
+                    b.Navigation("PushSubscriptions");
 
                     b.Navigation("SavedTasks");
 
