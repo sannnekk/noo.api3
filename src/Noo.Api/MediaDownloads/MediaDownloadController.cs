@@ -26,8 +26,7 @@ public class MediaDownloadController : ApiController
 
     /// <summary>
     /// Gets download totals for every file attached to a course material.
-    ///
-    /// Files nobody has downloaded are included, at zero.
+    /// Files nobody has downloaded are included, with a zero
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]
     [HttpGet("material/{materialId:ulid}/file-downloads/summary")]
@@ -54,7 +53,6 @@ public class MediaDownloadController : ApiController
 
     /// <summary>
     /// Gets who downloaded a material's files, how many times, and when they last did, paginated.
-    ///
     /// The optional <c>mediaId</c> parameter narrows the breakdown to a single file.
     /// </summary>
     [MapToApiVersion(NooApiVersions.Current)]

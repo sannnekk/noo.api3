@@ -7,7 +7,7 @@ using Noo.Api.MediaDownloads.Services;
 namespace Noo.Api.MediaDownloads.Events;
 
 /// <summary>
-/// Turns a download of a course attachment into a statistics row.
+/// Turns a download of a course attachment into a statistics row
 /// </summary>
 public sealed class MediaDownloadedHandler : IEventHandler<MediaDownloadedEvent>
 {
@@ -25,8 +25,6 @@ public sealed class MediaDownloadedHandler : IEventHandler<MediaDownloadedEvent>
 
     public async Task HandleAsync(MediaDownloadedEvent @event, CancellationToken ct = default)
     {
-        // Only attachments are counted. Inline richtext images resolve their URL through the same
-        // endpoint on every render, which says nothing about anyone taking the file.
         if (@event.Category != MediaCategory.CourseAttachment)
         {
             return;

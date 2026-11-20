@@ -42,12 +42,12 @@ public class MediaDownloadRepository : Repository<MediaDownloadModel>, IMediaDow
     }
 
     // The aggregate queries are shaped separately from their materialization so a test can compile
-    // them to SQL without a database — the InMemory provider the other tests run on evaluates
-    // anything on the client and so cannot tell a translatable grouping from an untranslatable one.
+    // them to SQL without a database
 
     internal IQueryable<MediaDownloadCounts> CountsByMediaQuery(IReadOnlyCollection<Ulid> mediaIds)
     {
-        return Context.GetDbSet<MediaDownloadModel>()
+        return Context
+            .GetDbSet<MediaDownloadModel>()
             .Where(d => mediaIds.Contains(d.MediaId))
             .GroupBy(d => d.MediaId)
             .Select(g => new MediaDownloadCounts
@@ -61,7 +61,8 @@ public class MediaDownloadRepository : Repository<MediaDownloadModel>, IMediaDow
 
     internal IQueryable<MediaDownloaderCounts> DownloadersQuery(Ulid materialId, Ulid? mediaId)
     {
-        var query = Context.GetDbSet<MediaDownloadModel>()
+        var query = Context
+            .GetDbSet<MediaDownloadModel>()
             .Where(d => d.CourseMaterialId == materialId);
 
         if (mediaId is { } id)

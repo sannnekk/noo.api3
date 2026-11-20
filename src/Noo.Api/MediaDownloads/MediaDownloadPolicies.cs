@@ -9,7 +9,6 @@ public class MediaDownloadPolicies : IPolicyRegistrar
 
     public void RegisterPolicies(AuthorizationOptions options)
     {
-        // Download statistics are a teaching tool, not something a student reads about themselves.
         options.AddPolicy(
             CanGetMaterialFileDownloads,
             policy =>

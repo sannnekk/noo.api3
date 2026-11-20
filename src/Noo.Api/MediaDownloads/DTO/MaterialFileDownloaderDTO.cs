@@ -6,7 +6,7 @@ using Noo.Api.Users.DTO;
 namespace Noo.Api.MediaDownloads.DTO;
 
 /// <summary>
-/// How often one user downloaded a material's files, and when they last did.
+/// How often one user downloaded a material's files
 /// </summary>
 public record MaterialFileDownloaderDTO : IHasPresignedMedia
 {

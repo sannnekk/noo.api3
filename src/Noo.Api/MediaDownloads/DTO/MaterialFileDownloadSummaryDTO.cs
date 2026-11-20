@@ -5,7 +5,7 @@ using Noo.Api.Media.DTO;
 namespace Noo.Api.MediaDownloads.DTO;
 
 /// <summary>
-/// Download totals for one file attached to a course material.
+/// Download totals for one file attached to a course material
 /// </summary>
 public record MaterialFileDownloadSummaryDTO : IHasPresignedMedia
 {
@@ -37,7 +37,7 @@ public record MaterialFileDownloadSummaryDTO : IHasPresignedMedia
     [JsonPropertyName("lastDownloadAt")]
     public DateTime? LastDownloadAt { get; init; }
 
-    // The row stands for the file, so it carries the file's own timestamps.
+    // The row stands for the file, so it carries the file's own timestamps
     [Required]
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt => Media.CreatedAt;

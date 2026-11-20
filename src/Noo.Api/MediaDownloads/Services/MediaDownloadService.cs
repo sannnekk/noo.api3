@@ -61,7 +61,6 @@ public class MediaDownloadService : IMediaDownloadService
 
         var countsById = counts.ToDictionary(c => c.MediaId);
 
-        // Stitched here rather than joined so a file nobody has downloaded still shows up, at zero.
         return media.Select(m =>
         {
             countsById.TryGetValue(m.Id, out var count);
@@ -90,8 +89,6 @@ public class MediaDownloadService : IMediaDownloadService
             cancellationToken
         );
 
-        // The users of this page only, in one query — joining them into the grouping would
-        // multiply the rows the aggregate has to scan.
         var users = await _users.GetManyWithAvatarAsync([.. rows.Items.Select(r => r.UserId)]);
         var usersById = users.ToDictionary(u => u.Id);
 

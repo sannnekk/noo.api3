@@ -7,12 +7,12 @@ namespace Noo.Api.MediaDownloads.Services;
 public interface IMediaDownloadService
 {
     /// <summary>
-    /// Records one download. The row is persisted by the ambient unit of work.
+    /// Records one download
     /// </summary>
     public void Record(Ulid mediaId, Ulid userId, Ulid? courseMaterialId);
 
     /// <summary>
-    /// Download totals for every file attached to a material, files nobody downloaded included.
+    /// Download totals for every file attached to a material, files nobody downloaded included
     /// </summary>
     public Task<IEnumerable<MaterialFileDownloadSummaryDTO>> GetMaterialSummaryAsync(
         Ulid materialId,
@@ -20,7 +20,7 @@ public interface IMediaDownloadService
     );
 
     /// <summary>
-    /// Who downloaded the material's files, how often, and when they last did.
+    /// Who downloaded the material's files, how often, and when they last did
     /// </summary>
     public Task<SearchResult<MaterialFileDownloaderDTO>> GetMaterialDownloadersAsync(
         Ulid materialId,
